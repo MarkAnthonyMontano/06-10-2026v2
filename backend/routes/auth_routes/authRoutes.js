@@ -1,0 +1,1818 @@
+const express = require("express");
+const webtoken = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
+const path = require("path");
+const fs = require("fs");
+const QRCode = require("qrcode");
+const { db, db3 } = require("../database/database");
+const { CanDelete, CanEdit } = require("../../middleware/pagePermissions");
+const {
+  insertAuditLogAdmission,
+  insertAuditLogEnrollment,
+} = require("../../utils/auditLogger");
+const router = express.Router();
+
+let otpStore = {};
+let loginAttempts = {};
+const generateOTP = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+const calculateAge = (birthDate) => {
+  const date = new Date(birthDate);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const m = today.getMonth() - date.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < date.getDate())) {
+    age -= 1;
+  }
+  return age;
+};
+
+async function getApplicantNumberByPersonId(personId) {
+  if (!personId) return null;
+  try {
+    const [rows] = await db.query(
+      "SELECT applicant_number FROM applicant_numbering_table WHERE person_id = ? LIMIT 1",
+      [personId],
+    );
+    return rows?.[0]?.applicant_number || null;
+  } catch (err) {
+    console.error("Applicant number lookup failed:", err);
+    return null;
+  }
+}
+
+const getLoginAuditLogger = (req) => (
+  req.body?.audit_log_db === "db3"
+    ? insertAuditLogEnrollment
+    : insertAuditLogAdmission
+);
+
+const buildRegistrationAuditMessage = ({ actorId, event, reason }) => {
+  const safeActor = actorId || "unknown";
+  const reasonText = reason ? ` Reason: ${reason}.` : "";
+
+  return `Applicant (${safeActor}) ${event}.${reasonText}`;
+};
+
+const formatAuditActorRole = (role) => {
+  const safeRole = String(role || "registrar").trim();
+  if (!safeRole) return "Registrar";
+
+  return safeRole
+    .split(/[\s_-]+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+};
+
+const insertRegistrationAuditLog = ({
+  actorId,
+  event,
+  outcome = "SUCCESS",
+  severity,
+  reason,
+}) =>
+  insertAuditLogAdmission({
+    actorId,
+    role: "applicant",
+    action: "REGISTER",
+    outcome,
+    severity,
+    reason,
+    message: buildRegistrationAuditMessage({
+      actorId,
+      event,
+      reason,
+    }),
+  });
+
+const normalizePersonName = (value) => String(value || "").trim().toUpperCase();
+
+const checkEnrollmentPersonDuplicate = async ({
+  email,
+  firstName,
+  lastName,
+  birthday,
+}) => {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedFirstName = normalizePersonName(firstName);
+  const normalizedLastName = normalizePersonName(lastName);
+  const normalizedBirthday = String(birthday || "").trim();
+
+  if (normalizedEmail) {
+    const [emailRows] = await db3.query(
+      `SELECT person_id
+       FROM person_table
+       WHERE LOWER(TRIM(emailAddress)) = ?
+       LIMIT 1`,
+      [normalizedEmail],
+    );
+
+    if (emailRows.length > 0) {
+      return {
+        duplicate: true,
+        reason: "email",
+        message:
+          "This email already exists in the enrollment records. Duplicate registration is not allowed.",
+      };
+    }
+  }
+
+  if (normalizedFirstName && normalizedLastName && normalizedBirthday && normalizedEmail) {
+    const [personRows] = await db3.query(
+      `SELECT person_id
+       FROM person_table
+       WHERE UPPER(TRIM(first_name)) = ?
+         AND UPPER(TRIM(last_name)) = ?
+         AND birthOfDate = ?
+         AND LOWER(TRIM(emailAddress)) = ?
+       LIMIT 1`,
+      [normalizedFirstName, normalizedLastName, normalizedBirthday, normalizedEmail],
+    );
+
+    if (personRows.length > 0) {
+      return {
+        duplicate: true,
+        reason: "name_birthday_email",
+        message:
+          "An applicant/student with the same first name, last name, birthday, and email address already exists in the enrollment records. Duplicate registration is not allowed.",
+      };
+    }
+  }
+
+  return { duplicate: false };
+};
+
+router.post("/check-registration-duplicate", async (req, res) => {
+  try {
+    const { email, firstName, lastName, birthday } = req.body;
+    const duplicateCheck = await checkEnrollmentPersonDuplicate({
+      email,
+      firstName,
+      lastName,
+      birthday,
+    });
+
+    if (duplicateCheck.duplicate) {
+      await insertRegistrationAuditLog({
+        actorId: email || "unknown",
+        outcome: "FAILED",
+        event: "failed duplicate registration check",
+        reason: duplicateCheck.message,
+      });
+      return res.status(400).json({
+        success: false,
+        duplicate: true,
+        reason: duplicateCheck.reason,
+        message: duplicateCheck.message,
+      });
+    }
+
+    return res.json({ success: true, duplicate: false });
+  } catch (error) {
+    console.error("Registration duplicate check failed:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to validate duplicate registration",
+    });
+  }
+});
+
+// POST REGISTER (APPLICANT ONLY)
+router.post("/register", async (req, res) => {
+  const {
+    email,
+    password,
+    campus,
+    otp,
+    firstName,
+    middleName,
+    lastName,
+    birthday,
+    academicProgram,
+    applyingAs,
+    program,
+    active_school_year_id,
+  } = req.body;
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  // 🔍 Check if applicant already exists by name + birthday
+
+
+
+  // 🔍 STEP 1: EMAIL MUST BE UNIQUE
+  const [existingEmail] = await db.query(
+    "SELECT 1 FROM user_accounts WHERE email = ?",
+    [normalizedEmail]
+  );
+
+  if (existingEmail.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Email is already registered",
+    });
+  }
+
+  const duplicateEnrollmentPerson = await checkEnrollmentPersonDuplicate({
+    email: normalizedEmail,
+    firstName,
+    lastName,
+    birthday,
+  });
+
+  if (duplicateEnrollmentPerson.duplicate) {
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail || "unknown",
+      outcome: "FAILED",
+      event: "failed to register",
+      reason: duplicateEnrollmentPerson.message,
+    });
+    return res.status(400).json({
+      success: false,
+      message: duplicateEnrollmentPerson.message,
+    });
+  }
+
+  // 🔍 STEP 2: STRICT MATCH (FIRST + LAST + BIRTHDAY)
+  const [personMatch] = await db.query(
+    `SELECT person_id 
+   FROM person_table
+   WHERE first_name = ?
+   AND last_name = ?
+   AND birthOfDate = ?
+   AND LOWER(TRIM(emailAddress)) = ?
+   LIMIT 1`,
+    [firstName.trim(), lastName.trim(), birthday, normalizedEmail]
+  );
+
+  if (personMatch.length > 0) {
+    const personId = personMatch[0].person_id;
+
+    // 🔍 STEP 3: GET APPLICANT NUMBER
+    const [applicant] = await db.query(
+      `SELECT applicant_number 
+     FROM applicant_numbering_table 
+     WHERE person_id = ? 
+     LIMIT 1`,
+      [personId]
+    );
+
+    if (applicant.length > 0) {
+      const applicantNumber = applicant[0].applicant_number;
+
+      // 🔍 STEP 4: CHECK EMAIL SENT
+      const [exam] = await db.query(
+        `SELECT email_sent
+       FROM exam_applicants
+       WHERE applicant_id = ?
+       LIMIT 1`,
+        [applicantNumber]
+      );
+
+      if (exam.length > 0 && exam[0].email_sent === 1) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "This applicant is already scheduled for examination. Duplicate registration is not allowed.",
+        });
+      }
+    }
+  }
+
+  // 🔍 STEP 2B: CHECK PARTIAL MATCH (last + middle)
+  const [partialMatch] = await db.query(
+    `SELECT person_id 
+   FROM person_table
+   WHERE last_name = ?
+   AND middle_name = ?
+   AND first_name = ?
+   LIMIT 1`,
+    [lastName.trim(), middleName?.trim() || null, firstName.trim()]
+  );
+
+  if (partialMatch.length > 0) {
+    const personId = partialMatch[0].person_id;
+
+    const [applicant] = await db.query(
+      `SELECT applicant_number 
+     FROM applicant_numbering_table 
+     WHERE person_id = ? 
+     LIMIT 1`,
+      [personId]
+    );
+
+    if (applicant.length > 0) {
+      const applicantNumber = applicant[0].applicant_number;
+
+      const [exam] = await db.query(
+        `SELECT email_sent
+       FROM exam_applicants
+       WHERE applicant_id = ?
+       LIMIT 1`,
+        [applicantNumber]
+      );
+
+      if (exam.length > 0 && exam[0].email_sent === 1) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "A similar applicant already received an email. Registration denied.",
+        });
+      }
+    }
+  }
+
+
+
+  if (!normalizedEmail || !password || !campus || !academicProgram || !applyingAs || !program) {
+    return res.json({
+      success: false,
+      message: "Please fill up all required fields",
+    });
+  }
+
+  // ✅ CHECK BRANCH REGISTRATION FIRST
+  const [[row]] = await db.query(
+    "SELECT branches FROM company_settings WHERE id = 1",
+  );
+
+  const branches = JSON.parse(row.branches || "[]");
+
+  const branch = branches.find((b) => b.id == campus);
+
+  if (!branch) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid branch selected",
+    });
+  }
+
+  const nowDate = new Date();
+
+  let isOpen = branch.registration_open;
+
+  if (branch.start_date && branch.end_date) {
+    isOpen =
+      nowDate >= new Date(branch.start_date) &&
+      nowDate <= new Date(branch.end_date);
+  }
+
+  if (!isOpen) {
+    return res.status(400).json({
+      success: false,
+      message: "Registration is closed for this branch",
+    });
+  }
+
+  const [selectedCurriculumRows] = await db3.query(
+    `SELECT ct.curriculum_id
+     FROM curriculum_table AS ct
+     INNER JOIN program_table AS pt ON pt.program_id = ct.program_id
+     WHERE ct.curriculum_id = ?
+       AND pt.components = ?
+       AND pt.academic_program = ?
+       AND ct.lock_status = 1
+     LIMIT 1`,
+    [program, campus, academicProgram],
+  );
+
+  if (selectedCurriculumRows.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid curriculum selected",
+    });
+  }
+
+  // ⭐⭐⭐ THEN OTP VALIDATION
+  const stored = otpStore[normalizedEmail];
+  const now = Date.now();
+
+  if (!normalizedEmail || !password || !campus || !academicProgram || !applyingAs || !program) {
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail || "unknown",
+      outcome: "FAILED",
+      event: "failed to register",
+      reason: "Missing required fields",
+    });
+    return res.json({
+      success: false,
+      message: "Please fill up all required fields",
+    });
+  }
+
+  if (!stored) {
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail || "unknown",
+      outcome: "FAILED",
+      event: "failed to register",
+      reason: "No OTP request found",
+    });
+    return res
+      .status(400)
+      .json({ success: false, message: "No OTP request found for this email" });
+  }
+
+  if (stored.expiresAt < now) {
+    delete otpStore[normalizedEmail];
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail || "unknown",
+      outcome: "FAILED",
+      event: "failed to register",
+      reason: "OTP expired",
+    });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "OTP has expired. Please request a new one.",
+      });
+  }
+
+  if (stored.otp !== otp.trim()) {
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail || "unknown",
+      outcome: "FAILED",
+      event: "failed to register",
+      reason: "Invalid OTP",
+    });
+    return res.status(400).json({ success: false, message: "Invalid OTP" });
+  }
+
+  delete otpStore[normalizedEmail];
+
+  let person_id = null;
+
+  try {
+    const [[company]] = await db.query(
+      "SELECT company_name FROM company_settings WHERE id = 1",
+    );
+    const companyName = company?.company_name || "Main Campus";
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const [existingUser] = await db.query(
+      "SELECT * FROM user_accounts WHERE email = ?",
+      [normalizedEmail],
+    );
+
+    if (existingUser.length > 0) {
+      await insertRegistrationAuditLog({
+        actorId: normalizedEmail || "unknown",
+        outcome: "FAILED",
+        event: "failed to register",
+        reason: "Email already registered",
+      });
+      return res.json({
+        success: false,
+        message: "Email is already registered",
+      });
+    }
+
+    // ⭐⭐⭐ FIX: STORE EMAIL INTO person_table.emailAddress ⭐⭐⭐
+    const age = calculateAge(birthday);
+
+    const [personResult] = await db.query(
+      `INSERT INTO person_table 
+(campus, emailAddress, first_name, middle_name, last_name, birthOfDate, age, academicProgram, applyingAs, program, termsOfAgreement, current_step)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        campus,
+        normalizedEmail,
+        firstName.trim(),
+        middleName?.trim() || null,
+        lastName.trim(),
+        birthday,
+        age,
+        academicProgram,
+        applyingAs,
+        program,
+        0, // termsOfAgreement
+        1, // current_step
+      ],
+    );
+
+    person_id = personResult.insertId;
+
+    let schoolYearId = Number(active_school_year_id);
+    if (!Number.isInteger(schoolYearId) || schoolYearId <= 0) {
+      const [[activeSchoolYear]] = await db3.query(
+        "SELECT id AS school_year_id FROM active_school_year_table WHERE astatus = 1 LIMIT 1",
+      );
+      schoolYearId = activeSchoolYear?.school_year_id || null;
+    }
+
+    await db.query(
+      `INSERT INTO user_accounts (person_id, email, password, role, status, school_year_id)
+       VALUES (?, ?, ?, 'applicant', ?, ?)`,
+      [person_id, normalizedEmail, hashedPassword, 1, schoolYearId],
+    );
+
+    // ------------------
+    // Applicant Numbering
+    // ------------------
+    const [activeYearResult] = await db3.query(`
+      SELECT yt.year_description, st.semester_code
+      FROM active_school_year_table sy
+      JOIN year_table yt ON yt.year_id = sy.year_id
+      JOIN semester_table st ON st.semester_id = sy.semester_id
+      WHERE sy.astatus = 1
+      LIMIT 1
+    `);
+
+    if (activeYearResult.length === 0) {
+      throw new Error("No active school year/semester found.");
+    }
+
+    const year = String(activeYearResult[0].year_description).split("-")[0];
+    const semCode = activeYearResult[0].semester_code;
+
+    const [countRes] = await db.query(
+      "SELECT counter, query FROM applicant_counter WHERE id = 1",
+    );
+
+    const padded = String(countRes[0].query).padStart(5, "0");
+    const applicant_number = `${year}${semCode}${padded}`;
+
+    await db.query(
+      "INSERT INTO applicant_numbering_table (applicant_number, person_id) VALUES (?, ?)",
+      [applicant_number, person_id],
+    );
+
+    // QR Codes
+    const qrData = `${process.env.DB_HOST_LOCAL}:5173/examination_profile/${applicant_number}`;
+    const qrData2 = `${process.env.DB_HOST_LOCAL}:5173/applicant_profile/${applicant_number}`;
+    const qrFilename = `${applicant_number}_qrcode.png`;
+    const qrFilename2 = `${applicant_number}_qrcode2.png`;
+    const qrPath = path.join(
+      __dirname,
+      "../../uploads/QrCodeGenerated",
+      qrFilename,
+    );
+    const qrPath2 = path.join(
+      __dirname,
+      "../../uploads/QrCodeGenerated",
+      qrFilename2,
+    );
+
+    await QRCode.toFile(qrPath, qrData, {
+      color: { dark: "#000", light: "#FFF" },
+      width: 300,
+    });
+
+    await QRCode.toFile(qrPath2, qrData2, {
+      color: { dark: "#000", light: "#FFF" },
+      width: 300,
+    });
+
+    await db.query(
+      "UPDATE applicant_numbering_table SET qr_code = ? WHERE applicant_number = ?",
+      [qrFilename, applicant_number],
+    );
+
+    await db.query(
+      `INSERT INTO person_status_table 
+       (person_id, applicant_id, exam_status, requirements, residency, student_registration_status, exam_result, hs_ave, qualifying_result, interview_result)
+       VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0)`,
+      [person_id, applicant_number],
+    );
+
+    await db.query(
+      `INSERT INTO interview_applicants (schedule_id, applicant_id, email_sent, status, qualifying_status, interview_status)
+       VALUES (?, ?, 0, 0, null, null)`,
+      [null, applicant_number],
+    );
+
+    const nextQuery = countRes[0].query + 1;
+
+    await db.query(
+      "UPDATE applicant_counter SET counter = ?, query = ? WHERE id = 1", [countRes[0].query, nextQuery]
+    )
+
+    res.status(201).json({
+      success: true,
+      message: "Registered Successfully",
+      person_id,
+      applicant_number,
+      campus: campus,
+    });
+
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail || "unknown",
+      outcome: "SUCCESS",
+      event: "successfully registered",
+    });
+  } catch (error) {
+    if (person_id) {
+      await db.query("DELETE FROM person_table WHERE person_id = ?", [
+        person_id,
+      ]);
+    }
+    console.log(error);
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail || "unknown",
+      outcome: "FAILED",
+      event: "failed to register",
+      reason: "Internal server error",
+    });
+    res.json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+});
+
+// DELETE ACCOUNT
+router.delete("/delete-account/:person_id", CanDelete, async (req, res) => {
+  const { person_id } = req.params;
+
+  if (!person_id) {
+    return res.status(400).json({
+      success: false,
+      message: "Person ID is required",
+    });
+  }
+
+  try {
+    const [[accountBefore]] = await db.query(
+      `SELECT ua.person_id, ua.email, ua.role, ant.applicant_number, pt.first_name, pt.middle_name, pt.last_name
+       FROM user_accounts ua
+       LEFT JOIN person_table pt ON pt.person_id = ua.person_id
+       LEFT JOIN applicant_numbering_table ant ON ant.person_id = ua.person_id
+       WHERE ua.person_id = ?
+       LIMIT 1`,
+      [person_id],
+    );
+
+    const [result] = await db.query(
+      `UPDATE user_accounts
+       SET is_archived = 1
+       WHERE person_id = ?`,
+      [person_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
+
+    const actorId =
+      req.body?.audit_actor_id ||
+      req.headers["x-audit-actor-id"] ||
+      req.headers["x-employee-id"] ||
+      "unknown";
+    const actorRole =
+      req.body?.audit_actor_role ||
+      req.headers["x-audit-actor-role"] ||
+      "registrar";
+    const roleLabel = formatAuditActorRole(actorRole);
+    const applicantName = [
+      accountBefore?.last_name,
+      accountBefore?.first_name,
+      accountBefore?.middle_name,
+    ].filter(Boolean).join(", ");
+    const accountLabel =
+      accountBefore?.applicant_number ||
+      applicantName ||
+      accountBefore?.email ||
+      `person_id ${person_id}`;
+
+    await insertAuditLogAdmission({
+      actorId,
+      role: actorRole,
+      action: "APPLICATION_ACCOUNT_ARCHIVE",
+      severity: "INFO",
+      message: `${roleLabel} (${actorId}) archived account for Applicant (${accountLabel}).`,
+    });
+
+    res.json({
+      success: true,
+      message: "Account archived successfully",
+    });
+
+  } catch (error) {
+    console.error("Archive account error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to archive account",
+    });
+  }
+});
+
+router.get("/archived-accounts", async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT
+         ua.person_id,
+         ua.email,
+         p.extension,
+         p.first_name,
+         p.last_name,
+         p.middle_name,
+         p.campus,
+         p.created_at,
+         ant.applicant_number
+       FROM user_accounts AS ua
+       LEFT JOIN person_table AS p
+         ON p.person_id = ua.person_id
+       LEFT JOIN applicant_numbering_table AS ant
+         ON ant.person_id = ua.person_id
+       WHERE COALESCE(ua.is_archived, 0) = 1
+       ORDER BY p.created_at DESC, ua.person_id DESC`,
+    );
+
+    res.json({
+      success: true,
+      data: rows,
+    });
+  } catch (error) {
+    console.error("Fetch archived accounts error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch archived accounts",
+    });
+  }
+});
+
+router.put("/restore-account/:person_id", CanEdit, async (req, res) => {
+  const { person_id } = req.params;
+
+  if (!person_id) {
+    return res.status(400).json({
+      success: false,
+      message: "Person ID is required",
+    });
+  }
+
+  try {
+    const [accountRows] = await db.query(
+      `
+      SELECT
+        ua.email,
+        pt.first_name,
+        pt.middle_name,
+        pt.last_name,
+        ant.applicant_number
+      FROM user_accounts ua
+      LEFT JOIN person_table pt ON pt.person_id = ua.person_id
+      LEFT JOIN applicant_numbering_table ant ON ant.person_id = ua.person_id
+      WHERE ua.person_id = ?
+      LIMIT 1
+      `,
+      [person_id],
+    );
+
+    const [result] = await db.query(
+      `UPDATE user_accounts
+       SET is_archived = 0
+       WHERE person_id = ?`,
+      [person_id],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
+
+    const actorId =
+      req.body?.audit_actor_id ||
+      req.headers["x-audit-actor-id"] ||
+      req.headers["x-employee-id"] ||
+      "unknown";
+    const actorRole =
+      req.body?.audit_actor_role ||
+      req.headers["x-audit-actor-role"] ||
+      "registrar";
+    const roleLabel = formatAuditActorRole(actorRole);
+    const accountBefore = accountRows?.[0];
+    const applicantName = [
+      accountBefore?.last_name,
+      accountBefore?.first_name,
+      accountBefore?.middle_name,
+    ].filter(Boolean).join(", ");
+    const accountLabel =
+      accountBefore?.applicant_number ||
+      applicantName ||
+      accountBefore?.email ||
+      `person_id ${person_id}`;
+
+    await insertAuditLogAdmission({
+      actorId,
+      role: actorRole,
+      action: "APPLICATION_ACCOUNT_RESTORE",
+      severity: "INFO",
+      message: `${roleLabel} (${actorId}) restored account for Applicant (${accountLabel}).`,
+    });
+
+    res.json({
+      success: true,
+      message: "Account restored successfully",
+    });
+  } catch (error) {
+    console.error("Restore account error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to restore account",
+    });
+  }
+});
+
+router.delete("/permanent-delete-account/:person_id", CanDelete, async (req, res) => {
+  const { person_id } = req.params;
+
+  if (!person_id) {
+    return res.status(400).json({
+      success: false,
+      message: "Person ID is required",
+    });
+  }
+
+  try {
+    const [applicant] = await db.query(
+      `SELECT
+        ant.applicant_number,
+        pt.first_name,
+        pt.middle_name,
+        pt.last_name,
+        ua.email
+       FROM applicant_numbering_table ant
+       LEFT JOIN person_table pt ON pt.person_id = ant.person_id
+       LEFT JOIN user_accounts ua ON ua.person_id = ant.person_id
+       WHERE ant.person_id = ?`,
+      [person_id],
+    );
+
+    const applicantBefore = applicant?.[0] || null;
+    const applicantNumber = applicantBefore?.applicant_number || null;
+
+    if (applicantNumber) {
+      await db.query(
+        `DELETE FROM interview_applicants
+         WHERE applicant_id = ?`,
+        [applicantNumber],
+      );
+
+      await db.query(
+        `DELETE FROM person_status_table
+         WHERE applicant_id = ?`,
+        [applicantNumber],
+      );
+
+      await db.query(
+        `DELETE FROM applicant_numbering_table
+         WHERE applicant_number = ?`,
+        [applicantNumber],
+      );
+    }
+
+    await db.query(
+      `DELETE FROM user_accounts
+       WHERE person_id = ?`,
+      [person_id],
+    );
+
+    const [personResult] = await db.query(
+      `DELETE FROM person_table
+       WHERE person_id = ?`,
+      [person_id],
+    );
+
+    if (personResult.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
+
+    const actorId =
+      req.body?.audit_actor_id ||
+      req.headers["x-audit-actor-id"] ||
+      req.headers["x-employee-id"] ||
+      "unknown";
+    const actorRole =
+      req.body?.audit_actor_role ||
+      req.headers["x-audit-actor-role"] ||
+      "registrar";
+    const roleLabel = formatAuditActorRole(actorRole);
+    const applicantName = [
+      applicantBefore?.last_name,
+      applicantBefore?.first_name,
+      applicantBefore?.middle_name,
+    ].filter(Boolean).join(", ");
+    const accountLabel =
+      applicantBefore?.applicant_number ||
+      applicantName ||
+      applicantBefore?.email ||
+      `person_id ${person_id}`;
+
+    await insertAuditLogAdmission({
+      actorId,
+      role: actorRole,
+      action: "APPLICATION_ACCOUNT_PERMANENT_DELETE",
+      severity: "CRITICAL",
+      message: `${roleLabel} (${actorId}) permanently deleted account for Applicant (${accountLabel}).`,
+    });
+
+    res.json({
+      success: true,
+      message: "Account permanently deleted successfully",
+    });
+  } catch (error) {
+    console.error("Permanent delete account error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to permanently delete account",
+    });
+  }
+});
+
+
+// POST LOGIN (FACULTY, ADMIN, STFF AND STUDENT)
+// POST /auth/login  (Student / Faculty / Registrar)
+router.post("/login", async (req, res) => {
+  const { email: loginCredentials, password } = req.body;
+  const insertLoginAuditLog = getLoginAuditLogger(req);
+
+  if (!loginCredentials || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  const MAX_LOGIN_ATTEMPTS = 3;
+  const LOCK_TIME = 3 * 60 * 1000; // 180 seconds
+
+  const loginKey = String(loginCredentials).trim().toLowerCase();
+  const now = Date.now();
+
+  // =========================
+  // INIT LOGIN RECORD (keyed per credential — never bleeds across users)
+  // =========================
+  if (!loginAttempts[loginKey]) {
+    loginAttempts[loginKey] = { count: 0, lockUntil: null };
+  }
+
+  const record = loginAttempts[loginKey];
+
+  // =========================
+  // CHECK IF STILL LOCKED
+  // =========================
+  if (record.lockUntil && record.lockUntil > now) {
+    const remainingSeconds = Math.ceil((record.lockUntil - now) / 1000);
+
+    await insertLoginAuditLog({
+      actorId: loginKey,
+      role: "unknown",
+      outcome: "LOCKED",
+      reason: `Account locked. Remaining ${remainingSeconds}s`,
+    });
+
+    // ── Always send remainingSeconds so the frontend can restore the countdown ──
+    return res.status(429).json({
+      success: false,
+      locked: true,
+      remainingSeconds,
+      message: `Too many failed attempts. Try again in ${remainingSeconds} seconds.`,
+    });
+  }
+
+  // =========================
+  // AUTO-RESET AFTER LOCK EXPIRES
+  // Gives the user a fresh set of 3 attempts once their lockout time is served.
+  // =========================
+  if (record.lockUntil && record.lockUntil <= now) {
+    loginAttempts[loginKey] = { count: 0, lockUntil: null };
+  }
+
+  try {
+    // =========================
+    // FETCH USER (student accounts + faculty)
+    // =========================
+    const query = `
+      (
+        SELECT
+          ua.id            AS account_id,
+          ua.person_id,
+          ua.email,
+          ua.password,
+          ua.employee_id,
+          snt.student_number AS student_number,
+          ua.role,
+          ua.require_otp,
+          NULL             AS profile_image,
+          NULL             AS fname,
+          NULL             AS mname,
+          NULL             AS lname,
+          ua.status,
+          'user'           AS source,
+          ua.dprtmnt_id,
+          dt.dprtmnt_name,
+          ua.program_id    AS curriculum_id,
+          ua.force_password_change
+        FROM user_accounts AS ua
+        LEFT JOIN dprtmnt_table AS dt ON ua.dprtmnt_id = dt.dprtmnt_id
+        LEFT JOIN student_numbering_table AS snt ON snt.person_id = ua.person_id
+        WHERE ua.email = ? OR snt.student_number = ?
+      )
+      UNION ALL
+      (
+        SELECT
+          ua.prof_id       AS account_id,
+          ua.person_id,
+          ua.email,
+          ua.password,
+          ua.employee_id,
+          NULL             AS student_number,
+          ua.role,
+          ua.require_otp,
+          ua.profile_image,
+          ua.fname,
+          ua.mname,
+          ua.lname,
+          ua.status,
+          'prof'           AS source,
+          NULL             AS dprtmnt_id,
+          NULL             AS dprtmnt_name,
+          NULL             AS curriculum_id,
+          ua.force_password_change 
+        FROM prof_table AS ua
+        WHERE ua.email = ? OR ua.employee_id = ?
+      )
+    `;
+
+    const [results] = await db3.query(query, [
+      loginCredentials, // user_accounts email
+      loginCredentials, // student_number
+      loginCredentials, // faculty email
+      loginCredentials, // faculty employee_id
+    ]);
+
+    // =========================
+    // USER NOT FOUND
+    // =========================
+    if (results.length === 0) {
+      record.count++;
+
+      if (record.count >= MAX_LOGIN_ATTEMPTS) {
+        record.lockUntil = now + LOCK_TIME;
+        loginAttempts[loginKey] = record;
+
+        await insertLoginAuditLog({
+          actorId: loginKey,
+          role: "unknown",
+          outcome: "LOCKED",
+          reason: `Invalid email/student number (Attempt ${record.count}/${MAX_LOGIN_ATTEMPTS}) — account locked`,
+        });
+
+        return res.status(429).json({
+          success: false,
+          locked: true,
+          remainingSeconds: Math.ceil(LOCK_TIME / 1000),
+          message: `Too many failed attempts. Account locked for ${Math.ceil(LOCK_TIME / 1000)} seconds.`,
+        });
+      }
+
+      loginAttempts[loginKey] = record;
+
+      await insertLoginAuditLog({
+        actorId: loginKey,
+        role: "unknown",
+        outcome: "FAILED",
+        reason: `Invalid email, employee ID, or student number (Attempt ${record.count}/${MAX_LOGIN_ATTEMPTS})`,
+      });
+
+      return res.status(401).json({
+        success: false,
+        remaining: MAX_LOGIN_ATTEMPTS - record.count,
+        message: `Invalid Email, Employee ID, or Student number. ${MAX_LOGIN_ATTEMPTS - record.count} attempt(s) remaining.`,
+      });
+    }
+
+    const user = results[0];
+    const actorId = user.employee_id || user.student_number || user.person_id || user.email;
+
+    // Normalize require_otp
+    user.require_otp = Number(user.require_otp) === 1;
+
+    // =========================
+    // PASSWORD CHECK
+    // =========================
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      record.count++;
+
+      if (record.count >= MAX_LOGIN_ATTEMPTS) {
+        record.lockUntil = now + LOCK_TIME;
+        loginAttempts[loginKey] = record;
+
+        await insertLoginAuditLog({
+          actorId,
+          role: user.role,
+          outcome: "LOCKED",
+          reason: `Invalid password (Attempt ${record.count}/${MAX_LOGIN_ATTEMPTS}) — account locked`,
+        });
+
+        return res.status(429).json({
+          success: false,
+          locked: true,
+          remainingSeconds: Math.ceil(LOCK_TIME / 1000),
+          message: `Too many failed attempts. Account locked for ${Math.ceil(LOCK_TIME / 1000)} seconds.`,
+        });
+      }
+
+      loginAttempts[loginKey] = record;
+
+      await insertLoginAuditLog({
+        actorId,
+        role: user.role,
+        outcome: "FAILED",
+        reason: `Invalid password (Attempt ${record.count}/${MAX_LOGIN_ATTEMPTS})`,
+      });
+
+      return res.status(401).json({
+        success: false,
+        remaining: MAX_LOGIN_ATTEMPTS - record.count,
+        message: `Invalid password or email. ${MAX_LOGIN_ATTEMPTS - record.count} attempt(s) remaining.`,
+      });
+    }
+
+    // =========================
+    // ACCOUNT STATUS CHECK
+    // =========================
+    if (user.status === 0) {
+      await insertLoginAuditLog({
+        actorId,
+        role: user.role,
+        outcome: "FAILED",
+        reason: "Inactive account",
+      });
+
+      return res.json({
+        success: false,
+        message: "The user didn't exist or account is inactive",
+      });
+    }
+
+    // =========================
+    // PAGE ACCESS
+    // =========================
+    const [rows] = await db3.query(
+      "SELECT * FROM page_access WHERE user_id = ?",
+      [user.employee_id]
+    );
+    const accessList = rows.map((r) => Number(r.page_id));
+    const failureCount = record.count || 0;
+
+    // =========================
+    // JWT
+    // =========================
+    const token = webtoken.sign(
+      {
+        person_id: user.person_id,
+        employee_id: user.employee_id,
+        email: user.email,
+        role: user.role,
+        department: user.dprtmnt_id,
+        curriculum_id: user.curriculum_id,
+        prof_id: user.source === "prof" ? user.account_id : null,
+        accessList,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    // =========================
+    // OTP REQUIRED
+    // =========================
+    if (user.require_otp === true) {
+      const otp = generateOTP();
+
+      otpStore[user.email] = {
+        otp,
+        expiresAt: now + 5 * 60 * 1000,
+        cooldownUntil: now + 5 * 60 * 1000,
+        authFailureCount: failureCount,
+        auditContext: {
+          actorId,
+          role: user.role,
+          auditLogger: insertLoginAuditLog,
+        },
+      };
+
+      delete loginAttempts[loginKey];
+
+      try {
+        const [companyResult] = await db.query(
+          "SELECT short_term FROM company_settings WHERE id = 1"
+        );
+        const shortTerm = companyResult?.[0]?.short_term || "School";
+
+        const transporter = nodemailer.createTransport({
+          host: "smtp.gmail.com",
+          port: 465,
+          secure: true,
+          auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+        });
+
+        await transporter.sendMail({
+          from: `"${shortTerm} - OTP Verification" <${process.env.EMAIL_USER}>`,
+          to: user.email,
+          subject: `${shortTerm} OTP Code`,
+          text: `Your OTP is: ${otp} (Valid for 5 minutes)`,
+        });
+      } catch (err) {
+        console.error("OTP Email Error:", err.message);
+      }
+
+      return res.json({
+        success: true,
+        requireOtp: true,
+        force_password_change: user.force_password_change === 1, // ✅ ADD THIS
+
+        message: "OTP sent to your email",
+        token,
+        email: user.email,
+        role: user.role,
+        person_id: user.person_id,
+        prof_id: user.source === "prof" ? user.account_id : null,
+        employee_id: user.employee_id,
+        department: user.dprtmnt_id,
+        curriculum_id: user.curriculum_id,
+        accessList,
+      });
+    }
+
+    // =========================
+    // SUCCESS — no OTP needed
+    // =========================
+    const successOutcome = failureCount >= 2 ? "SUCCESS_AFTER_FAILURES" : "SUCCESS";
+    await insertLoginAuditLog({ actorId, role: user.role, outcome: successOutcome });
+    delete loginAttempts[loginKey];
+
+    return res.json({
+      success: true,
+      requireOtp: false,
+      force_password_change: user.force_password_change === 1, // ✅ ADD THIS
+
+      message: "Login success. OTP not required.",
+      token,
+      email: user.email,
+      role: user.role,
+      person_id: user.person_id,
+      prof_id: user.source === "prof" ? user.account_id : null,
+      employee_id: user.employee_id,
+      department: user.dprtmnt_id,
+      curriculum_id: user.curriculum_id,
+      accessList,
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ message: "Server error during login" });
+  }
+});
+
+// POST LOGIN (APPLICANT ONLY
+router.post("/login_applicant", async (req, res) => {
+  const { email, password } = req.body;
+  const insertLoginAuditLog = getLoginAuditLogger(req);
+
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "All fields are required",
+    });
+  }
+
+  // =========================
+  // LOGIN SETTINGS
+  // =========================
+  const MAX_LOGIN_ATTEMPTS = 3;
+  const LOCK_TIME = 180 * 1000; // 180 seconds
+
+  const loginCredential = email.trim();
+  const loginKey = loginCredential.toLowerCase();
+  const now = Date.now();
+
+  // =========================
+  // INIT LOGIN RECORD (per email — never bleeds across users)
+  // =========================
+  if (!loginAttempts[loginKey]) {
+    loginAttempts[loginKey] = {
+      count: 0,
+      lockUntil: null,
+    };
+  }
+
+  const record = loginAttempts[loginKey];
+
+  // =========================
+  // CHECK IF STILL LOCKED
+  // =========================
+  if (record.lockUntil && record.lockUntil > now) {
+    const remainingSeconds = Math.ceil((record.lockUntil - now) / 1000);
+
+    await insertLoginAuditLog({
+      actorId: loginKey,
+      role: "applicant",
+      outcome: "LOCKED",
+      reason: `Account locked. Remaining ${remainingSeconds}s`,
+    });
+
+    return res.status(429).json({
+      success: false,
+      locked: true,
+      remainingSeconds,
+      message: `Too many failed attempts. Try again in ${remainingSeconds} seconds.`,
+    });
+  }
+
+  // =========================
+  // AUTO-RESET AFTER LOCK EXPIRES
+  // Reset count to 0 so the user gets a fresh 3 attempts after serving their lockout.
+  // =========================
+  if (record.lockUntil && record.lockUntil <= now) {
+    loginAttempts[loginKey] = { count: 0, lockUntil: null };
+  }
+
+  try {
+    // =========================
+    // FETCH USER
+    // =========================
+    const query = `
+      SELECT ua.*, pt.*, ant.applicant_number AS existing_applicant_number
+      FROM user_accounts AS ua
+      LEFT JOIN person_table AS pt ON pt.person_id = ua.person_id
+      LEFT JOIN applicant_numbering_table AS ant ON ant.person_id = ua.person_id
+      WHERE ua.email = ? OR ant.applicant_number = ?
+    `;
+
+    const [results] = await db.query(query, [loginCredential, loginCredential]);
+
+    // =========================
+    // USER NOT FOUND
+    // =========================
+    if (results.length === 0) {
+      record.count++;
+
+      if (record.count >= MAX_LOGIN_ATTEMPTS) {
+        // Lock NOW — they've exhausted all attempts
+        record.lockUntil = now + LOCK_TIME;
+        loginAttempts[loginKey] = record;
+
+        await insertLoginAuditLog({
+          actorId: loginKey,
+          role: "applicant",
+          outcome: "LOCKED",
+          reason: `Invalid email or password (Attempt ${record.count}/${MAX_LOGIN_ATTEMPTS}) — account locked`,
+        });
+
+        return res.status(429).json({
+          success: false,
+          locked: true,
+          remainingSeconds: Math.ceil(LOCK_TIME / 1000),
+          message: `Too many failed attempts. Account locked for ${Math.ceil(LOCK_TIME / 1000)} seconds.`,
+        });
+      }
+
+      loginAttempts[loginKey] = record;
+
+      await insertLoginAuditLog({
+        actorId: loginKey,
+        role: "applicant",
+        outcome: "FAILED",
+        reason: `Invalid email or password (Attempt ${record.count}/${MAX_LOGIN_ATTEMPTS})`,
+      });
+
+      return res.status(401).json({
+        success: false,
+        remaining: MAX_LOGIN_ATTEMPTS - record.count,
+        message: `Invalid email or password. ${MAX_LOGIN_ATTEMPTS - record.count} attempt(s) remaining.`,
+      });
+    }
+
+    const user = results[0];
+    const existingApplicantNumber = await getApplicantNumberByPersonId(user.person_id);
+    const applicantActor = existingApplicantNumber || loginKey;
+
+    // =========================
+    // PASSWORD CHECK
+    // =========================
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      record.count++;
+
+      if (record.count >= MAX_LOGIN_ATTEMPTS) {
+        record.lockUntil = now + LOCK_TIME;
+        loginAttempts[loginKey] = record;
+
+        await insertLoginAuditLog({
+          actorId: applicantActor,
+          role: "applicant",
+          outcome: "LOCKED",
+          reason: `Invalid password (Attempt ${record.count}/${MAX_LOGIN_ATTEMPTS}) — account locked`,
+        });
+
+        return res.status(429).json({
+          success: false,
+          locked: true,
+          remainingSeconds: Math.ceil(LOCK_TIME / 1000),
+          message: `Too many failed attempts. Account locked for ${Math.ceil(LOCK_TIME / 1000)} seconds.`,
+        });
+      }
+
+      loginAttempts[loginKey] = record;
+
+      await insertLoginAuditLog({
+        actorId: applicantActor,
+        role: "applicant",
+        outcome: "FAILED",
+        reason: `Invalid password (Attempt ${record.count}/${MAX_LOGIN_ATTEMPTS})`,
+      });
+
+      return res.status(401).json({
+        success: false,
+        remaining: MAX_LOGIN_ATTEMPTS - record.count,
+        message: `Invalid password. ${MAX_LOGIN_ATTEMPTS - record.count} attempt(s) remaining.`,
+      });
+    }
+
+    // =========================
+    // ACCOUNT STATUS CHECK
+    // =========================
+    if (user.status === 0) {
+      await insertLoginAuditLog({
+        actorId: applicantActor,
+        role: "applicant",
+        outcome: "FAILED",
+        reason: "Inactive account",
+      });
+
+      return res.json({
+        success: false,
+        message: "The user didn't exist or is inactive",
+      });
+    }
+
+    const person_id = user.person_id;
+
+    // =========================
+    // CHECK / CREATE APPLICANT NUMBER
+    // =========================
+    const [existing] = await db.query(
+      `SELECT applicant_number, qr_code FROM applicant_numbering_table WHERE person_id = ?`,
+      [person_id]
+    );
+
+    let applicantNumber, qrFilename;
+
+    if (existing.length === 0) {
+      const [activeYear] = await db3.query(`
+        SELECT yt.year_description, st.semester_description, st.semester_code
+        FROM active_school_year_table AS sy
+        JOIN year_table AS yt ON yt.year_id = sy.year_id
+        JOIN semester_table AS st ON st.semester_id = sy.semester_id
+        WHERE sy.astatus = 1
+        LIMIT 1
+      `);
+
+      if (activeYear.length === 0) {
+        return res.status(500).json({ success: false, message: "No active school year found" });
+      }
+
+      const year = String(activeYear[0].year_description).split("-")[0];
+      const semCode = activeYear[0].semester_code;
+
+      const [countRes] = await db.query(
+        "SELECT counter, query FROM applicant_counter WHERE id = 1"
+      );
+
+      const padded = String(countRes[0].query).padStart(5, "0");
+      applicantNumber = `${year}${semCode}${padded}`;
+
+      await db.query(
+        `INSERT INTO applicant_numbering_table (applicant_number, person_id) VALUES (?, ?)`,
+        [applicantNumber, person_id]
+      );
+
+      const qrData = `${process.env.DB_HOST_LOCAL}:5173/examination_profile/${applicantNumber}`;
+      qrFilename = `${applicantNumber}_qrcode.png`;
+      const qrPath = path.join(__dirname, "uploads", qrFilename);
+
+      await QRCode.toFile(qrPath, qrData, {
+        color: { dark: "#000", light: "#FFF" },
+        width: 300,
+      });
+
+      await db.query(
+        `UPDATE applicant_numbering_table SET qr_code = ? WHERE applicant_number = ?`,
+        [qrFilename, applicantNumber]
+      );
+
+      const nextQuery = countRes[0].query + 1;
+      await db.query(
+        `UPDATE applicant_counter SET counter = ?, query = ? WHERE id = 1`,
+        [countRes[0].query, nextQuery]
+      );
+    } else {
+      applicantNumber = existing[0].applicant_number;
+      qrFilename = existing[0].qr_code;
+    }
+
+    // =========================
+    // SUCCESS — clear this user's attempt record
+    // =========================
+    delete loginAttempts[loginKey];
+
+    const token = webtoken.sign(
+      { person_id: user.person_id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    await insertLoginAuditLog({
+      actorId: applicantNumber,
+      role: user.role,
+      outcome: "SUCCESS",
+    });
+
+    return res.json({
+      success: true,
+      message: "Login successful",
+      force_password_change: user.force_password_change === 1,
+      token,
+      email: user.email,
+      registered_email: user.emailAddress,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      middle_name: user.middle_name,
+      birthday: user.birthOfDate,
+      birthOfDate: user.birthOfDate,
+      academicProgram: user.academicProgram,
+      applyingAs: user.applyingAs,
+      role: user.role,
+      person_id: user.person_id,
+      applicant_number: applicantNumber,
+      qr_code: qrFilename,
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ success: false, message: "Server error during login" });
+  }
+});
+// POST VERIFY OTP
+router.post("/verify-otp", async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp)
+    return res.status(400).json({ message: "Email and OTP are required" });
+
+  const now = Date.now();
+  const stored = otpStore[email];
+  const record = loginAttempts[email] || { count: 0, lockUntil: null };
+
+  if (record.lockUntil && record.lockUntil > now) {
+    const secondsLeft = Math.ceil((record.lockUntil - now) / 1000);
+    return res.status(429).json({
+      message: `Too many failed attempts. Try again in ${secondsLeft}s.`,
+    });
+  }
+
+  if (!stored) {
+    return res
+      .status(400)
+      .json({ message: "No OTP request found for this email" });
+  }
+
+  if (stored.expiresAt < now) {
+    delete otpStore[email];
+    return res
+      .status(400)
+      .json({ message: "OTP has expired. Please request a new one." });
+  }
+
+  if (stored.otp !== otp.trim()) {
+    record.count++;
+    if (record.count >= 3) {
+      record.lockUntil = now + 3 * 60 * 1000;
+      loginAttempts[email] = record;
+      return res.status(429).json({
+        message: "Too many failed OTP attempts. Locked for 3 minutes.",
+      });
+    }
+    loginAttempts[email] = record;
+    return res.status(400).json({ message: "Invalid OTP. Please try again." });
+  }
+
+  const failureCount = stored?.authFailureCount || 0;
+  const auditContext = stored?.auditContext || {};
+  const successOutcome =
+    failureCount >= 2 ? "SUCCESS_AFTER_FAILURES" : "SUCCESS";
+  const insertOtpAuditLog = auditContext.auditLogger || insertAuditLogAdmission;
+  await insertOtpAuditLog({
+    actorId: auditContext.actorId || email,
+    role: auditContext.role || "unknown",
+    outcome: successOutcome,
+  });
+
+  delete otpStore[email];
+  delete loginAttempts[email];
+
+  res.json({ message: "OTP verified successfully" });
+});
+
+// POST REQUEST OTP
+router.post("/request-otp", async (req, res) => {
+  const { email } = req.body;
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) {
+    await insertRegistrationAuditLog({
+      actorId: "unknown",
+      outcome: "FAILED",
+      event: "failed to request registration OTP",
+      reason: "Email is required",
+    });
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  // ❌ Prevent already registered emails
+  const [existingUser] = await db.query(
+    "SELECT * FROM user_accounts WHERE email = ?",
+    [normalizedEmail],
+  );
+
+  if (existingUser.length > 0) {
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail,
+      outcome: "FAILED",
+      event: "failed to request registration OTP",
+      reason: "Email has already been used",
+    });
+    return res
+      .status(400)
+      .json({
+        message:
+          "This email has already been used for registration. Each applicant can only register once. Please use a different email address."
+      });
+  }
+
+  const now = Date.now();
+  const existing = otpStore[normalizedEmail];
+
+  if (existing && existing.cooldownUntil > now) {
+    const secondsLeft = Math.ceil((existing.cooldownUntil - now) / 1000);
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail,
+      outcome: "FAILED",
+      event: "failed to request registration OTP",
+      reason: `OTP cooldown active for ${secondsLeft}s`,
+    });
+    return res
+      .status(429)
+      .json({ message: `OTP already sent. Please wait ${secondsLeft}s.` });
+  }
+
+  const otp = generateOTP();
+  otpStore[normalizedEmail] = {
+    otp,
+    expiresAt: now + 5 * 60 * 1000,
+    cooldownUntil: now + 60 * 1000,
+  };
+
+  try {
+    const [settings] = await db.query(
+      "SELECT short_term FROM company_settings LIMIT 1",
+    );
+    const shortTerm = settings?.[0]?.short_term || "School";
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"${shortTerm} OTP Verification" <${process.env.EMAIL_USER}>`,
+      to: normalizedEmail,
+      subject: `${shortTerm} OTP Code`,
+      text: `Your ${shortTerm} OTP is: ${otp}. It is valid for 5 minutes.`,
+    });
+
+    console.log(`✅ OTP sent to ${normalizedEmail}: ${otp}`);
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail,
+      outcome: "SUCCESS",
+      event: "requested registration OTP",
+    });
+    res.json({ message: `${shortTerm} OTP sent to your email` });
+  } catch (err) {
+    console.error("⚠️ OTP email error:", err);
+    delete otpStore[email];
+    await insertRegistrationAuditLog({
+      actorId: normalizedEmail,
+      outcome: "FAILED",
+      event: "failed to request registration OTP",
+      reason: "Failed to send OTP email",
+    });
+    res.status(500).json({ message: "Failed to send OTP" });
+  }
+});
+
+// ========================== OTP SETTINGS ===========================
+
+// GET OTP SETTING (1 or 0)
+router.get("/get-otp-setting/:person_id", async (req, res) => {
+  const { person_id } = req.params;
+
+  try {
+    const [rows] = await db3.query(
+      "SELECT require_otp FROM user_accounts WHERE person_id = ?",
+      [person_id],
+    );
+
+    if (rows.length === 0) {
+      return res.json({ require_otp: 0 });
+    }
+
+    res.json({ require_otp: rows[0].require_otp });
+  } catch (err) {
+    console.error("OTP fetch error:", err);
+    res.status(500).json({ message: "Server error loading OTP setting" });
+  }
+});
+
+// GET OTP SETTING FOR ALL ROLES
+router.get("/get-otp-setting/:type/:person_id", async (req, res) => {
+  const { type, person_id } = req.params;
+
+  if (!person_id || !type)
+    return res.status(400).json({ message: "Missing parameters" });
+
+  let table;
+  if (type === "user") table = "user_accounts";
+  else if (type === "prof") table = "prof_table";
+  else return res.status(400).json({ message: "Invalid type" });
+
+  try {
+    const idColumn = type === "prof" ? "employee_id" : "person_id";
+    const [rows] = await db3.query(
+      `SELECT require_otp FROM ${table} WHERE ${idColumn} = ? LIMIT 1`,
+      [person_id],
+    );
+
+    if (rows.length === 0) return res.json({ require_otp: 0 });
+
+    res.json({ require_otp: Number(rows[0].require_otp) === 1 ? 1 : 0 });
+  } catch (err) {
+    console.error("OTP fetch error:", err);
+    res.status(500).json({ message: "Server error loading OTP setting" });
+  }
+});
+
+// POST TOGGLE ON/OFF OTP
+router.post("/update-otp-setting", async (req, res) => {
+  const { type, person_id, employee_id, require_otp } = req.body;
+  const accountId = type === "prof" ? employee_id || person_id : person_id;
+
+  console.log("Role Types: ", type);
+
+  if (!accountId || !type)
+    return res.status(400).json({ message: "Missing parameters" });
+
+  let table;
+  if (type === "user") table = "user_accounts";
+  else if (type === "prof") table = "prof_table";
+  else return res.status(400).json({ message: "Invalid type" });
+
+  try {
+    const idColumn = type === "prof" ? "employee_id" : "person_id";
+    const [result] = await db3.query(
+      `UPDATE ${table} SET require_otp = ? WHERE ${idColumn} = ?`,
+      [require_otp, accountId],
+    );
+
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      success: true,
+      message:
+        require_otp == 1
+          ? "OTP has been enabled for your account."
+          : "OTP has been disabled for your account.",
+    });
+  } catch (err) {
+    console.error("Failed to update OTP:", err);
+    res.status(500).json({ message: "Server error updating OTP setting" });
+  }
+});
+
+module.exports = router;
+

@@ -1,0 +1,248 @@
+import React, { useState, useEffect, useContext } from "react";
+import { SettingsContext } from "../App";
+import {
+  Button,
+  TextField,
+  InputLabel,
+  Typography,
+  Paper,
+  Box,
+  Divider,
+  Snackbar,
+  Alert,
+  IconButton,
+  InputAdornment,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import {
+  Visibility,
+  VisibilityOff,
+  CheckCircle,
+  Cancel,
+  LockReset,
+} from "@mui/icons-material";
+import axios from "axios";
+import API_BASE_URL from "../apiConfig";
+import { useNavigate } from "react-router-dom";
+
+
+const passwordRules = [
+  { label: "Minimum of 8 characters", test: (pw) => pw.length >= 8 },
+  { label: "At least one lowercase letter (e.g. abc)", test: (pw) => /[a-z]/.test(pw) },
+  { label: "At least one uppercase letter (e.g. ABC)", test: (pw) => /[A-Z]/.test(pw) },
+  { label: "At least one number (e.g. 123)", test: (pw) => /\d/.test(pw) },
+  { label: "At least one special character (! # $ ^ * @)", test: (pw) => /[!#$^*@]/.test(pw) },
+];
+
+const ApplicantResetPassword = () => {
+  const settings = useContext(SettingsContext);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const [titleColor, setTitleColor] = useState("#000000");
+  const [subtitleColor, setSubtitleColor] = useState("#555555");
+  const [borderColor, setBorderColor] = useState("#000000");
+  const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
+
+  useEffect(() => {
+    if (settings) {
+      if (settings.title_color) setTitleColor(settings.title_color);
+      if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
+      if (settings.border_color) setBorderColor(settings.border_color);
+      if (settings.main_button_color) setMainButtonColor(settings.main_button_color);
+    }
+  }, [settings]);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [validations, setValidations] = useState([]);
+  const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
+  const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("email");
+    const storedRole = localStorage.getItem("role");
+    const storedID = localStorage.getItem("person_id");
+    if (!(storedUser && storedRole && storedID && storedRole === "applicant")) {
+      window.location.href = "/login";
+    }
+  }, []);
+
+  useEffect(() => {
+    const results = passwordRules.map((rule) => rule.test(newPassword));
+    setValidations(results);
+  }, [newPassword]);
+
+  const isValid = validations.every(Boolean) && newPassword === confirmPassword;
+
+
+  const navigate = useNavigate();
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      const person_id = localStorage.getItem("person_id");
+      const response = await axios.post(`${API_BASE_URL}/api/applicant-change-password`, {
+        person_id, currentPassword, newPassword,
+      });
+      setSnack({ open: true, message: response.data.message, severity: "success" });
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      localStorage.removeItem("force_password_change");
+      window.dispatchEvent(new Event("password_changed"));
+      setTimeout(() => navigate("/applicant_dashboard"), 1500);
+    } catch (err) {
+      setSnack({ open: true, message: err.response?.data?.message || "Error updating password.", severity: "error" });
+    }
+  };
+  
+  const toggleShowPassword = (field) =>
+    setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
+
+  return (
+    <Box sx={{ height: "calc(100vh - 150px)", overflowY: "auto", paddingRight: 1, backgroundColor: "transparent", mt: 1, padding: { xs: 1, sm: 2 } }}>
+      {/* Header */}
+      <Box sx={{ display: "flex", justifyContent: "flex-start", alignItems: "center", flexWrap: "wrap", mb: 2 }}>
+        <Typography
+          variant="h4"
+          sx={{ fontWeight: "bold", color: titleColor, fontSize: { xs: "20px", sm: "28px", md: "36px" } }}
+        >
+          APPLICANT RESET PASSWORD
+        </Typography>
+      </Box>
+
+      <hr style={{ border: "1px solid #ccc", width: "100%" }} />
+      <br />
+
+      <Box sx={{ display: "flex", justifyContent: "center", mt: { xs: 1, sm: 4 } }}>
+        <Paper
+          elevation={6}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            width: { xs: "100%", sm: "80%", md: "40%" },
+            maxWidth: "540px",
+            borderRadius: 4,
+            backgroundColor: "#fff",
+            border: `1px solid ${borderColor}`,
+            boxShadow: "0px 4px 20px rgba(0,0,0,0.1)",
+            mb: 12,
+          }}
+        >
+          {/* Lock Icon Header */}
+          <Box textAlign="center" mb={2}>
+            <LockReset
+              sx={{
+                fontSize: { xs: 60, sm: 80 },
+                color: "#000000",
+                backgroundColor: "#f0f0f0",
+                borderRadius: "50%",
+                p: 1,
+              }}
+            />
+            <Typography variant="h5" fontWeight="bold" sx={{ mt: 1, color: subtitleColor, fontSize: { xs: "18px", sm: "22px" } }}>
+              Reset Your Password
+            </Typography>
+            <Typography fontSize={13} color="text.secondary">
+              Update your password to keep your account secure.
+            </Typography>
+          </Box>
+
+          <Divider sx={{ mb: 2 }} />
+
+          <form onSubmit={handleUpdate}>
+            {[
+              { label: "Current Password", value: currentPassword, setter: setCurrentPassword, field: "current" },
+              { label: "New Password", value: newPassword, setter: setNewPassword, field: "new" },
+              { label: "Confirm Password", value: confirmPassword, setter: setConfirmPassword, field: "confirm" },
+            ].map(({ label, value, setter, field }) => (
+              <Box mb={2} key={field}>
+                <InputLabel sx={{ fontSize: { xs: "13px", sm: "14px" } }}>{label}</InputLabel>
+                <TextField
+                  fullWidth
+                  type={showPassword[field] ? "text" : "password"}
+                  size="small"
+                  variant="outlined"
+                  value={value}
+                  onChange={(e) => setter(e.target.value)}
+                  error={field === "confirm" && Boolean(confirmPassword && confirmPassword !== newPassword)}
+                  helperText={field === "confirm" && confirmPassword && confirmPassword !== newPassword ? "Passwords do not match" : ""}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => toggleShowPassword(field)} edge="end" size={isMobile ? "small" : "medium"}>
+                          {showPassword[field] ? <Visibility /> : <VisibilityOff />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+            ))}
+
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontSize: { xs: "12px", sm: "14px" } }}>
+              Your new password must include:
+            </Typography>
+
+            <List dense disablePadding>
+              {passwordRules.map((rule, i) => (
+                <ListItem key={i} sx={{ py: 0.25, px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 32 }}>
+                    {validations[i]
+                      ? <CheckCircle sx={{ color: "green", fontSize: { xs: 18, sm: 22 } }} />
+                      : <Cancel sx={{ color: "red", fontSize: { xs: 18, sm: 22 } }} />}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={rule.label}
+                    primaryTypographyProps={{ fontSize: { xs: "12px", sm: "14px" } }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+
+            <Typography variant="body2" color="warning.main" sx={{ mt: 1, mb: 2, fontSize: { xs: "11px", sm: "13px" } }}>
+              Note: You are required to change your password to continue using the system securely.
+            </Typography>
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={!isValid}
+              sx={{
+                py: 1.2,
+                borderRadius: 2,
+                backgroundColor: mainButtonColor,
+                border: `1px solid ${borderColor}`,
+                textTransform: "none",
+                fontWeight: "bold",
+                fontSize: { xs: "13px", sm: "15px" },
+                "&:hover": { backgroundColor: mainButtonColor, opacity: 0.9 },
+                "&.Mui-disabled": { backgroundColor: "#b0b8c8", color: "#fff", opacity: 0.7 },
+              }}
+            >
+              Update Password
+            </Button>
+          </form>
+        </Paper>
+      </Box>
+
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={4000}
+        onClose={() => setSnack((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert severity={snack.severity} onClose={() => setSnack((prev) => ({ ...prev, open: false }))} sx={{ width: "100%" }}>
+          {snack.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
+export default ApplicantResetPassword;

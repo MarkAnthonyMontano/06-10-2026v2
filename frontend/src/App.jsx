@@ -1,0 +1,897 @@
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  Suspense,
+  lazy,
+} from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import {
+  createTheme,
+  ThemeProvider,
+  CssBaseline,
+  AppBar,
+  Toolbar,
+  Box,
+  Typography,
+  IconButton,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import axios from "axios";
+import "./App.css";
+import Clock from "./components/Clock";
+
+// COMPONENTS FOLDER
+import ProtectedRoute, { isTokenValid } from "./components/ProtectedRoute";
+
+import API_BASE_URL from "./apiConfig";
+import { refreshRegistrarCurriculumId } from "./utils/registrarCurriculumRestriction";
+
+import StudentAccounts from "./account_management/StudentAccounts";
+import ApplicationProcessAdmin from "./admission/ApplicationProcessAdmin";
+import CourseTaggingForSummerCollege from "./enrollment_management/CourseTaggingForSummerCollege";
+import StudentListForEnrollment from "./enrollment_management/StudentListForEnrollment";
+import GradeConversionAdmin from "./system_management/GradeConversionAdmin";
+import HonorsReport from "./system_management/HonorsReport";
+export const SettingsContext = createContext(null);
+
+const ApplicationSuperAdmin = lazy(() => import("./account_management/ApplicationProcessSuperAdmin"));
+const Archived = lazy(() => import("./account_management/ArchivedModule"));
+const MigrationDataPanel = lazy(() => import("./account_management/MigrationDataPanel"));
+const PageCRUD = lazy(() => import("./account_management/PageCRUD"));
+const RegisterProf = lazy(() => import("./account_management/RegisterProf"));
+const RegisterRegistrar = lazy(() => import("./account_management/RegisterRegistrar"));
+const RegisterStudent = lazy(() => import("./account_management/RegisterStudent"));
+const RegistrarResetPassword = lazy(() => import("./account_management/RegistrarResetPassword"));
+const StudentGradeFile = lazy(() => import("./system_management/StudentGradeFile"));
+const SuperAdminApplicantDashboard1 = lazy(() => import("./account_management/SuperAdminApplicantDashboard1"));
+const SuperAdminApplicantDashboard2 = lazy(() => import("./account_management/SuperAdminApplicantDashboard2"));
+const SuperAdminApplicantDashboard3 = lazy(() => import("./account_management/SuperAdminApplicantDashboard3"));
+const SuperAdminApplicantDashboard4 = lazy(() => import("./account_management/SuperAdminApplicantDashboard4"));
+const SuperAdminApplicantDashboard5 = lazy(() => import("./account_management/SuperAdminApplicantDashboard5"));
+const SuperAdminApplicantResetPassword = lazy(() => import("./account_management/SuperAdminApplicantResetPassword"));
+const SuperAdminFacultyResetPassword = lazy(() => import("./account_management/SuperAdminFacultyResetPassword"));
+const SuperAdminProfessorEducation = lazy(() => import("./account_management/SuperAdminProfessorEducation"));
+const SuperAdminRegistrarPassword = lazy(() => import("./account_management/SuperAdminRegistrarResetPassword"));
+const ApplicantRequirementsUploader = lazy(() => import("./account_management/ApplicantRequirementsUploader"));
+const StudentRequirementsUploader = lazy(() => import("./account_management/StudentRequirementsUploader"));
+const SuperAdminStudentDashboard1 = lazy(() => import("./account_management/SuperAdminStudentDashboard1"));
+const SuperAdminStudentDashboard2 = lazy(() => import("./account_management/SuperAdminStudentDashboard2"));
+const SuperAdminStudentDashboard3 = lazy(() => import("./account_management/SuperAdminStudentDashboard3"));
+const SuperAdminStudentDashboard4 = lazy(() => import("./account_management/SuperAdminStudentDashboard4"));
+const SuperAdminStudentDashboard5 = lazy(() => import("./account_management/SuperAdminStudentDashboard5"));
+const SuperAdminStudentResetPassword = lazy(() => import("./account_management/SuperAdminStudentResetPassword"));
+const UserPageAccess = lazy(() => import("./account_management/UserPageAccess"));
+const AdminAdmissionFormProcess = lazy(() => import("./admission/AdminAdmissionFormProcess"));
+const AdminDashboard1 = lazy(() => import("./admission/AdminDashboard1"));
+const AdminDashboard2 = lazy(() => import("./admission/AdminDashboard2"));
+const AdminDashboard3 = lazy(() => import("./admission/AdminDashboard3"));
+const AdminDashboard4 = lazy(() => import("./admission/AdminDashboard4"));
+const AdminDashboard5 = lazy(() => import("./admission/AdminDashboard5"));
+const AdminECATApplicationForm = lazy(() => import("./admission/AdminECATApplicationForm"));
+const AdminOfficeOfTheRegistrar = lazy(() => import("./admission/AdminOfficeOfTheRegistrar"));
+const AdminPersonalDataForm = lazy(() => import("./admission/AdminPersonalDataForm"));
+const AdmissionScheduleTile = lazy(() => import("./admission/AdmissionScheduleTile"));
+const AnnouncementForAdmission = lazy(() => import("./admission/AnnouncementForAdmission"));
+const ApplicantExamSubjects = lazy(() => import("./admission/ApplicantExamSubjects"));
+const ApplicantListAdmin = lazy(() => import("./admission/ApplicantListAdmin"));
+const ApplicantScoring = lazy(() => import("./admission/ApplicantScoring"));
+const AssignEntranceExam = lazy(() => import("./admission/AssignEntranceExam"));
+const AssignScheduleToApplicants = lazy(() => import("./admission/AssignScheduleToApplicants"));
+const EvaluatorApplicantList = lazy(() => import("./admission/EvaluatorApplicantList"));
+const EvaluatorScheduleTile = lazy(() => import("./admission/EvaluatorScheduleTile"));
+const ProctorApplicantList = lazy(() => import("./admission/ProctorApplicantList"));
+const RegistrarExaminationProfile = lazy(() => import("./admission/RegistrarExaminationProfile"));
+const RoomRegistration = lazy(() => import("./system_management/RoomRegistration"));
+const StudentRequirements = lazy(() => import("./admission/StudentRequirements"));
+const VerifyDocumentsSchedule = lazy(() => import("./admission/VerifyDocumentsSchedule"));
+const VerifyApplicantDocumentSchedule = lazy(() => import("./admission/VerifySchedule"));
+const AdmissionFormProcess = lazy(() => import("./applicant/AdmissionFormProcess"));
+const AdmissionServices = lazy(() => import("./applicant/AdmissionServices"));
+const ApplicantResetPassword = lazy(() => import("./applicant/ApplicantResetPassword"));
+const ApplicantDashboard1 = lazy(() => import("./applicant/ApplicantDashboard1"));
+const ApplicantDashboard1Mobile = lazy(() => import("./applicant/ApplicantDashboard1Mobile"));
+const ApplicantDashboard2 = lazy(() => import("./applicant/ApplicantDashboard2"));
+const ApplicantDashboard2Mobile = lazy(() => import("./applicant/ApplicantDashboard2Mobile"));
+const ApplicantDashboard3 = lazy(() => import("./applicant/ApplicantDashboard3"));
+const ApplicantDashboard3Mobile = lazy(() => import("./applicant/ApplicantDashboard3Mobile"));
+const ApplicantDashboard4 = lazy(() => import("./applicant/ApplicantDashboard4"));
+const ApplicantDashboard4Mobile = lazy(() => import("./applicant/ApplicantDashboard4Mobile"));
+const ApplicantDashboard5 = lazy(() => import("./applicant/ApplicantDashboard5"));
+const ApplicantDashboard5Mobile = lazy(() => import("./applicant/ApplicantDashboard5Mobile"));
+const ECATApplicationForm = lazy(() => import("./applicant/ECATApplicationForm"));
+const ExamPermit = lazy(() => import("./applicant/ExamPermit"));
+const OfficeOfTheRegistrar = lazy(() => import("./applicant/OfficeOfTheRegistrar"));
+const PersonalDataForm = lazy(() => import("./applicant/PersonalDataForm"));
+const RequirementUploader = lazy(() => import("./applicant/RequirementUploader"));
+const Login = lazy(() => import("./components/Login"));
+const AnnouncementSlider = lazy(() => import("./components/AnnouncementSlider"));
+const RegistrarExamPermit = lazy(() => import("./components/ApplicantExamPermit"));
+const ApplicantForgotPassword = lazy(() => import("./components/ApplicantForgotPassword"));
+const ApplicantProfile = lazy(() => import("./components/ApplicantProfile"));
+const LoadingOverlay = lazy(() => import("./components/LoadingOverlay"));
+const LoginEnrollment = lazy(() => import("./components/LoginEnrollment"));
+const Register = lazy(() => import("./components/Register"));
+const RegistrarForgotPassword = lazy(() => import("./components/RegistrarForgotPassword"));
+const SideBar = lazy(() => import("./components/Sidebar"));
+const Unauthorized = lazy(() => import("./components/Unauthorized"));
+const CoursePanel = lazy(() => import("./course_management/CoursePanel"));
+const CurriculumPanel = lazy(() => import("./course_management/CurriculumPanel"));
+const NSTPTagging = lazy(() => import("./course_management/NSTPTagging"));
+const Prerequisite = lazy(() => import("./course_management/Prerequisite"));
+const ProgramPanel = lazy(() => import("./course_management/ProgramPanel"));
+const ProgramPayment = lazy(() => import("./course_management/ProgramPayment"));
+const ProgramTagging = lazy(() => import("./course_management/ProgramTagging"));
+const ProgramUnit = lazy(() => import("./course_management/ProgramUnit"));
+const DepartmentCurriculumPanel = lazy(() => import("./department_management/DepartmentCurriculumPanel"));
+const DepartmentSection = lazy(() => import("./department_management/DepartmentSection"));
+const DepartmentSectionTagging = lazy(() => import("./department_management/DepartmentSectionTagging"));
+const DepartmentRegistration = lazy(() => import("./department_management/DprtmntRegistration"));
+const DepartmentRoom = lazy(() => import("./department_management/DprtmntRoom"));
+const SectionSlotMonitoring = lazy(() => import("./department_management/SlotMonitoring"));
+const ApplicantList = lazy(() => import("./enrollment_management/ApplicantList"));
+const EntranceExaminationScore = lazy(() => import("./enrollment_management/EntranceExaminationScore"));
+const AssignQualifyingInterviewExam = lazy(() => import("./enrollment_management/AssignQualifyingInterviewExam"));
+const AssignScheduleToApplicantsQualifyingInterviewer = lazy(() => import("./enrollment_management/AssignScheduleToApplicantsQualifyingInterviewer"));
+const CertificateOfRegistrationForCollege = lazy(() => import("./enrollment_management/CertificateOfRegistrationForCollege"));
+const ClassRosterForEnrollment = lazy(() => import("./enrollment_management/ClassRosterForEnrollment"));
+const CourseTaggingForCollege = lazy(() => import("./enrollment_management/CourseTaggingForCollege"));
+const EnrollmentScheduleTile = lazy(() => import("./enrollment_management/EnrollmentScheduleTile"));
+const OfficialRequirements = lazy(() => import("./enrollment_management/OfficialRequirements"));
+const OfficialStudentDashboard1 = lazy(() => import("./enrollment_management/OfficialStudentDashboard1"));
+const OfficialStudentDashboard2 = lazy(() => import("./enrollment_management/OfficialStudentDashboard2"));
+const OfficialStudentDashboard3 = lazy(() => import("./enrollment_management/OfficialStudentDashboard3"));
+const OfficialStudentDashboard4 = lazy(() => import("./enrollment_management/OfficialStudentDashboard4"));
+const OfficialStudentDashboard5 = lazy(() => import("./enrollment_management/OfficialStudentDashboard5"));
+const QualifyingInterviewerApplicantList = lazy(() => import("./enrollment_management/QualifyingInterviewerApplicantList"));
+const QualifyingInterviewExamScore = lazy(() => import("./enrollment_management/QualifyingInterviewExamScore"));
+const RegistrarDashboard1 = lazy(() => import("./enrollment_management/RegistrarDashboard1"));
+const RegistrarDashboard2 = lazy(() => import("./enrollment_management/RegistrarDashboard2"));
+const RegistrarDashboard3 = lazy(() => import("./enrollment_management/RegistrarDashboard3"));
+const RegistrarDashboard4 = lazy(() => import("./enrollment_management/RegistrarDashboard4"));
+const RegistrarDashboard5 = lazy(() => import("./enrollment_management/RegistrarDashboard5"));
+const RegistrarRequirements = lazy(() => import("./enrollment_management/RegistrarRequirements"));
+const SearchCorForCollege = lazy(() => import("./enrollment_management/SearchCorForCollege"));
+const StudentNumberingPerCollege = lazy(() => import("./enrollment_management/StudentNumberingPerCollege"));
+const FacultyEvaluation = lazy(() => import("./faculty/FacultyEvaluation"));
+const FacultyMasterList = lazy(() => import("./faculty/FacultyMasterlist"));
+const FacultyResetPassword = lazy(() => import("./faculty/FacultyResetPassword"));
+const FacultyWorkload = lazy(() => import("./faculty/FacultyWorkload"));
+const GradingSheet = lazy(() => import("./faculty/GradingSheet"));
+const DentalAssessment = lazy(() => import("./medical_management/DentalAssessment"));
+const HealthRecord = lazy(() => import("./medical_management/HealthRecord"));
+const MedicalApplicantList = lazy(() => import("./medical_management/MedicalApplicantList"));
+const MedicalCertificate = lazy(() => import("./medical_management/MedicalCertificate"));
+const MedicalDashboard1 = lazy(() => import("./medical_management/MedicalDashboard1"));
+const MedicalDashboard2 = lazy(() => import("./medical_management/MedicalDashboard2"));
+const MedicalDashboard3 = lazy(() => import("./medical_management/MedicalDashboard3"));
+const MedicalDashboard4 = lazy(() => import("./medical_management/MedicalDashboard4"));
+const MedicalDashboard5 = lazy(() => import("./medical_management/MedicalDashboard5"));
+const MedicalRequirements = lazy(() => import("./medical_management/MedicalRequirements"));
+const MedicalRequirementsForm = lazy(() => import("./medical_management/MedicalRequirementsForm"));
+const PhysicalNeuroExam = lazy(() => import("./medical_management/PhysicalNeuroExam"));
+const AccountDashboard = lazy(() => import("./pages/AccountDashboard"));
+const AdmissionDashboardPanel = lazy(() => import("./pages/AdmissionDashboard"));
+const AdmissionOfficerDashboard = lazy(() => import("./pages/AdmissionOfficerDashboard"));
+const ApplicantDashboard = lazy(() => import("./pages/ApplicantDashboard"));
+const CourseManagement = lazy(() => import("./pages/CourseManagement"));
+const DepartmentManagement = lazy(() => import("./pages/DepartmentDashboard"));
+const EnrollmentOfficerDashboard = lazy(() => import("./pages/EnrollmentOfficerDashboard"));
+const FacultyDashboard = lazy(() => import("./pages/FacultyDashboard"));
+const RegistrarDashboard = lazy(() => import("./pages/RegistrarDashboard"));
+const ScheduleFilterer = lazy(() => import("./pages/SchedulePlottingFilter"));
+const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
+const StudentQrInfo = lazy(() => import("./pages/StudentQrInfo"));
+const SystemDashboardPanel = lazy(() => import("./pages/SystemDashboard"));
+const ClassRoster = lazy(() => import("./registrar/ClassRoster"));
+const CollegeScheduleChecker = lazy(() => import("./department_management/CollegeScheduleChecker"));
+const CORExportingModule = lazy(() => import("./registrar/CORExportingModule"));
+const CORExportRender = lazy(() => import("./registrar/CORExportRender"));
+const CourseTagging = lazy(() => import("./registrar/CourseTagging"));
+const CourseTaggingForSummer = lazy(() => import("./registrar/CourseTaggingForSummer"));
+const GradingEvaluationForRegistrar = lazy(() => import("./registrar/GradingEvaluationForRegistrar"));
+const ReadmissionDashboard1 = lazy(() => import("./registrar/ReadmissionDashboard1"));
+const ReadmissionDashboard2 = lazy(() => import("./registrar/ReadmissionDashboard2"));
+const ReadmissionDashboard3 = lazy(() => import("./registrar/ReadmissionDashboard3"));
+const ReadmissionDashboard4 = lazy(() => import("./registrar/ReadmissionDashboard4"));
+const ReadmissionDashboard5 = lazy(() => import("./registrar/ReadmissionDashboard5"));
+const ReportOfGrade = lazy(() => import("./registrar/ReportOfGrade"));
+const ScheduleChecker = lazy(() => import("./department_management/ScheduleChecker"));
+const SearchCertificateOfRegistration = lazy(() => import("./registrar/SearchCertificateOfRegistration"));
+const StudentEnrollment = lazy(() => import("./registrar/StudentEnrollment"));
+const StudentList = lazy(() => import("./registrar/StudentList"));
+const StudentNumbering = lazy(() => import("./registrar/StudentNumbering"));
+const SubmittedDocuments = lazy(() => import("./registrar/SubmittedDocuments"));
+const SuperAdminApplicantList = lazy(() => import("./registrar/SuperAdminApplicantList"));
+const TranscriptOfRecords = lazy(() => import("./registrar/TranscriptOfRecords"));
+const CertificateOfRegistration = lazy(() => import("./student/CertificateOfRegistration"));
+const StudentAdmissionFormProcess = lazy(() => import("./student/StudentAdmissionFormProcess"));
+const StudentAdmissionServices = lazy(() => import("./student/StudentAdmissionServices"));
+const StudentBalanceInfo = lazy(() => import("./student/StudentBalanceInfo"));
+const StudentBalanceManagement = lazy(() => import("./student/StudentBalanceManagement"));
+const StudentDashboard1 = lazy(() => import("./student/StudentDashboard1"));
+const StudentDashboard1Mobile = lazy(() => import("./student/StudentDashboard1Mobile"));
+const StudentDashboard2 = lazy(() => import("./student/StudentDashboard2"));
+const StudentDashboard2Mobile = lazy(() => import("./student/StudentDashboard2Mobile"));
+const StudentDashboard3 = lazy(() => import("./student/StudentDashboard3"));
+const StudentDashboard3Mobile = lazy(() => import("./student/StudentDashboard3Mobile"));
+const StudentDashboard4 = lazy(() => import("./student/StudentDashboard4"));
+const StudentDashboard4Mobile = lazy(() => import("./student/StudentDashboard4Mobile"));
+const StudentDashboard5 = lazy(() => import("./student/StudentDashboard5"));
+const StudentDashboard5Mobile = lazy(() => import("./student/StudentDashboard5Mobile"));
+const StudentECATApplicationForm = lazy(() => import("./student/StudentECATApplicationForm"));
+const StudentFacultyEvaluation = lazy(() => import("./student/StudentFacultyEval"));
+const StudentGradingPage = lazy(() => import("./student/StudentGrade"));
+const StudentOfficeOfTheRegistrar = lazy(() => import("./student/StudentOfficeOfTheRegistrar"));
+const StudentOnlineRequirements = lazy(() => import("./student/StudentOnlineRequirements"));
+const StudentPersonalDataForm = lazy(() => import("./student/StudentPersonalDataForm"));
+const StudentResetPassword = lazy(() => import("./student/StudentResetPassword"));
+const StudentSchedule = lazy(() => import("./student/StudentSchedule"));
+const StudentCurriculumSubjects = lazy(() => import("./student/StudentCurriculumSubjects"));
+const AdminBranches = lazy(() => import("./system_management/AdminBranches"));
+const Announcement = lazy(() => import("./system_management/Announcement"));
+const AuditLogs = lazy(() => import("./system_management/AuditLogs"));
+const ChangeGradingPeriod = lazy(() => import("./system_management/ChangeYearGradPer"));
+const EmailTemplateManager = lazy(() => import("./system_management/EmailTemplateManager"));
+const EvaluationCRUD = lazy(() => import("./system_management/EvaluationCrud"));
+const MatriculationPaymentModule = lazy(() => import("./system_management/MatriculationPaymentModule"));
+const PaymentExportingModule = lazy(() => import("./system_management/PaymentExportingModule"));
+const ProgramSlotLimit = lazy(() => import("./system_management/ProgramSlotLimit"));
+const ReceiptCounterAssignment = lazy(() => import("./system_management/ReceiptCounterAssignment"));
+const RequirementsForm = lazy(() => import("./system_management/RequirementsForm"));
+const SchoolYearPanel = lazy(() => import("./system_management/SchoolYearPanel"));
+const SectionPanel = lazy(() => import("./system_management/SectionPanel"));
+const SemesterPanel = lazy(() => import("./system_management/SemesterPanel"));
+const Settings = lazy(() => import("./system_management/Settings"));
+const SignatureUpload = lazy(() => import("./system_management/SignatureUpload"));
+const StudentScholarshipList = lazy(() => import("./system_management/StudentScholarshipList"));
+const TOSFCrud = lazy(() => import("./system_management/TOSFCrud"));
+const YearLevelPanel = lazy(() => import("./system_management/YearLevelPanel"));
+const YearPanel = lazy(() => import("./system_management/YearPanel"));
+
+function App() {
+  const getCachedSettings = () => {
+    try {
+      const raw = localStorage.getItem("app_settings_cache");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return {
+        ...parsed,
+        branches:
+          typeof parsed.branches === "string"
+            ? JSON.parse(parsed.branches)
+            : parsed.branches || [],
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [settings, setSettings] = useState(() => getCachedSettings());
+  const [settingsReady, setSettingsReady] = useState(() => Boolean(getCachedSettings()));
+  const [profileImage, setProfileImage] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [, setLogoVersion] = useState(Date.now());
+
+  // Detect mobile/desktop
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobileSidebarOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const ApplicantDashboard1Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <ApplicantDashboard1Mobile /> : <ApplicantDashboard1 />;
+  };
+
+  const ApplicantDashboard2Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <ApplicantDashboard2Mobile /> : <ApplicantDashboard2 />;
+  };
+
+  const ApplicantDashboard3Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <ApplicantDashboard3Mobile /> : <ApplicantDashboard3 />;
+  };
+
+
+  const ApplicantDashboard4Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <ApplicantDashboard4Mobile /> : <ApplicantDashboard4 />;
+  };
+
+  const ApplicantDashboard5Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <ApplicantDashboard5Mobile /> : <ApplicantDashboard5 />;
+  };
+
+
+  const StudentDashboard1Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <StudentDashboard1Mobile /> : <StudentDashboard1 />;
+  };
+
+  const StudentDashboard2Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <StudentDashboard2Mobile /> : <StudentDashboard2 />;
+  };
+
+
+  const StudentDashboard3Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <StudentDashboard3Mobile /> : <StudentDashboard3 />;
+  };
+
+  const StudentDashboard4Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <StudentDashboard4Mobile /> : <StudentDashboard4 />;
+  };
+
+  const StudentDashboard5Responsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <StudentDashboard5Mobile /> : <StudentDashboard5 />;
+  };
+
+
+
+  const fetchSettings = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/settings`);
+      const data = response.data;
+      const normalized = {
+        ...data,
+        branches:
+          typeof data.branches === "string"
+            ? JSON.parse(data.branches)
+            : data.branches || [],
+      };
+      setSettings(normalized);
+      localStorage.setItem("app_settings_cache", JSON.stringify(normalized));
+      setLogoVersion(Date.now());
+    } catch (error) {
+      console.error("Error fetching settings:", error.response?.data || error.message);
+    } finally {
+      setSettingsReady(true);
+    }
+  };
+
+  const clearAuthStorage = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("email");
+    localStorage.removeItem("role");
+    localStorage.removeItem("person_id");
+    localStorage.removeItem("employee_id");
+    localStorage.removeItem("department");
+    localStorage.removeItem("lastVisitedPath");
+  };
+
+  const getDefaultDashboardByRole = (role) => {
+    switch (role) {
+      case "applicant": return "/applicant_dashboard";
+      case "student": return "/student_dashboard";
+      case "faculty": return "/faculty_dashboard";
+      case "registrar": return "/registrar_dashboard";
+      case "superadmin": return "/system_dashboard";
+      default: return "/registrar_dashboard";
+    }
+  };
+
+  const getLastVisitedPath = () => {
+    const path = localStorage.getItem("lastVisitedPath");
+    if (!path || typeof path !== "string") return null;
+    if (!path.startsWith("/")) return null;
+    const disallowedPublicPaths = new Set(["/", "/login", "/login_applicant", "/register", "/announcement_slider", "/applicant_forgot_password", "/forgot_password"]);
+    return disallowedPublicPaths.has(path) ? null : path;
+  };
+
+  const PublicOnlyRoute = ({ children }) => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    if (isTokenValid(token)) {
+      const targetPath = getLastVisitedPath() || getDefaultDashboardByRole(role);
+      return <Navigate to={targetPath} replace />;
+    }
+    return children;
+  };
+
+  useEffect(() => {
+    fetchSettings();
+    const handleStorageChange = (event) => {
+      if (event.key !== "app_settings_cache" || !event.newValue) return;
+
+      try {
+        const parsed = JSON.parse(event.newValue);
+        setSettings({
+          ...parsed,
+          branches:
+            typeof parsed.branches === "string"
+              ? JSON.parse(parsed.branches)
+              : parsed.branches || [],
+        });
+        setSettingsReady(true);
+      } catch (error) {
+        console.error("Error reading cached settings update:", error);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (isTokenValid(token)) { setIsAuthenticated(true); return; }
+    clearAuthStorage();
+    setIsAuthenticated(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || localStorage.getItem("role") !== "registrar") return undefined;
+    const refreshCurrentRegistrarCurriculum = () => {
+      refreshRegistrarCurriculumId().catch((err) => { console.error("Error refreshing registrar curriculum:", err); });
+    };
+    refreshCurrentRegistrarCurriculum();
+    window.addEventListener("focus", refreshCurrentRegistrarCurriculum);
+    window.addEventListener("registrarAccountUpdated", refreshCurrentRegistrarCurriculum);
+    return () => {
+      window.removeEventListener("focus", refreshCurrentRegistrarCurriculum);
+      window.removeEventListener("registrarAccountUpdated", refreshCurrentRegistrarCurriculum);
+    };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => fetchSettings();
+    window.addEventListener("settingsUpdated", handleSettingsUpdate);
+    return () => window.removeEventListener("settingsUpdated", handleSettingsUpdate);
+  }, []);
+
+  const theme = createTheme({
+    typography: { fontFamily: "Poppins, sans-serif" },
+  });
+
+  const ForcePasswordGuard = ({ children }) => {
+    const forced = localStorage.getItem("force_password_change") === "true";
+    const role = localStorage.getItem("role");
+
+    if (forced) {
+      const resetPaths = {
+        student: "/student_reset_password",
+        faculty: "/faculty_reset_password",
+        registrar: "/registrar_reset_password",
+        applicant: "/applicant_reset_password",
+      };
+      const path = resetPaths[role];
+      // Don't redirect if already on the reset page
+      if (path && window.location.pathname !== path) {
+        return <Navigate to={path} replace />;
+      }
+    }
+    return children;
+  };
+
+  const GuardedRoute = ({ children, allowedRoles }) => (
+    <ProtectedRoute allowedRoles={allowedRoles}>
+      <ForcePasswordGuard>
+        {children}
+      </ForcePasswordGuard>
+    </ProtectedRoute>
+  );
+
+  const keys = JSON.parse(localStorage.getItem("dashboardKeys") || "{}");
+  const isCorExportRenderRoute = window.location.pathname === "/cor_export_render";
+
+  // Compute sidebar spacer width — zero on mobile (sidebar overlays)
+  const sidebarSpacerWidth = !isAuthenticated || isCorExportRenderRoute
+    ? 0
+    : isMobile
+      ? 0
+      : isSidebarCollapsed
+        ? 75
+        : 290;
+
+  if (!settingsReady) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+      </ThemeProvider>
+    );
+  }
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <SettingsContext.Provider value={settings}>
+        <Suspense
+          fallback={
+            <Box sx={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Poppins, sans-serif" }}>
+              <Typography variant="h6">Loading page...</Typography>
+            </Box>
+          }
+        >
+          <Router>
+            <div className="flex flex-col min-h-screen">
+              <div className="flex flex-1">
+
+                {/* Sidebar — rendered outside main flow on mobile (overlay), inside on desktop */}
+                {isAuthenticated && !isCorExportRenderRoute && (
+                  <>
+                    {/* Desktop spacer — pushes content right */}
+                    {!isMobile && (
+                      <aside
+                        className="shrink-0"
+                        style={{
+                          width: isSidebarCollapsed ? 75 : 290,
+                          transition: "width .34s cubic-bezier(.22,1,.36,1)",
+                          willChange: "width",
+                        }}
+                      />
+                    )}
+
+                    <SideBar
+                      setIsAuthenticated={setIsAuthenticated}
+                      profileImage={profileImage}
+                      setProfileImage={setProfileImage}
+                      onCollapseChange={setIsSidebarCollapsed}
+                      mobileOpen={mobileSidebarOpen}
+                      onMobileClose={() => setMobileSidebarOpen(false)}
+                    />
+                  </>
+                )}
+
+                {/* Main area */}
+                <div className="flex-1 flex flex-col" style={{ minWidth: 0 }}>
+                  {/* Navbar */}
+                  {!isCorExportRenderRoute && (
+                    <AppBar
+                      position="fixed"
+                      sx={{
+                        zIndex: (theme) => theme.zIndex.drawer + 1,
+                        bgcolor: settings?.header_color || "#1976d2",
+                        // On desktop, offset AppBar by sidebar width so it doesn't sit under the sidebar
+                        left: { xs: 0, sm: 0 },
+                        width: "100%",
+                      }}
+                    >
+                      <Toolbar sx={{ display: "flex", justifyContent: "space-between", minHeight: { xs: 56, sm: 64 } }}>
+
+                        {/* LEFT SIDE */}
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          {/* Mobile hamburger — only shown when authenticated and on mobile */}
+                          {isAuthenticated && isMobile && (
+                            <IconButton
+                              color="inherit"
+                              aria-label="open menu"
+                              edge="start"
+                              onClick={() => setMobileSidebarOpen(true)}
+                              sx={{ mr: 0.5 }}
+                            >
+                              <MenuIcon />
+                            </IconButton>
+                          )}
+
+                          {settings?.logo_url && (
+                            <img
+                              src={`${API_BASE_URL}${settings.logo_url}?t=${Date.now()}`}
+                              alt="Logo"
+                              style={{
+                                height: "45px",
+                                width: "45px",
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                                marginRight: "8px",
+                                cursor: "pointer",
+                                border: "2px solid white",
+                              }}
+                              onClick={() => window.location.reload()}
+                            />
+                          )}
+
+                          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                            <Box
+                              component="span"
+                              sx={{
+                                fontFamily: "Poppins, sans-serif",
+                                fontSize: { xs: "16px", sm: "22px", md: "28px" },
+                                display: { xs: "none", sm: "inline" },
+                              }}
+                            >
+                              {settings?.short_term || "SCHOOL NAME"} -{" "}
+                            </Box>
+                            <Box
+                              component="span"
+                              sx={{
+                                fontFamily: "Poppins, sans-serif",
+                                fontSize: { xs: "14px", sm: "18px", md: "24px" },
+                              }}
+                            >
+                              {/* On mobile show short_term only, on larger show full name */}
+                              <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                                {settings?.short_term || "SCHOOL"}
+                              </Box>
+                              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                                {settings?.company_name || "SCHOOL NAME"}
+                              </Box>
+                            </Box>
+                          </Typography>
+                        </Box>
+
+                        {/* RIGHT SIDE (TIME + DATE) */}
+                        <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+                          <Box sx={{ fontSize: { xs: "11px", sm: "14px" } }}>
+                            <Clock />
+                          </Box>
+                        </Box>
+
+                      </Toolbar>
+                    </AppBar>
+                  )}
+
+                  {/* Main content area */}
+                  <main
+                    className={
+                      isCorExportRenderRoute
+                        ? "flex-1 w-full"
+                        : "flex-1 w-full mt-[64px] pb-[40px]"
+                    }
+                    style={{ overflowX: "hidden" }}
+                  >
+                    <Routes>
+                      <Route path="/" element={<PublicOnlyRoute><LoginEnrollment setIsAuthenticated={setIsAuthenticated} /></PublicOnlyRoute>} />
+                      <Route path="/login_applicant" element={<PublicOnlyRoute><Login setIsAuthenticated={setIsAuthenticated} /></PublicOnlyRoute>} />
+                      <Route path="/login" element={<PublicOnlyRoute><LoginEnrollment setIsAuthenticated={setIsAuthenticated} /></PublicOnlyRoute>} />
+                      <Route path="/register" element={<Register />} />
+                      <Route path="/announcement_slider" element={<AnnouncementSlider />} />
+                      <Route path="/applicant_forgot_password" element={<ApplicantForgotPassword />} />
+                      <Route path="/applicant_reset_password" element={<ProtectedRoute><ApplicantResetPassword /></ProtectedRoute>} />
+                      <Route path="/forgot_password" element={<RegistrarForgotPassword />} />
+                      <Route path="/registrar_reset_password" element={<ProtectedRoute><RegistrarResetPassword /></ProtectedRoute>} />
+                      <Route path="/student_reset_password" element={<ProtectedRoute><StudentResetPassword /></ProtectedRoute>} />
+                      <Route path="/faculty_reset_password" element={<ProtectedRoute><FacultyResetPassword /></ProtectedRoute>} />
+                      <Route path="/superadmin_applicant_reset_password" element={<ProtectedRoute><SuperAdminApplicantResetPassword /></ProtectedRoute>} />
+                      <Route path="/superadmin_student_reset_password" element={<ProtectedRoute><SuperAdminStudentResetPassword /></ProtectedRoute>} />
+                      <Route path="/superadmin_faculty_reset_password" element={<ProtectedRoute><SuperAdminFacultyResetPassword /></ProtectedRoute>} />
+                      <Route path="/superadmin_registrar_reset_password" element={<ProtectedRoute><SuperAdminRegistrarPassword /></ProtectedRoute>} />
+                      <Route path="/superadmin_professor_education" element={<ProtectedRoute><SuperAdminProfessorEducation /></ProtectedRoute>} />
+                      <Route path="/signature_upload" element={<ProtectedRoute><SignatureUpload /></ProtectedRoute>} />
+                      <Route path="/registrar_dashboard" element={<ProtectedRoute><ForcePasswordGuard><RegistrarDashboard profileImage={profileImage} setProfileImage={setProfileImage} /></ForcePasswordGuard></ProtectedRoute>} />
+                      <Route path="/faculty_dashboard" element={<GuardedRoute allowedRoles={["faculty"]}><FacultyDashboard profileImage={profileImage} setProfileImage={setProfileImage} /></GuardedRoute>} />
+                      <Route path="/applicant_dashboard" element={<ProtectedRoute><ForcePasswordGuard><ApplicantDashboard profileImage={profileImage} setProfileImage={setProfileImage} /></ForcePasswordGuard></ProtectedRoute>} />
+                      <Route path="/register_prof" element={<ProtectedRoute><RegisterProf /></ProtectedRoute>} />
+                      <Route path="/register_registrar" element={<ProtectedRoute><RegisterRegistrar /></ProtectedRoute>} />
+                      <Route path="/register_student" element={<ProtectedRoute><RegisterStudent /></ProtectedRoute>} />
+                      <Route path="/room_registration" element={<ProtectedRoute><RoomRegistration /></ProtectedRoute>} />
+                      <Route path="/course_management" element={<ProtectedRoute><CourseManagement /></ProtectedRoute>} />
+                      <Route path="/program_tagging" element={<ProtectedRoute><ProgramTagging /></ProtectedRoute>} />
+                      <Route path="/course_panel" element={<ProtectedRoute><CoursePanel /></ProtectedRoute>} />
+                      <Route path="/program_panel" element={<ProtectedRoute><ProgramPanel /></ProtectedRoute>} />
+                      <Route path="/department_section_panel" element={<ProtectedRoute><DepartmentSection /></ProtectedRoute>} />
+                      <Route path="/curriculum_panel" element={<ProtectedRoute><CurriculumPanel /></ProtectedRoute>} />
+                      <Route path="/department_registration" element={<ProtectedRoute><DepartmentRegistration /></ProtectedRoute>} />
+                      <Route path="/section_panel" element={<ProtectedRoute><SectionPanel /></ProtectedRoute>} />
+                      <Route path="/year_level_panel" element={<ProtectedRoute><YearLevelPanel /></ProtectedRoute>} />
+                      <Route path="/year_panel" element={<ProtectedRoute><YearPanel /></ProtectedRoute>} />
+                      <Route path="/semester_panel" element={<ProtectedRoute><SemesterPanel /></ProtectedRoute>} />
+                      <Route path="/school_year_panel" element={<ProtectedRoute><SchoolYearPanel /></ProtectedRoute>} />
+                      <Route path="/audit_logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+                      <Route path="/enrollment_officer_dashboard" element={<ProtectedRoute><ForcePasswordGuard><EnrollmentOfficerDashboard /></ForcePasswordGuard></ProtectedRoute>} />
+                      <Route path="/admission_officer_dashboard" element={<ProtectedRoute><ForcePasswordGuard><AdmissionOfficerDashboard /></ForcePasswordGuard></ProtectedRoute>} />
+                      <Route path="/grading_evaluation_for_registrar" element={<ProtectedRoute><GradingEvaluationForRegistrar /></ProtectedRoute>} />
+                      <Route path="/submitted_documents" element={<ProtectedRoute><SubmittedDocuments /></ProtectedRoute>} />
+                      <Route path="/requirements_form" element={<ProtectedRoute><RequirementsForm /></ProtectedRoute>} />
+                      <Route path="/admission_dashboard" element={<ProtectedRoute><AdmissionDashboardPanel /></ProtectedRoute>} />
+                      <Route path="/department_dashboard" element={<ProtectedRoute><DepartmentManagement /></ProtectedRoute>} />
+                      <Route path="/system_dashboard" element={<ProtectedRoute><SystemDashboardPanel /></ProtectedRoute>} />
+                      <Route path="/account_dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
+                      <Route path="/student_numbering" element={<ProtectedRoute><StudentNumbering /></ProtectedRoute>} />
+                      <Route path="/student_numbering_per_college" element={<ProtectedRoute><StudentNumberingPerCollege /></ProtectedRoute>} />
+                      <Route path="/course_tagging" element={<ProtectedRoute><CourseTagging /></ProtectedRoute>} />
+                      <Route path="/course_tagging_for_college" element={<ProtectedRoute><CourseTaggingForCollege /></ProtectedRoute>} />
+                      <Route path="/course_tagging_for_summer" element={<ProtectedRoute><CourseTaggingForSummer /></ProtectedRoute>} />
+                      <Route path="/summer_tagging_for_college" element={<ProtectedRoute><CourseTaggingForSummerCollege /></ProtectedRoute>} />
+                      <Route path="/nstp_tagging" element={<ProtectedRoute><NSTPTagging /></ProtectedRoute>} />
+                      <Route path="/department_section_tagging" element={<ProtectedRoute><DepartmentSectionTagging /></ProtectedRoute>} />
+                      <Route path="/schedule_checker/:dprtmnt_id" element={<ProtectedRoute><ScheduleChecker /></ProtectedRoute>} />
+                      <Route path="/change_grade_period" element={<ProtectedRoute><ChangeGradingPeriod /></ProtectedRoute>} />
+                      <Route path="/department_room" element={<ProtectedRoute><DepartmentRoom /></ProtectedRoute>} />
+                      <Route path="/search_cor" element={<ProtectedRoute><SearchCertificateOfRegistration /></ProtectedRoute>} />
+                      <Route path="/search_cor_for_college" element={<ProtectedRoute><SearchCorForCollege /></ProtectedRoute>} />
+                      <Route path="/cor" element={<ProtectedRoute><CertificateOfRegistration /></ProtectedRoute>} />
+                      <Route path="/cor_for_college" element={<ProtectedRoute><CertificateOfRegistrationForCollege /></ProtectedRoute>} />
+                      <Route path="/select_college" element={<ProtectedRoute><ScheduleFilterer /></ProtectedRoute>} />
+                      <Route path="/college_schedule_plotting" element={<ProtectedRoute><CollegeScheduleChecker /></ProtectedRoute>} />
+                      <Route path="/assign_entrance_exam" element={<ProtectedRoute><AssignEntranceExam /></ProtectedRoute>} />
+                      <Route path="/assign_schedule_applicant" element={<ProtectedRoute><AssignScheduleToApplicants /></ProtectedRoute>} />
+                      <Route path="/verify_schedule" element={<ProtectedRoute><VerifyApplicantDocumentSchedule /></ProtectedRoute>} />
+                      <Route path="/admission_schedule_room_list" element={<ProtectedRoute><AdmissionScheduleTile /></ProtectedRoute>} />
+                      <Route path="/enrollment_schedule_room_list" element={<ProtectedRoute><EnrollmentScheduleTile /></ProtectedRoute>} />
+                      <Route path="/applicant_scoring" element={<ProtectedRoute><ApplicantScoring /></ProtectedRoute>} />
+                      <Route path="/applicant_exam_subjects" element={<ProtectedRoute><ApplicantExamSubjects /></ProtectedRoute>} />
+                      <Route path="/evaluator_schedule_room_list" element={<ProtectedRoute><EvaluatorScheduleTile /></ProtectedRoute>} />
+                      <Route path="/evaluator_applicant_list" element={<ProtectedRoute><EvaluatorApplicantList /></ProtectedRoute>} />
+                      <Route path="/assign_qualifying_interview_exam" element={<ProtectedRoute><AssignQualifyingInterviewExam /></ProtectedRoute>} />
+                      <Route path="/assign_schedule_applicants_qualifying_interview" element={<ProtectedRoute><AssignScheduleToApplicantsQualifyingInterviewer /></ProtectedRoute>} />
+                      <Route path="/qualifying_interviewer_applicant_list" element={<ProtectedRoute><QualifyingInterviewerApplicantList /></ProtectedRoute>} />
+                      <Route path="/grading_sheet" element={<ProtectedRoute><GradingSheet /></ProtectedRoute>} />
+                      <Route path="/student_list" element={<ProtectedRoute><StudentList /></ProtectedRoute>} />
+                      <Route path="/student_list_for_enrollment" element={<ProtectedRoute><StudentListForEnrollment /></ProtectedRoute>} />
+                      <Route path="/faculty_workload" element={<ProtectedRoute><FacultyWorkload /></ProtectedRoute>} />
+                      <Route path="/faculty_evaluation" element={<ProtectedRoute><FacultyEvaluation /></ProtectedRoute>} />
+                      <Route path="/faculty_masterlist" element={<ProtectedRoute><FacultyMasterList /></ProtectedRoute>} />
+                      <Route path="/student_dashboard" element={<GuardedRoute allowedRoles={"student"}><StudentDashboard profileImage={profileImage} setProfileImage={setProfileImage} /></GuardedRoute>} />
+
+                      <Route path="/student_schedule" element={<ProtectedRoute allowedRoles={"student"}><StudentSchedule /></ProtectedRoute>} />
+                      <Route path="/student_account_balance" element={<ProtectedRoute allowedRoles={"student"}><StudentBalanceManagement /></ProtectedRoute>} />
+                      <Route path="/student_account_balance/info" element={<ProtectedRoute allowedRoles={"student"}><StudentBalanceInfo /></ProtectedRoute>} />
+                      <Route path="/grades_page" element={<ProtectedRoute><StudentGradingPage allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_faculty_evaluation" element={<ProtectedRoute allowedRoles={"student"}><StudentFacultyEvaluation /></ProtectedRoute>} />
+                      <Route path="/unauthorized" element={<Unauthorized />} />
+                      <Route path="/applicant_list" element={<ProtectedRoute><ApplicantList /></ProtectedRoute>} />
+                      <Route path="/entrance_examination_score" element={<ProtectedRoute><EntranceExaminationScore /></ProtectedRoute>} />
+                      <Route path="/medical_student_list" element={<ProtectedRoute><MedicalApplicantList /></ProtectedRoute>} />
+                      <Route path="/applicant_list_admin" element={<ProtectedRoute><ApplicantListAdmin /></ProtectedRoute>} />
+                      <Route path="/super_admin_applicant_list" element={<ProtectedRoute><SuperAdminApplicantList /></ProtectedRoute>} />
+                      <Route path="/application_process_admin" element={<ProtectedRoute><ApplicationProcessAdmin /></ProtectedRoute>} />
+                      <Route path="/archived" element={<ProtectedRoute><Archived /></ProtectedRoute>} />
+                      <Route path="/application_super_admin" element={<ProtectedRoute><ApplicationSuperAdmin /></ProtectedRoute>} />
+                      <Route path="/grade_conversion_admin" element={<ProtectedRoute><GradeConversionAdmin /></ProtectedRoute>} />
+                      <Route path="/honors_report" element={<ProtectedRoute><HonorsReport /></ProtectedRoute>} />
+                      <Route path="/proctor_applicant_list" element={<ProtectedRoute><ProctorApplicantList /></ProtectedRoute>} />
+                      <Route path="/evaluation_crud" element={<ProtectedRoute><EvaluationCRUD /></ProtectedRoute>} />
+                      <Route path="/qualifying_interview_exam_scores" element={<ProtectedRoute><QualifyingInterviewExamScore /></ProtectedRoute>} />
+                      <Route path="/settings" element={<ProtectedRoute><Settings onUpdate={fetchSettings} /></ProtectedRoute>} />
+                      <Route path="/admin_dashboard1" element={<ProtectedRoute><AdminDashboard1 /></ProtectedRoute>} />
+                      <Route path="/admin_dashboard2" element={<ProtectedRoute><AdminDashboard2 /></ProtectedRoute>} />
+                      <Route path="/admin_dashboard3" element={<ProtectedRoute><AdminDashboard3 /></ProtectedRoute>} />
+                      <Route path="/admin_dashboard4" element={<ProtectedRoute><AdminDashboard4 /></ProtectedRoute>} />
+                      <Route path="/admin_dashboard5" element={<ProtectedRoute><AdminDashboard5 /></ProtectedRoute>} />
+                      <Route path="/student_dashboard1" element={<ProtectedRoute><StudentDashboard1Responsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_dashboard2" element={<ProtectedRoute><StudentDashboard2Responsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_dashboard3" element={<ProtectedRoute><StudentDashboard3Responsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_dashboard4" element={<ProtectedRoute><StudentDashboard4Responsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_dashboard5" element={<ProtectedRoute><StudentDashboard5Responsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_online_requirements" element={<ProtectedRoute><StudentOnlineRequirements allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/registrar_dashboard1" element={<ProtectedRoute><RegistrarDashboard1 /></ProtectedRoute>} />
+                      <Route path="/registrar_dashboard2" element={<ProtectedRoute><RegistrarDashboard2 /></ProtectedRoute>} />
+                      <Route path="/registrar_dashboard3" element={<ProtectedRoute><RegistrarDashboard3 /></ProtectedRoute>} />
+                      <Route path="/registrar_dashboard4" element={<ProtectedRoute><RegistrarDashboard4 /></ProtectedRoute>} />
+                      <Route path="/registrar_dashboard5" element={<ProtectedRoute><RegistrarDashboard5 /></ProtectedRoute>} />
+                      <Route path="/medical_dashboard1" element={<ProtectedRoute><MedicalDashboard1 /></ProtectedRoute>} />
+                      <Route path="/medical_dashboard2" element={<ProtectedRoute><MedicalDashboard2 /></ProtectedRoute>} />
+                      <Route path="/medical_dashboard3" element={<ProtectedRoute><MedicalDashboard3 /></ProtectedRoute>} />
+                      <Route path="/medical_dashboard4" element={<ProtectedRoute><MedicalDashboard4 /></ProtectedRoute>} />
+                      <Route path="/medical_dashboard5" element={<ProtectedRoute><MedicalDashboard5 /></ProtectedRoute>} />
+                      <Route path="/medical_requirements" element={<ProtectedRoute><MedicalRequirements /></ProtectedRoute>} />
+                      <Route path="/medical_certificate" element={<ProtectedRoute><MedicalCertificate /></ProtectedRoute>} />
+                      <Route path="/health_record" element={<ProtectedRoute><HealthRecord /></ProtectedRoute>} />
+                      <Route path="/medical_requirements_form" element={<ProtectedRoute><MedicalRequirementsForm /></ProtectedRoute>} />
+                      <Route path="/dental_assessment" element={<ProtectedRoute><DentalAssessment /></ProtectedRoute>} />
+                      <Route path="/physical_neuro_exam" element={<ProtectedRoute><PhysicalNeuroExam /></ProtectedRoute>} />
+                      <Route path="/readmission_dashboard1" element={<ProtectedRoute><ReadmissionDashboard1 /></ProtectedRoute>} />
+                      <Route path="/readmission_dashboard2" element={<ProtectedRoute><ReadmissionDashboard2 /></ProtectedRoute>} />
+                      <Route path="/readmission_dashboard3" element={<ProtectedRoute><ReadmissionDashboard3 /></ProtectedRoute>} />
+                      <Route path="/readmission_dashboard4" element={<ProtectedRoute><ReadmissionDashboard4 /></ProtectedRoute>} />
+                      <Route path="/readmission_dashboard5" element={<ProtectedRoute><ReadmissionDashboard5 /></ProtectedRoute>} />
+                      <Route path="/super_admin_applicant_dashboard1" element={<ProtectedRoute><SuperAdminApplicantDashboard1 /></ProtectedRoute>} />
+                      <Route path="/super_admin_applicant_dashboard2" element={<ProtectedRoute><SuperAdminApplicantDashboard2 /></ProtectedRoute>} />
+                      <Route path="/super_admin_applicant_dashboard3" element={<ProtectedRoute><SuperAdminApplicantDashboard3 /></ProtectedRoute>} />
+                      <Route path="/super_admin_applicant_dashboard4" element={<ProtectedRoute><SuperAdminApplicantDashboard4 /></ProtectedRoute>} />
+                      <Route path="/super_admin_applicant_dashboard5" element={<ProtectedRoute><SuperAdminApplicantDashboard5 /></ProtectedRoute>} />
+                      <Route path="/applicant_requirements_uploader" element={<ProtectedRoute><ApplicantRequirementsUploader /></ProtectedRoute>} />
+                      <Route path="/student_requirements_uploader" element={<ProtectedRoute><StudentRequirementsUploader /></ProtectedRoute>} />
+                      <Route path="/super_admin_student_dashboard1" element={<ProtectedRoute><SuperAdminStudentDashboard1 /></ProtectedRoute>} />
+                      <Route path="/super_admin_student_dashboard2" element={<ProtectedRoute><SuperAdminStudentDashboard2 /></ProtectedRoute>} />
+                      <Route path="/super_admin_student_dashboard3" element={<ProtectedRoute><SuperAdminStudentDashboard3 /></ProtectedRoute>} />
+                      <Route path="/super_admin_student_dashboard4" element={<ProtectedRoute><SuperAdminStudentDashboard4 /></ProtectedRoute>} />
+                      <Route path="/super_admin_student_dashboard5" element={<ProtectedRoute><SuperAdminStudentDashboard5 /></ProtectedRoute>} />
+                      <Route path="/student_accounts" element={<ProtectedRoute><StudentAccounts /></ProtectedRoute>} />
+                      <Route path="/migration_data_panel" element={<ProtectedRoute><MigrationDataPanel /></ProtectedRoute>} />
+                      <Route path="/payment_exporting_module" element={<ProtectedRoute><PaymentExportingModule /></ProtectedRoute>} />
+                      <Route path="/cor_exporting_module" element={<ProtectedRoute><CORExportingModule /></ProtectedRoute>} />
+                      <Route path="/cor_export_render" element={<CORExportRender />} />
+                      {keys.step1 && <Route path={`/dashboard/${keys.step1}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard1Responsive /></ProtectedRoute>} />}
+                      {keys.step2 && <Route path={`/dashboard/${keys.step2}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard2Responsive /></ProtectedRoute>} />}
+                      {keys.step3 && <Route path={`/dashboard/${keys.step3}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard3Responsive /></ProtectedRoute>} />}
+                      {keys.step4 && <Route path={`/dashboard/${keys.step4}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard4Responsive /></ProtectedRoute>} />}
+                      {keys.step5 && <Route path={`/dashboard/${keys.step5}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard5Responsive /></ProtectedRoute>} />}
+                      <Route path="/requirements_uploader" element={<ProtectedRoute allowedRoles={["applicant"]}><RequirementUploader /></ProtectedRoute>} />
+                      <Route path="/student_requirements" element={<ProtectedRoute><StudentRequirements /></ProtectedRoute>} />
+                      <Route path="/registrar_requirements" element={<ProtectedRoute><RegistrarRequirements /></ProtectedRoute>} />
+                      <Route path="/admin_ecat_application_form" element={<ProtectedRoute allowedRoles={["registrar"]}><AdminECATApplicationForm /></ProtectedRoute>} />
+                      <Route path="/admin_personal_data_form" element={<ProtectedRoute allowedRoles={["registrar"]}><AdminPersonalDataForm /></ProtectedRoute>} />
+                      <Route path="/admin_admission_form_process" element={<ProtectedRoute allowedRoles={["registrar"]}><AdminAdmissionFormProcess /></ProtectedRoute>} />
+                      <Route path="/admin_office_of_the_registrar" element={<ProtectedRoute allowedRoles={["registrar"]}><AdminOfficeOfTheRegistrar /></ProtectedRoute>} />
+                      <Route path="/personal_data_form" element={<ProtectedRoute allowedRoles={["applicant"]}><PersonalDataForm /></ProtectedRoute>} />
+                      <Route path="/ecat_application_form" element={<ProtectedRoute allowedRoles={["applicant"]}><ECATApplicationForm /></ProtectedRoute>} />
+                      <Route path="/admission_form_process" element={<ProtectedRoute allowedRoles={["applicant", "registrar", "student"]}><AdmissionFormProcess /></ProtectedRoute>} />
+                      <Route path="/admission_services" element={<ProtectedRoute allowedRoles={["applicant", "registrar"]}><AdmissionServices /></ProtectedRoute>} />
+                      <Route path="/office_of_the_registrar" element={<ProtectedRoute allowedRoles={["applicant"]}><OfficeOfTheRegistrar /></ProtectedRoute>} />
+                      <Route path="/verify_document_schedule" element={<ProtectedRoute allowedRoles={["registrar"]}><VerifyDocumentsSchedule /></ProtectedRoute>} />
+                      <Route path="/department_curriculum_panel" element={<ProtectedRoute><DepartmentCurriculumPanel /></ProtectedRoute>} />
+                      <Route path="/program_slot_limit" element={<ProtectedRoute><ProgramSlotLimit /></ProtectedRoute>} />
+                      <Route path="/class_roster" element={<ProtectedRoute><ClassRoster /></ProtectedRoute>} />
+                      <Route path="/class_roster_enrollment" element={<ProtectedRoute><ClassRosterForEnrollment /></ProtectedRoute>} />
+                      <Route path="/transcript_of_records" element={<ProtectedRoute><TranscriptOfRecords /></ProtectedRoute>} />
+                      <Route path="/tosf_crud" element={<ProtectedRoute><TOSFCrud /></ProtectedRoute>} />
+                      <Route path="/program_payment" element={<ProtectedRoute><ProgramPayment /></ProtectedRoute>} />
+                      <Route path="/prerequisite" element={<ProtectedRoute><Prerequisite /></ProtectedRoute>} />
+                      <Route path="/program_unit" element={<ProtectedRoute><ProgramUnit /></ProtectedRoute>} />
+                      <Route path="/email_template_manager" element={<ProtectedRoute><EmailTemplateManager /></ProtectedRoute>} />
+                      <Route path="/announcement" element={<ProtectedRoute><Announcement /></ProtectedRoute>} />
+                      <Route path="/announcement_for_admission" element={<ProtectedRoute><AnnouncementForAdmission /></ProtectedRoute>} />
+                      <Route path="/exam-permit/:applicant_number" element={<ExamPermit />} />
+                      <Route path="/student_ecat_application_form" element={<ProtectedRoute allowedRoles={["student"]}><StudentECATApplicationForm /></ProtectedRoute>} />
+                      <Route path="/student_personal_data_form" element={<ProtectedRoute allowedRoles={["student"]}><StudentPersonalDataForm /></ProtectedRoute>} />
+                      <Route path="/student_office_of_the_registrar" element={<ProtectedRoute allowedRoles={["student"]}><StudentOfficeOfTheRegistrar /></ProtectedRoute>} />
+                      <Route path="/student_admission_services" element={<ProtectedRoute allowedRoles={["student"]}><StudentAdmissionServices /></ProtectedRoute>} />
+                      <Route path="/student_form_process" element={<ProtectedRoute allowedRoles={["student", "registrar", "applicant"]}><StudentAdmissionFormProcess /></ProtectedRoute>} />
+                      <Route path="/student_grade_file" element={<ProtectedRoute><StudentGradeFile /></ProtectedRoute>} />
+                      <Route path="/student_curriculum_subjects" element={<ProtectedRoute allowedRoles={"student"}><StudentCurriculumSubjects /></ProtectedRoute>} />
+                      <Route path="/student_enrollment" element={<ProtectedRoute><StudentEnrollment /></ProtectedRoute>} />
+                      <Route path="/assign_receipt_counter" element={<ProtectedRoute><ReceiptCounterAssignment /></ProtectedRoute>} />
+                      <Route path="/matriculation_payment" element={<ProtectedRoute><MatriculationPaymentModule /></ProtectedRoute>} />
+                      <Route path="/applicant_profile" element={<ApplicantProfile />} />
+                      <Route path="/applicant_profile/:applicantNumber" element={<ApplicantProfile />} />
+                      <Route path="/student_qr_information/:studentNumber" element={<StudentQrInfo />} />
+                      <Route path="/registrar_exam_permit" element={<ProtectedRoute><RegistrarExamPermit /></ProtectedRoute>} />
+                      <Route path="/registrar_examination_profile" element={<ProtectedRoute><RegistrarExaminationProfile /></ProtectedRoute>} />
+                      <Route path="/registrar_examination_profile/:personId" element={<ApplicantProfile />} />
+                      <Route path="/page_crud" element={<ProtectedRoute><PageCRUD /></ProtectedRoute>} />
+                      <Route path="/report_of_grades" element={<ProtectedRoute><ReportOfGrade /></ProtectedRoute>} />
+                      <Route path="/user_page_access" element={<ProtectedRoute><UserPageAccess /></ProtectedRoute>} />
+                      <Route path="/student_scholarship_list" element={<ProtectedRoute><StudentScholarshipList /></ProtectedRoute>} />
+                      <Route path="/section_slot_monitoring" element={<ProtectedRoute><SectionSlotMonitoring /></ProtectedRoute>} />
+                      <Route path="/official_student_dashboard1" element={<ProtectedRoute><OfficialStudentDashboard1 /></ProtectedRoute>} />
+                      <Route path="/official_student_dashboard2" element={<ProtectedRoute><OfficialStudentDashboard2 /></ProtectedRoute>} />
+                      <Route path="/official_student_dashboard3" element={<ProtectedRoute><OfficialStudentDashboard3 /></ProtectedRoute>} />
+                      <Route path="/official_student_dashboard4" element={<ProtectedRoute><OfficialStudentDashboard4 /></ProtectedRoute>} />
+                      <Route path="/official_student_dashboard5" element={<ProtectedRoute><OfficialStudentDashboard5 /></ProtectedRoute>} />
+                      <Route path="/student_official_requirements" element={<ProtectedRoute><OfficialRequirements /></ProtectedRoute>} />
+                      <Route path="/admin_branches" element={<ProtectedRoute><AdminBranches /></ProtectedRoute>} />
+                    </Routes>
+                  </main>
+                </div>
+              </div>
+
+              {/* Footer */}
+              {!isCorExportRenderRoute && (
+                <Box
+                  component="footer"
+                  sx={{
+                    width: "100%",
+                    position: "fixed",
+                    bottom: 0,
+                    left: 0,
+                    zIndex: (theme) => theme.zIndex.drawer + 1,
+                    bgcolor: settings?.footer_color || "#ffffff",
+                    color: "white",
+                    textAlign: "center",
+                    padding: "8px 5px",
+                  }}
+                >
+                  <Typography style={{ fontSize: "14px" }}>
+                    {settings?.footer_text || ""}
+                  </Typography>
+                </Box>
+              )}
+            </div>
+          </Router>
+        </Suspense>
+      </SettingsContext.Provider>
+    </ThemeProvider>
+  );
+}
+
+export default App; 59
