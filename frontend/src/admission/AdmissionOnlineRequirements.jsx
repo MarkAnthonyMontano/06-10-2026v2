@@ -44,7 +44,7 @@ import CampaignIcon from '@mui/icons-material/Campaign';
 import ScoreIcon from '@mui/icons-material/Score';
 import PersonIcon from "@mui/icons-material/Person";
 import CloseIcon from "@mui/icons-material/Close";
-
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 const tabs = [
   {
@@ -58,8 +58,8 @@ const tabs = [
     icon: <PersonIcon fontSize="large" />,
   },
   {
-    label: "Student Requirements",
-    to: "/student_requirements",
+    label: "Applicant Online Requirements",
+    to: "/admission_online_requirements",
     icon: <AssignmentIcon fontSize="large" />,
   },
   {
@@ -1141,6 +1141,7 @@ const StudentRequirements = () => {
                   sx={{ backgroundColor: '#1976d2', color: 'white' }}
                   href={`${API_BASE_URL}/ApplicantOnlineDocuments/${uploaded.file_path}`}
                   target="_blank"
+                  startIcon={<VisibilityIcon />}
                 >
                   Preview
                 </Button>
@@ -1211,7 +1212,7 @@ const StudentRequirements = () => {
             fontSize: '36px',
           }}
         >
-          SUBMITTED DOCUMENTS
+        APPLICANT ONLINE REQUIREMENTS
         </Typography>
 
 

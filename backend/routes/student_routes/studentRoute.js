@@ -306,8 +306,7 @@ router.get("/student_grade/:id", async (req, res) => {
 
     const [rows] = await db3.execute(
       `
-      SELECT DISTINCT
-
+      SELECT
         ct.course_description,
         ct.course_code,
         es.en_remarks,
@@ -332,10 +331,8 @@ router.get("/student_grade/:id", async (req, res) => {
         IFNULL(pft.fname, 'TBA') AS fname,
         IFNULL(pft.lname, 'TBA') AS lname,
 
-        -- ✅ ORIGINAL GRADE
         es.final_grade,
 
-        -- ✅ ADD THESE (FIX)
         gc_main.equivalent_grade AS numeric_grade,
         gc_main.descriptive_rating AS descriptive_grade,
 
@@ -345,14 +342,24 @@ router.get("/student_grade/:id", async (req, res) => {
         ? AS last_name,
         ? AS first_name,
         ? AS middle_name,
-
         ? AS student_number,
 
         CASE
           WHEN LOWER(IFNULL(es.remarks, '')) = 'migrated from old system'
           THEN 1
           ELSE 0
-        END AS is_migrated
+        END AS is_migrated,
+
+        -- ✅ SCHEDULE
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            IFNULL(rdt.description, ''), ' ',
+            IFNULL(TIME_FORMAT(tt2.school_time_start, '%h:%i %p'), ''), '-',
+            IFNULL(TIME_FORMAT(tt2.school_time_end, '%h:%i %p'), '')
+          )
+          ORDER BY rdt.description
+          SEPARATOR '\n'
+        ) AS schedule
 
       FROM enrolled_subject AS es
 
@@ -384,6 +391,15 @@ router.get("/student_grade/:id", async (req, res) => {
           LIMIT 1
         )
 
+      -- ✅ Schedule join
+      LEFT JOIN time_table AS tt2
+        ON tt2.course_id = es.course_id
+        AND tt2.department_section_id = es.department_section_id
+        AND tt2.school_year_id = es.active_school_year_id
+
+      LEFT JOIN room_day_table AS rdt
+        ON rdt.id = tt2.room_day
+
       JOIN active_school_year_table AS sy
         ON es.active_school_year_id = sy.id
 
@@ -396,7 +412,6 @@ router.get("/student_grade/:id", async (req, res) => {
       JOIN course_table AS ct
         ON es.course_id = ct.course_id
 
-      -- ✅ MAIN CONVERSION JOIN
       LEFT JOIN grade_conversion gc_main
         ON gc_main.is_disqualified = 0
         AND es.final_grade BETWEEN gc_main.min_score AND gc_main.max_score
@@ -407,7 +422,32 @@ router.get("/student_grade/:id", async (req, res) => {
 
       LEFT JOIN year_level_table AS ylt
         ON sst.year_level_id = ylt.year_level_id
+
       WHERE es.student_number = ?
+
+      GROUP BY
+        es.id,
+        ct.course_code,
+        ct.course_description,
+        es.en_remarks,
+        es.remarks,
+        ct.course_unit,
+        ct.lab_unit,
+        pgt.program_code,
+        pgt.program_description,
+        st.description,
+        ylt.year_level_description,
+        sst.year_level_id,
+        smt.semester_description,
+        smt.semester_id,
+        yt.year_description,
+        pft.fname,
+        pft.lname,
+        es.final_grade,
+        gc_main.equivalent_grade,
+        gc_main.descriptive_rating,
+        es.fe_status,
+        es.active_school_year_id
 
       ORDER BY
         yt.year_description DESC,
@@ -1548,16 +1588,15 @@ router.get("/student/:person_id/curriculum-subjects", async (req, res) => {
   try {
     const { person_id } = req.params;
 
-    const [rows] = await db3.query(`
-      SELECT DISTINCT
+  const [rows] = await db3.query(`
+  SELECT DISTINCT
     pt.person_id,
-    pt.student_number,
+    snt.student_number,
     pt.first_name,
     pt.last_name,
+    pt.middle_name,
 
-    es.curriculum_id,
-
-    -- ✅ ADD THIS (CURRICULUM INFO)
+    base_es.curriculum_id,
     p.program_code,
     p.program_description,
     y.year_description,
@@ -1576,42 +1615,64 @@ router.get("/student/:person_id/curriculum-subjects", async (req, res) => {
 
     ptg.lec_fee,
     ptg.lab_fee,
-    ptg.amount
+    ptg.amount,
 
-FROM person_table pt
+    IFNULL(prf.fname, 'TBA') AS fname,
+    IFNULL(prf.lname, 'TBA') AS lname,
+    sec.description AS section_description,
+    GROUP_CONCAT(
+      DISTINCT CONCAT(
+        IFNULL(rdt.description, ''), ' ',
+        IFNULL(TIME_FORMAT(tt.school_time_start, '%h:%i %p'), ''), '-',
+        IFNULL(TIME_FORMAT(tt.school_time_end, '%h:%i %p'), '')
+      )
+      ORDER BY rdt.description
+      SEPARATOR '\n'
+    ) AS schedule
 
-JOIN student_numbering_table snt 
-    ON pt.person_id = snt.person_id
+  FROM person_table pt
+  JOIN student_numbering_table snt ON pt.person_id = snt.person_id
 
-JOIN enrolled_subject es 
+  -- ✅ Get the curriculum the student is enrolled in (just to know curriculum_id)
+  JOIN enrolled_subject base_es ON base_es.student_number = snt.student_number
+
+  JOIN curriculum_table ct ON ct.curriculum_id = base_es.curriculum_id
+  JOIN program_table p ON p.program_id = ct.program_id
+  JOIN year_table y ON y.year_id = ct.year_id
+
+  -- ✅ Show ALL subjects in the curriculum (all year levels)
+  JOIN program_tagging_table ptg ON ptg.curriculum_id = base_es.curriculum_id
+  JOIN course_table co ON co.course_id = ptg.course_id
+  JOIN year_level_table yl ON yl.year_level_id = ptg.year_level_id
+  JOIN semester_table s ON s.semester_id = ptg.semester_id
+
+  -- ✅ LEFT JOIN enrollment for THIS specific course (may not exist for future subjects)
+  LEFT JOIN enrolled_subject es
     ON es.student_number = snt.student_number
+    AND es.course_id = co.course_id
+    AND es.curriculum_id = base_es.curriculum_id
 
--- ✅ JOIN curriculum
-JOIN curriculum_table ct 
-    ON ct.curriculum_id = es.curriculum_id
+  LEFT JOIN dprtmnt_section_table dst ON es.department_section_id = dst.id
+  LEFT JOIN section_table sec ON dst.section_id = sec.id
 
-JOIN program_table p 
-    ON p.program_id = ct.program_id
+  LEFT JOIN time_table tt
+    ON tt.course_id = co.course_id
+    AND tt.department_section_id = es.department_section_id
+    AND tt.school_year_id = es.active_school_year_id
+  LEFT JOIN room_day_table rdt ON tt.room_day = rdt.id
+  LEFT JOIN prof_table prf ON prf.prof_id = tt.professor_id
 
-JOIN year_table y 
-    ON y.year_id = ct.year_id
-
--- existing joins
-JOIN program_tagging_table ptg 
-    ON ptg.curriculum_id = es.curriculum_id
-
-JOIN course_table co 
-    ON co.course_id = ptg.course_id
-
-JOIN year_level_table yl 
-    ON yl.year_level_id = ptg.year_level_id
-
-JOIN semester_table s 
-    ON s.semester_id = ptg.semester_id
-
-WHERE pt.person_id = ?
-ORDER BY ptg.year_level_id, ptg.semester_id;
-    `, [person_id]);
+  WHERE pt.person_id = ?
+  GROUP BY
+    base_es.curriculum_id,
+    co.course_id,
+    ptg.year_level_id,
+    ptg.semester_id,
+    sec.description,
+    prf.fname,
+    prf.lname
+  ORDER BY ptg.year_level_id, ptg.semester_id, co.course_code;
+`, [person_id]);
 
     res.json(rows);
 

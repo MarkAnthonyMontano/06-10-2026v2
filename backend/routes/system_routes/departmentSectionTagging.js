@@ -114,7 +114,7 @@ router.get('/get_student_per_curriculum', async (req, res) => {
 
     const [rows] = await db3.query(
       `
-      SELECT 
+      SELECT DISTINCT
         es.student_number, p.first_name, p.last_name,
         pgt.program_code, pgt.program_id, pgt.program_description,
         es.department_section_id,
@@ -171,7 +171,7 @@ router.get('/get_student_already_tagged', async (req, res) => {
 
     const [rows] = await db3.query(
       `
-      SELECT
+      SELECT DISTINCT
         es.student_number,
         es.department_section_id,
         p.first_name, p.last_name,

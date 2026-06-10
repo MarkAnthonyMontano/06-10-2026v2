@@ -307,7 +307,7 @@ const Dashboard5 = (props) => {
         "success",
       );
 
-      setTimeout(() => navigate("/requirements_uploader"), 1500);
+      setTimeout(() => navigate("/applicant_online_requirements"), 1500);
     } catch (error) {
       if (error.response?.status === 409) {
         showSnackbar(error.response.data.message, "error");

@@ -889,7 +889,7 @@ const SuperAdminStudentDashboard5 = () => {
                                     });
 
                                     setTimeout(() => {
-                                        navigate("/student_requirements_uploader");
+                                        navigate("/student_online_requirements_admin");
                                     }, 2000);
                                 }}
                                 endIcon={

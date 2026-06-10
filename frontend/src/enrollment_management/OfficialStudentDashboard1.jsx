@@ -137,8 +137,8 @@ const OfficialStudentDashboard1 = () => {
       icon: <PersonIcon fontSize="large" />,
     },
     {
-      label: "Submitted Documents",
-      to: "/student_official_requirements",
+      label: "Student Online Requirements",
+      to: "student_online_requirements_college",
       icon: <AssignmentIcon fontSize="large" />,
     },
     {

@@ -131,8 +131,8 @@ const ReadmissionDashboard1 = () => {
       icon: <PersonIcon fontSize="large" />,
     },
     {
-      label: "Submitted Documents",
-      to: "/submitted_documents",
+      label: "Student Online Requirements Registrar",
+      to: "student_online_requirements_college",
       icon: <AssignmentIcon fontSize="large" />,
     },
     {

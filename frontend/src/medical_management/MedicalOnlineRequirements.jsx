@@ -21,47 +21,44 @@ import {
   MenuItem,
 } from "@mui/material";
 import API_BASE_URL from "../apiConfig";
-import { restrictToRegistrarCurriculum } from "../utils/registrarCurriculumRestriction";
 import Search from "@mui/icons-material/Search";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { io } from "socket.io-client";
 import { Snackbar, Alert } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import SchoolIcon from "@mui/icons-material/School";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import PersonIcon from "@mui/icons-material/Person";
 import DescriptionIcon from "@mui/icons-material/Description";
-import PsychologyIcon from "@mui/icons-material/Psychology";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Unauthorized from "../components/Unauthorized";
 import LoadingOverlay from "../components/LoadingOverlay";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import PersonSearchIcon from "@mui/icons-material/PersonSearch";
+import SearchIcon from "@mui/icons-material/Search";
+import PsychologyIcon from "@mui/icons-material/Psychology";
+import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
 import AssignmentIcon from "@mui/icons-material/Assignment";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+
 
 const tabs = [
-  { label: "Student List", to: "/student_list_for_enrollment", icon: <SchoolIcon fontSize="large" /> },
-  { label: "Student Profile", to: "/official_student_dashboard1", icon: <PersonIcon fontSize="large" /> },
-  { label: "Submitted Documents", to: "/student_official_requirements", icon: <AssignmentIcon fontSize="large" /> },
-  { label: "Course Tagging", to: "/course_tagging_for_college", icon: <UploadFileIcon fontSize="large" /> },
-  { label: "Search COR", to: "/search_cor_for_college", icon: <MenuBookIcon fontSize="large" /> },
-  { label: "Class List", to: "/class_roster_enrollment", icon: <PersonSearchIcon fontSize="large" /> },
-
+  { label: "Student List", to: "/medical_student_list", icon: <SchoolIcon fontSize="large" /> },
+  { label: "Student Profile", to: "/medical_dashboard1", icon: <PersonIcon fontSize="large" /> },
+  { label: "Student Online Requirements", to: "/medical_online_requirements", icon: <AssignmentIcon fontSize="large" /> }, // updated icon
+  { label: "Medical History", to: "/medical_requirements_form", icon: <HealthAndSafetyIcon fontSize="large" /> },
+  { label: "Dental Assessment", to: "/dental_assessment", icon: <DescriptionIcon fontSize="large" /> },
+  { label: "Physical and Neurological Examination", to: "/physical_neuro_exam", icon: <PsychologyIcon fontSize="large" /> },
 ];
 
-const OfficialRequirements = () => {
+const MedicalRequirements = () => {
   const settings = useContext(SettingsContext);
 
   const [titleColor, setTitleColor] = useState("#000000");
   const [subtitleColor, setSubtitleColor] = useState("#555555");
   const [borderColor, setBorderColor] = useState("#000000");
   const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
-  const [subButtonColor, setSubButtonColor] = useState("#ffffff"); // ✅ NEW
-  const [stepperColor, setStepperColor] = useState("#000000"); // ✅ NEW
+  const [subButtonColor, setSubButtonColor] = useState("#ffffff");
+  const [stepperColor, setStepperColor] = useState("#000000");
 
   const [fetchedLogo, setFetchedLogo] = useState(null);
   const [companyName, setCompanyName] = useState("");
@@ -71,23 +68,18 @@ const OfficialRequirements = () => {
   useEffect(() => {
     if (!settings) return;
 
-    // 🎨 Colors
     if (settings.title_color) setTitleColor(settings.title_color);
     if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
     if (settings.border_color) setBorderColor(settings.border_color);
     if (settings.main_button_color)
       setMainButtonColor(settings.main_button_color);
-    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color); // ✅ NEW
-    if (settings.stepper_color) setStepperColor(settings.stepper_color); // ✅ NEW
+    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color);
+    if (settings.stepper_color) setStepperColor(settings.stepper_color);
 
-    // 🏫 Logo
     if (settings.logo_url) {
       setFetchedLogo(`${API_BASE_URL}${settings.logo_url}`);
-    } else {
-      setFetchedLogo(EaristLogo);
     }
 
-    // 🏷️ School Information
     if (settings.company_name) setCompanyName(settings.company_name);
     if (settings.short_term) setShortTerm(settings.short_term);
     if (settings.campus_address) setCampusAddress(settings.campus_address);
@@ -95,15 +87,11 @@ const OfficialRequirements = () => {
 
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(2);
-  const [clickedSteps, setClickedSteps] = useState(
-    Array(tabs.length).fill(false),
-  );
-  const socketRef = useRef(null);
 
   // ------------------------------------
   const [requirements, setRequirements] = useState([]);
-  const [selectedPerson, setSelectedPerson] = useState(null);
 
+  const [selectedPerson, setSelectedPerson] = useState(null);
   useEffect(() => {
     axios
       .get(`${API_BASE_URL}/api/requirements`)
@@ -137,7 +125,7 @@ const OfficialRequirements = () => {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success", // success | error | warning | info
+    severity: "success",
   });
 
   const showSnackbar = (message, severity = "success") => {
@@ -146,72 +134,44 @@ const OfficialRequirements = () => {
 
   const [explicitSelection, setExplicitSelection] = useState(false);
 
-  const location = useLocation();
+  // ✅ CONSOLIDATED: Single fetch function using /api/student_data_as_applicant/:id
+  // Replaces: fetchByPersonId + fetchPersonData + fetchDocumentStatus
+  const fetchByPersonId = async (personID) => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/student_data_as_applicant/${personID}`,
+      );
+      const data = res.data;
 
-  useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const personIdFromUrl = queryParams.get("person_id");
+      // Set person data (includes document_status and evaluator from backend)
+      setPerson(data);
+      setSelectedPerson(data);
 
-    if (!personIdFromUrl) return;
+      // ✅ document_status already returned by the endpoint — no separate call needed
+      setDocumentStatus(data.document_status || "On Process");
 
-    // fetch info of that person
-    axios
-      .get(`${API_BASE_URL}api/person_with_applicant/${personIdFromUrl}`)
-      .then((res) => {
-        if (res.data?.student_number) {
-          // AUTO-INSERT applicant_number into search bar
-          setSearchQuery(res.data.student_number);
-
-          // If you have a fetchUploads() or fetchExamScore() — call it
-          if (typeof fetchUploadsByApplicantNumber === "function") {
-            fetchUploadsByApplicantNumber(res.data.student_number);
-          }
-
-          if (typeof fetchApplicants === "function") {
-            fetchApplicants();
-          }
-        }
-      })
-      .catch((err) => console.error("Auto search failed:", err));
-  }, [location.search]);
-
-  const handleStepClick = (index, to) => {
-    setActiveStep(index);
-    const pid =
-      selectedPerson?.person_id ||
-      person?.person_id ||
-      sessionStorage.getItem("edit_person_id") ||
-      sessionStorage.getItem("admin_edit_person_id");
-    const sn =
-      selectedPerson?.student_number ||
-      person?.student_number ||
-      sessionStorage.getItem("edit_student_number");
-
-    if (pid) {
-      sessionStorage.setItem("edit_person_id", String(pid));
-      if (sn) sessionStorage.setItem("edit_student_number", String(sn));
-      navigate(`${to}?person_id=${pid}`);
-    } else if (sn) {
-      sessionStorage.setItem("edit_student_number", String(sn));
-      navigate(`${to}?student_number=${sn}`);
-    } else {
-      navigate(to); // no id → open without query
+      // Fetch uploads if student_number is available
+      if (data?.student_number) {
+        await fetchUploadsByStudentNumber(data.student_number);
+      }
+    } catch (err) {
+      console.error("❌ fetchByPersonId failed:", err);
     }
   };
 
-  useEffect(() => {
-    const storedId = sessionStorage.getItem("edit_student_number");
+  // ✅ REMOVED: fetchPersonData — replaced by fetchByPersonId
+  // ✅ REMOVED: fetchDocumentStatus — document_status now comes from fetchByPersonId
 
-    if (storedId) {
-      setSearchQuery(storedId);
-    }
-  }, []);
+  const handleStepClick = (index, path) => {
+    setActiveStep(index);
+    navigate(path);
+  };
 
+  const location = useLocation();
   const [uploads, setUploads] = useState([]);
   const [persons, setPersons] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFiles, setSelectedFiles] = useState({});
-
   const [remarksMap, setRemarksMap] = useState({});
   const [userID, setUserID] = useState("");
   const [user, setUser] = useState("");
@@ -229,8 +189,8 @@ const OfficialRequirements = () => {
     middle_name: "",
     extension: "",
     student_number: "",
+    evaluator: null,
   });
-
 
   const [curriculumOptions, setCurriculumOptions] = useState([]);
 
@@ -238,7 +198,7 @@ const OfficialRequirements = () => {
     const fetchCurriculums = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/applied_program`);
-        setCurriculumOptions(restrictToRegistrarCurriculum(response.data));
+        setCurriculumOptions(response.data);
       } catch (error) {
         console.error("Error fetching curriculum options:", error);
       }
@@ -255,9 +215,8 @@ const OfficialRequirements = () => {
 
   }
 
-
   const [editingRemarkId, setEditingRemarkId] = useState(null);
-  const [newRemarkMode, setNewRemarkMode] = useState({}); // { [upload_id]: true|false }
+  const [newRemarkMode, setNewRemarkMode] = useState({});
   const [documentStatus, setDocumentStatus] = useState("");
 
   const [hasAccess, setHasAccess] = useState(null);
@@ -266,11 +225,11 @@ const OfficialRequirements = () => {
   const [canDelete, setCanDelete] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const pageId = 136;
+  const pageId = 30;
 
   const [employeeID, setEmployeeID] = useState("");
 
-  const getAuditConfig = (extraHeaders = {}) => ({
+  const getAuditHeaders = (extraHeaders = {}) => ({
     headers: {
       ...extraHeaders,
       "x-employee-id": employeeID || localStorage.getItem("employee_id") || "",
@@ -278,6 +237,7 @@ const OfficialRequirements = () => {
       "x-audit-actor-id":
         employeeID ||
         localStorage.getItem("employee_id") ||
+        localStorage.getItem("person_id") ||
         localStorage.getItem("email") ||
         "unknown",
       "x-audit-actor-role": userRole || localStorage.getItem("role") || "registrar",
@@ -328,38 +288,13 @@ const OfficialRequirements = () => {
       setCanCreate(false);
       setCanEdit(false);
       setCanDelete(false);
-      if (error.response && error.response.data.message) {
-        console.log(error.response.data.message);
-      } else {
-        console.log("An unexpected error occurred.");
-      }
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("email");
-    const storedRole = localStorage.getItem("role");
-    const storedID = localStorage.getItem("person_id");
-    setUserID(storedID);
-
-    if (storedUser && storedRole && storedID) {
-      setUser(storedUser);
-      setUserRole(storedRole);
-      setUserID(storedID);
-
-      if (storedRole === "registrar") {
-        if (storedID !== "undefined") {
-        } else {
-          console.warn("Stored person_id is invalid:", storedID);
-        }
-      } else {
-        window.location.href = "/login";
-      }
-    } else {
-      window.location.href = "/login";
-    }
-  }, []);
+  // ✅ REMOVED: Second duplicate useEffect for localStorage — merged into the one above
+  // ✅ REMOVED: useEffect watching person.student_number for fetchDocumentStatus
+  // ✅ REMOVED: useEffect watching selectedPerson for fetchPersonData
 
   const queryParams = new URLSearchParams(location.search);
   const queryPersonId = queryParams.get("person_id")?.trim() || "";
@@ -375,7 +310,6 @@ const OfficialRequirements = () => {
         return;
       }
 
-      // fallback only if it's a fresh selection from Student List
       const source = sessionStorage.getItem("admin_edit_person_id_source");
       const tsStr = sessionStorage.getItem("admin_edit_person_id_ts");
       const id = sessionStorage.getItem("admin_edit_person_id");
@@ -391,7 +325,6 @@ const OfficialRequirements = () => {
     };
 
     tryLoad().finally(() => {
-      // consume the freshness so it won't auto-load again later
       if (consumedFlag) {
         sessionStorage.removeItem("admin_edit_person_id_source");
         sessionStorage.removeItem("admin_edit_person_id_ts");
@@ -400,10 +333,9 @@ const OfficialRequirements = () => {
   }, [queryPersonId]);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null); // "upload" or "delete"
-  const [targetDoc, setTargetDoc] = useState(null); // document info
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [targetDoc, setTargetDoc] = useState(null);
 
-  // When clicking upload
   const handleConfirmUpload = (doc) => {
     if (!canCreate) {
       showSnackbar("You do not have permission to upload documents.", "warning");
@@ -414,7 +346,6 @@ const OfficialRequirements = () => {
     setConfirmOpen(true);
   };
 
-  // When clicking delete
   const handleConfirmDelete = (doc) => {
     if (!canDelete) {
       showSnackbar("You do not have permission to delete documents.", "warning");
@@ -425,10 +356,8 @@ const OfficialRequirements = () => {
     setConfirmOpen(true);
   };
 
-  // Execute action after confirm
   const handleConfirmAction = async () => {
     if (confirmAction === "upload") {
-      // call your upload logic here
       await handleUploadSubmit(targetDoc);
       console.log(
         `📂 Document uploaded by: ${localStorage.getItem("username")}`,
@@ -455,62 +384,10 @@ const OfficialRequirements = () => {
       setUploads(res.data);
     } catch (err) {
       console.error("Fetch uploads failed:", err);
-      console.log("Fetching for Student number:", student_number);
-    }
-  };
-
-  const fetchPersonData = async (personID) => {
-    if (!personID || personID === "undefined") {
-      console.warn("Invalid personID for person data:", personID);
-      return;
-    }
-    try {
-      const res = await axios.get(
-        `${API_BASE_URL}/api/student_data_as_applicant/${personID}`,
-      );
-      const safePerson = {
-        ...res.data,
-        document_status: res.data.document_status || "",
-      };
-      setPerson(safePerson); // ✅ only update person
-      // ❌ don't call setSelectedPerson here
-    } catch (error) {
-      console.error(
-        "❌ Failed to fetch person data:",
-        error?.response?.data || error.message,
-      );
-    }
-  };
-
-  const fetchDocumentStatus = async (student_number) => {
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}/api/document_status/${student_number}`,
-      );
-      setDocumentStatus(response.data.document_status);
-      setPerson((prev) => ({
-        ...prev,
-        evaluator: response.data.evaluator || null,
-      }));
-    } catch (err) {
-      console.error("Error fetching document status:", err);
     }
   };
 
   useEffect(() => {
-    if (person.student_number) {
-      fetchDocumentStatus(person.student_number); // <-- pass the param
-    }
-  }, [person.student_number]);
-
-  useEffect(() => {
-    if (selectedPerson?.person_id) {
-      fetchPersonData(selectedPerson.person_id);
-    }
-  }, [selectedPerson]);
-
-  useEffect(() => {
-    // No search text: keep explicit selection if present
     if (!searchQuery.trim()) {
       if (!explicitSelection) {
         setSelectedPerson(null);
@@ -523,17 +400,20 @@ const OfficialRequirements = () => {
           applyingAs: "",
           program: "",
           strand: "",
+
           document_status: "",
           last_name: "",
           first_name: "",
           middle_name: "",
           extension: "",
+          student_number: "",
+          evaluator: null,
         });
+        setDocumentStatus("");
       }
       return;
     }
 
-    // User started typing -> manual search takes over
     if (explicitSelection) setExplicitSelection(false);
 
     const match = persons.find((p) =>
@@ -545,9 +425,15 @@ const OfficialRequirements = () => {
     if (match) {
       setSelectedPerson(match);
       fetchUploadsByStudentNumber(match.student_number);
+
+      // ✅ Also fetch full person data (document_status + evaluator) when searching by name
+      if (match.person_id) {
+        fetchByPersonId(match.person_id);
+      }
     } else {
       setSelectedPerson(null);
       setUploads([]);
+      setDocumentStatus("");
       setPerson({
         profile_img: "",
         generalAverage1: "",
@@ -560,6 +446,8 @@ const OfficialRequirements = () => {
         first_name: "",
         middle_name: "",
         extension: "",
+        student_number: "",
+        evaluator: null,
       });
     }
   }, [searchQuery, persons, explicitSelection]);
@@ -569,7 +457,6 @@ const OfficialRequirements = () => {
       const res = await axios.get(
         `${API_BASE_URL}/api/student_upload_documents_data`,
       );
-
       setPersons(res.data);
     } catch (err) {
       console.error("Error fetching persons:", err);
@@ -589,9 +476,8 @@ const OfficialRequirements = () => {
         status: remarkValue,
         remarks,
         user_id: userID,
-      }, getAuditConfig());
+      }, getAuditHeaders());
 
-      // ✅ Optimistically update uploads state
       setUploads((prev) =>
         prev.map((u) =>
           u.upload_id === uploadId
@@ -602,7 +488,6 @@ const OfficialRequirements = () => {
 
       setEditingRemarkId(null);
 
-      // still fetch to keep in sync with backend
       if (selectedPerson?.student_number) {
         fetchUploadsByStudentNumber(selectedPerson.student_number);
       }
@@ -627,13 +512,15 @@ const OfficialRequirements = () => {
           document_status: newStatus,
           user_id: localStorage.getItem("person_id"),
         },
-        getAuditConfig(),
+        getAuditHeaders(),
       );
 
-      // ✅ Refresh evaluator and document status
-      await fetchDocumentStatus(person.student_number);
+      // ✅ Re-fetch full person data to refresh evaluator + document_status in one call
+      if (person.person_id) {
+        await fetchByPersonId(person.person_id);
+      }
 
-      // ✅ Also refresh uploads list to update row values in the table
+      // ✅ Also refresh uploads list
       if (person.student_number) {
         await fetchUploadsByStudentNumber(person.student_number);
       }
@@ -655,7 +542,6 @@ const OfficialRequirements = () => {
       return;
     }
 
-    // If remarks is chosen but no file selected
     if (selectedFiles.remarks && !selectedFiles.file) {
       alert("Please select a file for the chosen remarks.");
       return;
@@ -671,8 +557,8 @@ const OfficialRequirements = () => {
       await axios.post(`${API_BASE_URL}/api/student/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
-          "x-person-id": localStorage.getItem("person_id"), // ✅ now inside headers
-          ...getAuditConfig().headers,
+          "x-person-id": localStorage.getItem("person_id"),
+          ...getAuditHeaders().headers,
         },
       });
 
@@ -698,7 +584,7 @@ const OfficialRequirements = () => {
       await axios.delete(`${API_BASE_URL}/api/admin/uploads/${uploadId}`, {
         headers: {
           "x-person-id": localStorage.getItem("person_id"),
-          ...getAuditConfig().headers,
+          ...getAuditHeaders().headers,
         },
         withCredentials: true,
       });
@@ -733,14 +619,10 @@ const OfficialRequirements = () => {
           }}
         >
           {doc.label}
-          {Number(doc.is_optional) === 1 && (
-            <span style={{ marginLeft: 2 }}>(Optional)</span>
-          )}
         </TableCell>
 
         <TableCell sx={{ width: "20%", border: `1px solid ${borderColor}` }}>
           {uploadId && editingRemarkId === uploadId ? (
-            // 🔥 TEXTFIELD ONLY
             <TextField
               disabled
               size="small"
@@ -756,28 +638,24 @@ const OfficialRequirements = () => {
               }
               onBlur={async () => {
                 const finalRemark = (remarksMap[uploadId] || "").trim();
-
                 await axios.put(`${API_BASE_URL}/api/uploads/remarks/${uploadId}`, {
                   remarks: finalRemark,
                   status:
                     uploads.find((u) => u.upload_id === uploadId)?.status ||
                     "0",
                   user_id: userID,
-                }, getAuditConfig());
-
+                }, getAuditHeaders());
                 if (selectedPerson?.applicant_number) {
                   await fetchUploadsByApplicantNumber(
                     selectedPerson.applicant_number,
                   );
                 }
-
                 setEditingRemarkId(null);
               }}
               onKeyDown={async (e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   const finalRemark = (remarksMap[uploadId] || "").trim();
-
                   await axios.put(
                     `${API_BASE_URL}/api/uploads/remarks/${uploadId}`,
                     {
@@ -787,21 +665,18 @@ const OfficialRequirements = () => {
                         "0",
                       user_id: userID,
                     },
-                    getAuditConfig(),
+                    getAuditHeaders(),
                   );
-
                   if (selectedPerson?.applicant_number) {
                     await fetchUploadsByApplicantNumber(
                       selectedPerson.applicant_number,
                     );
                   }
-
                   setEditingRemarkId(null);
                 }
               }}
             />
           ) : (
-            // 📌 DISPLAY MODE with GRAY BORDER (click to edit)
             <Box
               onClick={() => {
                 if (!uploadId) return;
@@ -819,8 +694,6 @@ const OfficialRequirements = () => {
                 display: "flex",
                 alignItems: "center",
                 px: 1,
-
-                // ⭐ Added border here
                 border: "1px solid #bdbdbd",
                 borderRadius: "4px",
                 backgroundColor: "#fafafa",
@@ -838,7 +711,6 @@ const OfficialRequirements = () => {
           {uploaded ? (
             uploaded.status === 1 ? (
               <Box
-                disabled
                 sx={{
                   backgroundColor: "#4CAF50",
                   color: "white",
@@ -855,7 +727,6 @@ const OfficialRequirements = () => {
               </Box>
             ) : uploaded.status === 2 ? (
               <Box
-                disabled
                 sx={{
                   backgroundColor: "#F44336",
                   color: "white",
@@ -927,9 +798,7 @@ const OfficialRequirements = () => {
                   sx={{
                     backgroundColor: "green",
                     color: "white",
-                    "&:hover": {
-                      backgroundColor: "#006400",
-                    },
+                    "&:hover": { backgroundColor: "#006400" },
                   }}
                   onClick={() => {
                     setEditingRemarkId(uploaded.upload_id);
@@ -945,8 +814,9 @@ const OfficialRequirements = () => {
                 <Button
                   variant="contained"
                   sx={{ backgroundColor: "#1976d2", color: "white" }}
-                  href={`${API_BASE_URL}/ApplicantOnlineDocuments/${uploaded.file_path}`}
+                  href={`${API_BASE_URL}/StudentOnlineDocuments/${uploaded.file_path}`}
                   target="_blank"
+                  startIcon={<VisibilityIcon />}
                 >
                   Preview
                 </Button>
@@ -1009,9 +879,8 @@ const OfficialRequirements = () => {
             fontSize: '36px',
           }}
         >
-          SUBMITTED DOCUMENTS
+          STUDENT ONLINE REQUIREMENTS
         </Typography>
-
 
 
         <TextField
@@ -1097,7 +966,7 @@ const OfficialRequirements = () => {
 
       <br />
       <br />
-
+      {/* Student ID and Name */}
       <TableContainer
         component={Paper}
         sx={{ width: "100%", border: `1px solid ${borderColor}` }}
@@ -1107,19 +976,18 @@ const OfficialRequirements = () => {
             sx={{ backgroundColor: settings?.header_color || "#1976d2" }}
           >
             <TableRow>
-              {/* Left cell: Student ID */}
               <TableCell
                 sx={{
                   color: "white",
                   fontSize: "20px",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: "Arial",
                   border: "none",
                 }}
               >
                 Student ID:&nbsp;
                 <span
                   style={{
-                    fontFamily: "Poppins, sans-serif",
+                    fontFamily: "Arial",
                     fontWeight: "normal",
                     textDecoration: "underline",
                   }}
@@ -1130,20 +998,19 @@ const OfficialRequirements = () => {
                 </span>
               </TableCell>
 
-              {/* Right cell: Student Name, right-aligned */}
               <TableCell
                 align="right"
                 sx={{
                   color: "white",
                   fontSize: "20px",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: "Arial",
                   border: "none",
                 }}
               >
                 Student Name:&nbsp;
                 <span
                   style={{
-                    fontFamily: "Poppins, sans-serif",
+                    fontFamily: "Arial",
                     fontWeight: "normal",
                     textDecoration: "underline",
                   }}
@@ -1180,7 +1047,8 @@ const OfficialRequirements = () => {
         component={Paper}
         sx={{ width: "100%", border: `1px solid ${borderColor}` }}
       >
-        {/* SHS GWA and Height row below Student Name */}
+        {/* SHS GWA and Height */}
+
         <Box sx={{ px: 2, mb: 2, mt: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", mb: 1, }}>
             <Typography
@@ -1311,6 +1179,7 @@ const OfficialRequirements = () => {
           </Box>
         </Box>
 
+
         <br />
         <br />
 
@@ -1323,16 +1192,14 @@ const OfficialRequirements = () => {
             px: 2,
           }}
         >
-          {/* Left side: Applying As and Strand */}
           <Box>
             {/* Applying As */}
             <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
               <Typography
                 sx={{
                   fontSize: "14px",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: "Arial",
                   minWidth: "120px",
-
                   mr: 4.8,
                 }}
               >
@@ -1344,7 +1211,6 @@ const OfficialRequirements = () => {
                 size="small"
                 name="applyingAs"
                 value={person.applyingAs || ""}
-                placeholder="Select applyingAs"
                 sx={{ width: "400px" }}
                 InputProps={{ sx: { height: 35 } }}
                 inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
@@ -1369,11 +1235,12 @@ const OfficialRequirements = () => {
               </TextField>
             </Box>
 
+            {/* Document Status */}
             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
               <Typography
                 sx={{
                   fontSize: "14px",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: "Arial",
                   minWidth: "140px",
                   mr: 2.3,
                 }}
@@ -1396,24 +1263,30 @@ const OfficialRequirements = () => {
                 </MenuItem>
                 <MenuItem value="On Process">On Process</MenuItem>
                 <MenuItem value="Documents Verified & ECAT">
-                  Documents Verified & ECAT
+                  Documents Verified &amp; ECAT
                 </MenuItem>
                 <MenuItem value="Disapproved / Program Closed">
                   Disapproved / Program Closed
                 </MenuItem>
               </TextField>
 
+              {/* ✅ Evaluator info — uses flat structure returned by /api/student_data_as_applicant/:id */}
               {person?.evaluator?.evaluator_email && (
                 <Typography variant="caption" sx={{ marginLeft: 1 }}>
                   Status Changed By:{" "}
                   {person.evaluator.evaluator_email.replace(
                     /@gmail\.com$/i,
                     "",
-                  )}{" "}
-                  ({person.evaluator.evaluator_lname || ""},{" "}
-                  {person.evaluator.evaluator_fname || ""}{" "}
-                  {person.evaluator.evaluator_mname || ""}
-                  )
+                  )}
+                  {/* ✅ evaluator_lname/fname/mname available if added to backend SELECT */}
+                  {person.evaluator.evaluator_lname && (
+                    <>
+                      {" "}
+                      ({person.evaluator.evaluator_lname},{" "}
+                      {person.evaluator.evaluator_fname}{" "}
+                      {person.evaluator.evaluator_mname})
+                    </>
+                  )}
                   <br />
                   Updated At:{" "}
                   {new Date(person.evaluator.created_at).toLocaleString()}
@@ -1421,44 +1294,13 @@ const OfficialRequirements = () => {
               )}
             </Box>
 
-            {/* Document Type, Remarks, and Document File */}
+            {/* Document Type and File Upload */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 4, mb: 2 }}>
-              {/* Document Type */}
-              {/* <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, }}>
-                  <Typography sx={{ fontSize: "14px", fontFamily: "Poppins, sans-serif", width: "90px" }}>
-                    Document Type:
-                  </Typography>
-                  <TextField
-                    select
-                    size="small"
-                    placeholder="Select Documents"
-                    value={selectedFiles.requirements_id || ''}
-                    onChange={(e) =>
-                      setSelectedFiles(prev => ({
-                        ...prev,
-                        requirements_id: e.target.value,
-                      }))
-                    }
-                    sx={{ width: 200 }} // match width
-                    InputProps={{ sx: { height: 38 } }} // match height
-                    inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
-                  >
-                    <MenuItem value="">
-                      <em>Select Documents</em>
-                    </MenuItem>
-                    <MenuItem value={1}>PSA Birth Certificate</MenuItem>
-                    <MenuItem value={2}>Form 138 (With at least 3rd Quarter posting / No failing grade)</MenuItem>
-                    <MenuItem value={3}>Certificate of Good Moral Character</MenuItem>
-                    <MenuItem value={4}>Certificate Belonging to Graduating Class</MenuItem>
-                  </TextField>
-                </Box> */}
-
-              {/* ---------------------------------------------------------------------- */}
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography
                   sx={{
                     fontSize: "14px",
-                    fontFamily: "Poppins, sans-serif",
+                    fontFamily: "Arial",
                     width: "90px",
                   }}
                 >
@@ -1485,58 +1327,14 @@ const OfficialRequirements = () => {
                   <MenuItem value="">
                     <em>Select Documents</em>
                   </MenuItem>
-                  {/* ✅ Dynamically map requirements from DB */}
                   {requirements.map((req) => (
                     <MenuItem key={req.id} value={req.id}>
                       {req.description}
-                      {req.is_optional === 1 && (
-                        <span
-                          style={{
-                            color: "#999",
-                            fontStyle: "italic",
-                            marginLeft: 6,
-                          }}
-                        >
-                          (Optional)
-                        </span>
-                      )}
                     </MenuItem>
                   ))}
                 </TextField>
               </Box>
-              {/* ---------------------------------------------------------------------- */}
-              {/*
-                Remarks
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography sx={{ fontSize: "14px", fontFamily: "Poppins, sans-serif", width: "80px" }}>
-                    Remarks
-                  </Typography>
-                  <TextField
-                    select
-                    size="small"
-                    placeholder="Select Remarks"
-                    value={selectedFiles.remarks || ''}
-                    onChange={(e) =>
-                      setSelectedFiles(prev => ({
-                        ...prev,
-                        remarks: e.target.value,
-                      }))
-                    }
-                    sx={{ width: 250 }}
-                    InputProps={{ sx: { height: 38 } }}
-                    inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
-                  >
-                    <MenuItem value="">
-                      <em>Select Remarks</em>
-                    </MenuItem>
-                    {remarksOptions.map((option, index) => (
-                      <MenuItem key={index} value={option}>
-                        {option}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Box>
-*/}
+
               <Box
                 sx={{
                   display: "flex",
@@ -1548,7 +1346,7 @@ const OfficialRequirements = () => {
                 <Typography
                   sx={{
                     fontSize: "14px",
-                    fontFamily: "Poppins, sans-serif",
+                    fontFamily: "Arial",
                     width: "100px",
                     textAlign: "center",
                   }}
@@ -1556,7 +1354,6 @@ const OfficialRequirements = () => {
                   Document File:
                 </Typography>
 
-                {/* 📂 Gray Box Always Visible */}
                 <Box
                   sx={{
                     backgroundColor: "#e0e0e0",
@@ -1584,7 +1381,6 @@ const OfficialRequirements = () => {
                     : "No file selected"}
                 </Box>
 
-                {/* 📁 Browse Button */}
                 <Button
                   disabled
                   variant="contained"
@@ -1618,7 +1414,6 @@ const OfficialRequirements = () => {
                   }
                 />
 
-                {/* 🟢 Submit Button */}
                 <Button
                   variant="contained"
                   color="success"
@@ -1637,11 +1432,11 @@ const OfficialRequirements = () => {
             </Box>
           </Box>
 
-          {/* Right side: ID Photo */}
+          {/* Profile Image — uses Applicant1by1 (clinic version) */}
           {person.profile_img && (
             <Box
               sx={{
-                width: "2.10in", // standard 2×2 size
+                width: "2.10in",
                 height: "2.10in",
                 border: "1px solid #ccc",
                 overflow: "hidden",
@@ -1669,60 +1464,25 @@ const OfficialRequirements = () => {
               sx={{ backgroundColor: settings?.header_color || "#1976d2" }}
             >
               <TableRow>
-                <TableCell
-                  sx={{
-                    color: "white",
-                    textAlign: "Center",
-                    border: `1px solid ${borderColor}`,
-                  }}
-                >
-                  Document Type
-                </TableCell>
-                <TableCell
-                  sx={{
-                    color: "white",
-                    textAlign: "Center",
-                    border: `1px solid ${borderColor}`,
-                  }}
-                >
-                  Remarks
-                </TableCell>
-                <TableCell
-                  sx={{
-                    color: "white",
-                    textAlign: "Center",
-                    border: `1px solid ${borderColor}`,
-                  }}
-                >
-                  Status
-                </TableCell>
-                <TableCell
-                  sx={{
-                    color: "white",
-                    textAlign: "Center",
-                    border: `1px solid ${borderColor}`,
-                  }}
-                >
-                  Date and Time Submitted
-                </TableCell>
-                <TableCell
-                  sx={{
-                    color: "white",
-                    textAlign: "Center",
-                    border: `1px solid ${borderColor}`,
-                  }}
-                >
-                  User
-                </TableCell>
-                <TableCell
-                  sx={{
-                    color: "white",
-                    textAlign: "Center",
-                    border: `1px solid ${borderColor}`,
-                  }}
-                >
-                  Action
-                </TableCell>
+                {[
+                  "Document Type",
+                  "Remarks",
+                  "Status",
+                  "Date and Time Submitted",
+                  "User",
+                  "Action",
+                ].map((header) => (
+                  <TableCell
+                    key={header}
+                    sx={{
+                      color: "white",
+                      textAlign: "Center",
+                      border: `1px solid ${borderColor}`,
+                    }}
+                  >
+                    {header}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody
@@ -1741,7 +1501,6 @@ const OfficialRequirements = () => {
                   label: doc.description,
                   key: doc.short_label || doc.description.replace(/\s+/g, ""),
                   id: doc.id,
-                  is_optional: doc.is_optional,
                 }),
               )}
             </TableBody>
@@ -1762,6 +1521,7 @@ const OfficialRequirements = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
+
         {/* Confirmation Dialog */}
         <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
           <DialogTitle>
@@ -1776,7 +1536,7 @@ const OfficialRequirements = () => {
               </>
             ) : (
               <>
-                Are you sure you want to delete
+                Are you sure you want to delete{" "}
                 <strong>
                   {targetDoc?.label ||
                     targetDoc?.short_label ||
@@ -1807,4 +1567,4 @@ const OfficialRequirements = () => {
   );
 };
 
-export default OfficialRequirements;
+export default MedicalRequirements;

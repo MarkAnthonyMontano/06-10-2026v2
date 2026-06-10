@@ -74,7 +74,7 @@ const OfficialStudentDashboard5 = () => {
     const stepsData = [
         { label: "Student List", to: "/student_list_for_enrollment", icon: <SchoolIcon fontSize="large" /> },
         { label: "Student Profile", to: "/official_student_dashboard1", icon: <PersonIcon fontSize="large" /> },
-        { label: "Submitted Documents", to: "/student_official_requirements", icon: <AssignmentIcon fontSize="large" /> },
+        { label: "Student Online Requirements", to: "student_online_requirements_college", icon: <AssignmentIcon fontSize="large" /> },
         { label: "Course Tagging", to: "/course_tagging_for_college", icon: <UploadFileIcon fontSize="large" /> },
         { label: "Search COR", to: "/search_cor_for_college", icon: <MenuBookIcon fontSize="large" /> },
         { label: "Class List", to: "/class_roster_enrollment", icon: <PersonSearchIcon fontSize="large" /> },
@@ -1036,7 +1036,7 @@ const OfficialStudentDashboard5 = () => {
                                         });
 
                                         setTimeout(() => {
-                                            navigate("/requirements_uploader");
+                                            navigate("student_online_requirements_college");
                                         }, 2000);
                                     }}
                                 endIcon={

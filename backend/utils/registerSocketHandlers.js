@@ -3557,7 +3557,7 @@ WHERE proctor LIKE ?
 
   // UPDATE()
   app.get(
-    "/handle_section_of/:userID/:selectedCourse/:selectedActiveSchoolYear",
+    "/api/handle_section_of/:userID/:selectedCourse/:selectedActiveSchoolYear",
     async (req, res) => {
       const { userID, selectedCourse, selectedActiveSchoolYear } = req.params;
 
@@ -3665,7 +3665,7 @@ WHERE proctor LIKE ?
   );
 
   app.get(
-    "/enrolled_student_list/:userID/:selectedCourse/:department_section_id/:activeSchoolYear",
+    "/api/enrolled_student_list/:userID/:selectedCourse/:department_section_id/:activeSchoolYear",
     async (req, res) => {
       const {
         userID,
@@ -6623,7 +6623,7 @@ WHERE proctor LIKE ?
   });
 
   app.get(
-    "/program_evaluation/details/:student_number",
+    "/api/program_evaluation/details/:student_number",
     async (req, res) => {
       const { student_number } = req.params;
 

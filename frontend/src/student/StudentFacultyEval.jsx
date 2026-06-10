@@ -723,7 +723,7 @@ const StudentFacultyEvaluation = () => {
           <Typography>Do you want to submit your evaluation? Make sure everything is answered.</Typography>
         </DialogContent>
         <DialogActions sx={{ flexDirection: { xs: "column-reverse", sm: "row" }, gap: { xs: 1, sm: 0 }, px: 2, pb: 2 }}>
-          <Button variant="contained" color="error" fullWidth={isMobile} onClick={() => setSaveDialogOpen(false)}>
+          <Button color="error" variant="outlined" fullWidth={isMobile} onClick={() => setSaveDialogOpen(false)}>
             Cancel
           </Button>
           <Button

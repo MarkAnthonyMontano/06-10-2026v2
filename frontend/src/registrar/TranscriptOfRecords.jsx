@@ -245,8 +245,8 @@ const TOR = () => {
     ) {
       setCampusAddress(
         matchedBranch.address ||
-          matchedBranch.branch_address ||
-          matchedBranch.campus_address,
+        matchedBranch.branch_address ||
+        matchedBranch.campus_address,
       );
       return;
     }
@@ -271,7 +271,7 @@ const TOR = () => {
   const tabs = [
     { label: "Student List", to: "/student_list", icon: <SchoolIcon fontSize="large" /> },
     { label: "Student Profile", to: "/readmission_dashboard1", icon: <PersonIcon fontSize="large" /> },
-    { label: "Submitted Documents", to: "/submitted_documents", icon: <AssignmentIcon fontSize="large" /> },
+    { label: "Student Online Requirements Registrar", to: "student_online_requirements_college", icon: <AssignmentIcon fontSize="large" /> },
     { label: "Search Certificate of Registration", to: "/search_cor", icon: <ListAltIcon fontSize="large" /> },
     { label: "Report of Grades", to: "/report_of_grades", icon: <GradeIcon fontSize="large" /> },
     { label: "Transcript of Records", to: "/transcript_of_records", icon: <ReceiptLongIcon fontSize="large" /> },
@@ -989,7 +989,7 @@ const TOR = () => {
         </Table>
       </TableContainer>
       <br />
-       <br />
+      <br />
 
       <Box
         sx={{
@@ -1499,78 +1499,80 @@ const TOR = () => {
         className="page-container"
       >
         <Box
-          ref={divToPrintRef}
-          className="page"
-          style={{ minWidth: "215.9mm", minHeight: "356mm" }}
+          className="print-container"
+          style={{
+            backgroundColor: "#ffffff",
+            border: "1px solid #b8b8b8",
+            boxShadow: "0 6px 18px rgba(0, 0, 0, 0.14)",
+            boxSizing: "border-box",
+            minHeight: "297mm",
+            padding: "12mm",
+            margin: "-1rem auto 2rem",
+         
+          }}
+        
         >
-          {paginatedSubjects.map((pageGroups, pageIndex) => (
-            <Box
-              key={pageIndex}
-              className={`print-container print-container-${pageIndex + 1}`}
-              style={{
-                pageBreakAfter: "always",
-                breakAfter: "page",
-                paddingRight: "1.5rem",
-                marginTop: "3rem",
-                paddingBottom: "1.5rem",
-              }}
-            >
-              {/* Start Of Header */}
+          <Box
+             ref={divToPrintRef}
+            className="page"
+            style={{ minWidth: "215.9mm", minHeight: "356mm" }}
+          >
+            {paginatedSubjects.map((pageGroups, pageIndex) => (
               <Box
-                className="page-header"
+                key={pageIndex}
+                className={`print-container print-container-${pageIndex + 1}`}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  height: "10rem",
-                  width: "80rem",
-                  justifyContent: "center",
+                  pageBreakAfter: "always",
+                  breakAfter: "page",
+                  paddingRight: "1.5rem",
+                  marginTop: "3rem",
+                  paddingBottom: "1.5rem",
                 }}
               >
+                {/* Start Of Header */}
                 <Box
+                  className="page-header"
                   style={{
-                    paddingTop: "1.5rem",
-                    marginLeft: "-10rem",
-                    paddingRight: "3rem",
+                    display: "flex",
+                    alignItems: "center",
+                    height: "10rem",
+                    width: "80rem",
+                    justifyContent: "center",
                   }}
                 >
-                  <img
-                    src={fetchedLogo || EaristLogo} // use dynamic logo if available
-                    alt="Logo"
+                  <Box
                     style={{
-                      width: "8rem",
-                      height: "8rem",
-                      borderRadius: "50%",
+                      paddingTop: "1.5rem",
+                      marginLeft: "-10rem",
+                      paddingRight: "3rem",
                     }}
-                  />
-                </Box>
-                <Box style={{ marginTop: "1.5rem", textAlign: "center" }}>
-                  <div style={{ fontFamily: "Arial", fontSize: "13px" }}>
-                    Republic of the Philippines
-                  </div>
+                  >
+                    <img
+                      src={fetchedLogo || EaristLogo} // use dynamic logo if available
+                      alt="Logo"
+                      style={{
+                        width: "8rem",
+                        height: "8rem",
+                        borderRadius: "50%",
+                      }}
+                    />
+                  </Box>
+                  <Box style={{ marginTop: "1.5rem", textAlign: "center" }}>
+                    <div style={{ fontFamily: "Arial", fontSize: "13px" }}>
+                      Republic of the Philippines
+                    </div>
 
-                  {companyName &&
-                    (() => {
-                      const words = companyName.trim().split(" ");
-                      const middle = Math.ceil(words.length / 2);
-                      const firstLine = words.slice(0, middle).join(" ");
-                      const secondLine = words.slice(middle).join(" ");
-                      return (
-                        <>
-                          <Typography
-                            style={{
-                              marginTop: "0rem",
-                              lineHeight: "1",
-                              fontSize: "1.6rem",
-                              letterSpacing: "-1px",
-                              fontWeight: "600",
-                              fontFamily: "Times new roman",
-                            }}
-                          >
-                            {firstLine}
-                          </Typography>
-                          {secondLine && (
+                    {companyName &&
+                      (() => {
+                        const words = companyName.trim().split(" ");
+                        const middle = Math.ceil(words.length / 2);
+                        const firstLine = words.slice(0, middle).join(" ");
+                        const secondLine = words.slice(middle).join(" ");
+                        return (
+                          <>
                             <Typography
                               style={{
+                                marginTop: "0rem",
                                 lineHeight: "1",
                                 fontSize: "1.6rem",
                                 letterSpacing: "-1px",
@@ -1578,1590 +1580,1603 @@ const TOR = () => {
                                 fontFamily: "Times new roman",
                               }}
                             >
-                              {secondLine}
+                              {firstLine}
                             </Typography>
-                          )}
-                        </>
-                      );
-                    })()}
+                            {secondLine && (
+                              <Typography
+                                style={{
+                                  lineHeight: "1",
+                                  fontSize: "1.6rem",
+                                  letterSpacing: "-1px",
+                                  fontWeight: "600",
+                                  fontFamily: "Times new roman",
+                                }}
+                              >
+                                {secondLine}
+                              </Typography>
+                            )}
+                          </>
+                        );
+                      })()}
 
-                  <Typography style={{ fontFamily: "Arial", fontSize: "13px" }}>
-                    {campusAddress}
-                  </Typography>
+                    <Typography style={{ fontFamily: "Arial", fontSize: "13px" }}>
+                      {campusAddress}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-              <Typography
-                style={{
-                  height: "1.5rem",
-                  marginLeft: "1rem",
-                  textAlign: "center",
-                  width: "80rem",
-                  fontSize: "1.6rem",
-                  letterSpacing: "-1px",
-                  fontWeight: "500",
-                }}
-              >
-                OFFICE OF THE REGISTRAR
-              </Typography>
-              <Typography
-                style={{
-                  height: "2.5rem",
-                  marginLeft: "1rem",
-                  marginTop: "-0.5rem",
-                  width: "80rem",
-                  textAlign: "center",
-                  fontSize: "2.75rem",
-                  letterSpacing: "-1px",
-                  fontWeight: "600",
-                }}
-              >
-                OFFICIAL TRANSCRIPT OF RECORDS
-              </Typography>
-              <Box style={{ display: "flex", marginTop: "1rem" }}>
-                <Box>
-                  <Box
-                    style={{
-                      display: "flex",
-                      height: "17.5rem",
-                      marginLeft: "1rem",
-                      width: "80rem",
-                      borderBottom: "solid black 1px",
-                    }}
-                  >
+                <Typography
+                  style={{
+                    height: "1.5rem",
+                    marginLeft: "1rem",
+                    textAlign: "center",
+                    width: "80rem",
+                    fontSize: "1.6rem",
+                    letterSpacing: "-1px",
+                    fontWeight: "500",
+                  }}
+                >
+                  OFFICE OF THE REGISTRAR
+                </Typography>
+                <Typography
+                  style={{
+                    height: "2.5rem",
+                    marginLeft: "1rem",
+                    marginTop: "-0.5rem",
+                    width: "80rem",
+                    textAlign: "center",
+                    fontSize: "2.75rem",
+                    letterSpacing: "-1px",
+                    fontWeight: "600",
+                  }}
+                >
+                  OFFICIAL TRANSCRIPT OF RECORDS
+                </Typography>
+                <Box style={{ display: "flex", marginTop: "1rem" }}>
+                  <Box>
                     <Box
-                      sx={{
-                        padding: "1rem",
+                      style={{
+                        display: "flex",
+                        height: "17.5rem",
+                        marginLeft: "1rem",
                         width: "80rem",
+                        borderBottom: "solid black 1px",
                       }}
                     >
-                      <Box>
-                        <Box style={{ display: "flex", width: "40rem" }}>
-                          <Typography
-                            style={{
-                              width: "20rem",
-                              fontSize: "22px",
-                              letterSpacing: "-2px",
-                              wordSpacing: "14rem",
-                            }}
-                          >
-                            NAME :
-                          </Typography>
+                      <Box
+                        sx={{
+                          padding: "1rem",
+                          width: "80rem",
+                        }}
+                      >
+                        <Box>
+                          <Box style={{ display: "flex", width: "40rem" }}>
+                            <Typography
+                              style={{
+                                width: "20rem",
+                                fontSize: "22px",
+                                letterSpacing: "-2px",
+                                wordSpacing: "14rem",
+                              }}
+                            >
+                              NAME :
+                            </Typography>
 
-                          <Typography
-                            style={{
-                              display: "flex",
-                              fontSize: "24px",
-                              fontWeight: "600",
-                              letterSpacing: "-1.5px",
-                              wordSpacing: "3px",
-                              alignItems: "center",
-                              height: "36px",
-                            }}
-                          >
-                            {studentData && studentData.last_name
-                              ? `${studentData.last_name?.toUpperCase()}, ${studentData.first_name?.toUpperCase()}`
-                              : ""}
-                          </Typography>
-                        </Box>
-                        <Box style={{ display: "flex", marginTop: "-6px" }}>
-                          <Typography
-                            style={{
-                              display: "flex",
-                              width: "17.8rem",
-                              height: "20px",
-                              alignItems: "center",
-                              fontSize: "22px",
-                              letterSpacing: "-1px",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>DATE OF BIRTH</span>
-                            <span>:</span>
-                          </Typography>
-                          <Typography
-                            style={{
-                              fontSize: "21px",
-                              marginTop: "-5px",
-                              marginLeft: "2.3rem",
-                              fontWeight: "400",
-                              letterSpacing: "-1px",
-                              wordSpacing: "3px",
-                            }}
-                          >
-                            {formattedDate(studentData.birthOfDate)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Box>
-                        <Box
-                          style={{
-                            display: "flex",
-                            width: "62rem",
-                            marginTop: "0.6rem",
-                          }}
-                        >
-                          <Typography
-                            style={{
-                              display: "flex",
-                              width: "17.8rem",
-                              height: "20px",
-                              alignItems: "center",
-                              fontSize: "22px",
-                              letterSpacing: "-2.3px",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>ADMISSION CREDENTIALS</span>
-                            <span>:</span>
-                          </Typography>
-                          {studentData && studentData.requirements && (
+                            <Typography
+                              style={{
+                                display: "flex",
+                                fontSize: "24px",
+                                fontWeight: "600",
+                                letterSpacing: "-1.5px",
+                                wordSpacing: "3px",
+                                alignItems: "center",
+                                height: "36px",
+                              }}
+                            >
+                              {studentData && studentData.last_name
+                                ? `${studentData.last_name?.toUpperCase()}, ${studentData.first_name?.toUpperCase()}`
+                                : ""}
+                            </Typography>
+                          </Box>
+                          <Box style={{ display: "flex", marginTop: "-6px" }}>
+                            <Typography
+                              style={{
+                                display: "flex",
+                                width: "17.8rem",
+                                height: "20px",
+                                alignItems: "center",
+                                fontSize: "22px",
+                                letterSpacing: "-1px",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span>DATE OF BIRTH</span>
+                              <span>:</span>
+                            </Typography>
                             <Typography
                               style={{
                                 fontSize: "21px",
                                 marginTop: "-5px",
-                                height: "30px",
                                 marginLeft: "2.3rem",
                                 fontWeight: "400",
-                                letterSpacing: "-2px",
-                                wordSpacing: "1px",
+                                letterSpacing: "-1px",
+                                wordSpacing: "3px",
                               }}
                             >
-                              {studentData.requirements
-                                .map((reqId) =>
-                                  reqId === 0
-                                    ? "No Document"
-                                    : reqId === 1
-                                      ? "F138"
-                                      : reqId === 2
-                                        ? "Certificate Of Good Moral Character"
-                                        : reqId === 3
-                                          ? "NSO Birth Certificate"
-                                          : reqId === 4
-                                            ? "F137"
-                                            : "",
-                                )
-                                .join("/")}
+                              {formattedDate(studentData.birthOfDate)}
                             </Typography>
-                          )}
+                          </Box>
                         </Box>
-                        <Box style={{ display: "flex", marginTop: "-1px" }}>
-                          <Typography
+                        <Box>
+                          <Box
                             style={{
                               display: "flex",
-                              width: "17.8rem",
-                              height: "20px",
-                              alignItems: "center",
-                              fontSize: "22px",
-                              letterSpacing: "-2.3px",
-                              justifyContent: "space-between",
+                              width: "62rem",
+                              marginTop: "0.6rem",
                             }}
                           >
-                            <span style={{ wordSpacing: "2px" }}>
-                              LAST SCHOOL ATTENDED
-                            </span>
-                            <span>:</span>
-                          </Typography>
-                          <Typography
-                            style={{
-                              fontSize: "22px",
-                              marginTop: "-5px",
-                              marginLeft: "2.3rem",
-                              fontWeight: "400",
-                              letterSpacing: "-1.5px",
-                              wordSpacing: "5px",
-                            }}
-                          >
-                            {studentData.schoolLastAttended}
-                          </Typography>
+                            <Typography
+                              style={{
+                                display: "flex",
+                                width: "17.8rem",
+                                height: "20px",
+                                alignItems: "center",
+                                fontSize: "22px",
+                                letterSpacing: "-2.3px",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span>ADMISSION CREDENTIALS</span>
+                              <span>:</span>
+                            </Typography>
+                            {studentData && studentData.requirements && (
+                              <Typography
+                                style={{
+                                  fontSize: "21px",
+                                  marginTop: "-5px",
+                                  height: "30px",
+                                  marginLeft: "2.3rem",
+                                  fontWeight: "400",
+                                  letterSpacing: "-2px",
+                                  wordSpacing: "1px",
+                                }}
+                              >
+                                {studentData.requirements
+                                  .map((reqId) =>
+                                    reqId === 0
+                                      ? "No Document"
+                                      : reqId === 1
+                                        ? "F138"
+                                        : reqId === 2
+                                          ? "Certificate Of Good Moral Character"
+                                          : reqId === 3
+                                            ? "NSO Birth Certificate"
+                                            : reqId === 4
+                                              ? "F137"
+                                              : "",
+                                  )
+                                  .join("/")}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box style={{ display: "flex", marginTop: "-1px" }}>
+                            <Typography
+                              style={{
+                                display: "flex",
+                                width: "17.8rem",
+                                height: "20px",
+                                alignItems: "center",
+                                fontSize: "22px",
+                                letterSpacing: "-2.3px",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span style={{ wordSpacing: "2px" }}>
+                                LAST SCHOOL ATTENDED
+                              </span>
+                              <span>:</span>
+                            </Typography>
+                            <Typography
+                              style={{
+                                fontSize: "22px",
+                                marginTop: "-5px",
+                                marginLeft: "2.3rem",
+                                fontWeight: "400",
+                                letterSpacing: "-1.5px",
+                                wordSpacing: "5px",
+                              }}
+                            >
+                              {studentData.schoolLastAttended}
+                            </Typography>
+                          </Box>
+                          <Box style={{ display: "flex", marginTop: "-3px" }}>
+                            <Typography
+                              style={{
+                                display: "flex",
+                                width: "17.8rem",
+                                height: "30px",
+                                alignItems: "center",
+                                fontSize: "22px",
+                                letterSpacing: "-2.3px",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span style={{ wordSpacing: "3px" }}>
+                                DATE GRADUATED
+                              </span>
+                              <span>:</span>
+                            </Typography>
+                            <Typography
+                              style={{
+                                fontSize: "22px",
+                                marginTop: "-1px",
+                                marginLeft: "2.3rem",
+                                fontWeight: "400",
+                                letterSpacing: "-1.5px",
+                                wordSpacing: "5px",
+                              }}
+                            >
+                              {studentData.previous_year} -{" "}
+                              {studentData.yearGraduated}
+                            </Typography>
+                          </Box>
                         </Box>
-                        <Box style={{ display: "flex", marginTop: "-3px" }}>
-                          <Typography
+                        <Box>
+                          <Box
                             style={{
                               display: "flex",
-                              width: "17.8rem",
-                              height: "30px",
-                              alignItems: "center",
-                              fontSize: "22px",
-                              letterSpacing: "-2.3px",
-                              justifyContent: "space-between",
+                              width: "38rem",
+                              marginTop: "0.9rem",
                             }}
                           >
-                            <span style={{ wordSpacing: "3px" }}>
-                              DATE GRADUATED
-                            </span>
-                            <span>:</span>
-                          </Typography>
-                          <Typography
-                            style={{
-                              fontSize: "22px",
-                              marginTop: "-1px",
-                              marginLeft: "2.3rem",
-                              fontWeight: "400",
-                              letterSpacing: "-1.5px",
-                              wordSpacing: "5px",
-                            }}
-                          >
-                            {studentData.previous_year} -{" "}
-                            {studentData.yearGraduated}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Box>
-                        <Box
-                          style={{
-                            display: "flex",
-                            width: "38rem",
-                            marginTop: "0.9rem",
-                          }}
-                        >
-                          <Typography
-                            style={{
-                              display: "flex",
-                              width: "17.8rem",
-                              height: "20px",
-                              alignItems: "center",
-                              fontSize: "22px",
-                              letterSpacing: "-1px",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>STUDENT NUMBER</span>
-                            <span>:</span>
-                          </Typography>
+                            <Typography
+                              style={{
+                                display: "flex",
+                                width: "17.8rem",
+                                height: "20px",
+                                alignItems: "center",
+                                fontSize: "22px",
+                                letterSpacing: "-1px",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span>STUDENT NUMBER</span>
+                              <span>:</span>
+                            </Typography>
 
-                          <Typography
-                            style={{
-                              fontSize: "21px",
-                              marginTop: "-5px",
-                              marginLeft: "2.3rem",
-                              fontWeight: "500",
-                              letterSpacing: "-1px",
-                              wordSpacing: "3px",
-                              height: "30px",
-                            }}
-                          >
-                            {studentData.student_number}
-                          </Typography>
-                        </Box>
-                        <Box style={{ display: "flex" }}>
-                          <Typography
-                            style={{
-                              display: "flex",
-                              width: "17.8rem",
-                              height: "20px",
-                              alignItems: "center",
-                              fontSize: "22px",
-                              letterSpacing: "-1px",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>DEGREE/TITLE EARNED</span>
-                            <span>:</span>
-                          </Typography>
-                          <Typography
-                            style={{
-                              fontSize: "22px",
-                              marginLeft: "2.3rem",
-                              marginTop: "-5.5px",
-                              fontWeight: "500",
-                              letterSpacing: "-1.5px",
-                              wordSpacing: "5px",
-                              height: "30px",
-                            }}
-                          >
-                            {studentData && studentData.program_description
-                              ? `${studentData.program_description?.toUpperCase()}`
-                              : ""}
-                          </Typography>
-                        </Box>
-                        <Box style={{ display: "flex", marginTop: "1px" }}>
-                          <Typography
-                            style={{
-                              display: "flex",
-                              width: "17.8rem",
-                              height: "20px",
-                              alignItems: "center",
-                              fontSize: "22px",
-                              letterSpacing: "-1.5px",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>MAJOR</span>
-                            <span>:</span>
-                          </Typography>
-                          <Typography
-                            style={{
-                              fontSize: "22px",
-                              marginTop: "-5px",
-                              marginLeft: "2.3rem",
-                              fontWeight: "500",
-                              letterSpacing: "-1.5px",
-                              wordSpacing: "5px",
-                              height: "30px",
-                            }}
-                          >
-                            {studentData && studentData.major
-                              ? `${studentData.major?.toUpperCase()}`
-                              : ""}
-                          </Typography>
-                        </Box>
-                        <Box style={{ display: "flex", marginTop: "1px" }}>
-                          <Typography
-                            style={{
-                              display: "flex",
-                              width: "17.8rem",
-                              height: "20px",
-                              alignItems: "center",
-                              fontSize: "22px",
-                              letterSpacing: "-2px",
-                              justifyContent: "space-between",
-                              wordSpacing: "4px",
-                            }}
-                          >
-                            <span>DATE OF GRADUATION</span>
-                            <span>:</span>
-                          </Typography>
-                          <Typography
-                            style={{
-                              fontSize: "22px",
-                              marginTop: "-5px",
-                              marginLeft: "2.3rem",
-                              fontWeight: "500",
-                              letterSpacing: "-1.5px",
-                              wordSpacing: "5px",
-                            }}
-                          ></Typography>
-                        </Box>
-                      </Box>
-                    </Box>
-                    <Box
-                      style={{ marginLeft: "-12.6rem", marginTop: "1.3rem" }}
-                    >
-                      {!studentData?.profile_image ? (
-                        <Avatar
-                          sx={{
-                            width: 225,
-                            height: 225,
-                            mx: "auto",
-                            border: "1px solid black",
-                            color: "maroon",
-                            bgcolor: "transparent",
-                          }}
-                          variant="square"
-                        />
-                      ) : (
-                        <Avatar
-                          src={`${API_BASE_URL}/uploads/Student1by1/${studentData.profile_image}`}
-                          sx={{
-                            width: 225,
-                            height: 225,
-                            mx: "auto",
-                            border: "1px solid black"
-                          }}
-                          variant="square"
-                        />
-                      )}
-                    </Box>
-                  </Box>
-                  {/* End of Header */}
-                  {/* Start of Main Content */}
-                  <Box
-                    style={{
-                      display: "flex",
-                      marginLeft: "1rem",
-                      marginTop: "0.5rem",
-                      flexWrap: "wrap",
-                      width: "80rem",
-                      borderTop: "solid black 1px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <Box
-                      style={{
-                        flex: "0 0 50%",
-                        marginBottom: "1rem",
-                        boxSizing: "border-box",
-                      }}
-                    >
-                      <table
-                        className="table"
-                        style={{
-                          height: "auto",
-                          minHeight: 0,
-                          borderCollapse: "collapse",
-                        }}
-                      >
-                        <thead>
-                          <tr
-                            style={{
-                              display: "flex",
-                              height: "65px",
-                              borderBottom: "solid 1px black",
-                            }}
-                          >
-                            <td
+                            <Typography
                               style={{
-                                fontWeight: "600",
-                                fontSize: "20px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                letterSpacing: "0.8px",
-                                width: "13rem",
-                              }}
-                            >
-                              <span>TERM</span>
-                            </td>
-                            <td
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: "38rem",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "600",
-                                  fontSize: "20px",
-                                  textAlign: "center",
-                                  letterSpacing: "-1px",
-                                  width: "28rem",
-                                }}
-                              >
-                                SUBJECTS
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "600",
-                                  fontSize: "20px",
-                                  textAlign: "center",
-                                  letterSpacing: "-1px",
-                                  width: "28rem",
-                                  wordSpacing: "3px",
-                                }}
-                              >
-                                CODE NUMBER WITH DESCRIPTIVE TITLE
-                              </div>
-                            </td>
-                            <td>
-                              <div
-                                style={{
-                                  fontWeight: "600",
-                                  textAlign: "center",
-                                  fontSize: "20px",
-                                  letterSpacing: "-1px",
-                                  width: "13rem",
-                                }}
-                              >
-                                <span style={{ marginLeft: "-1.6rem" }}>
-                                  GRADES
-                                </span>
-                              </div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontWeight: "600",
-                                    fontSize: "20px",
-                                    textAlign: "center",
-                                    letterSpacing: "-1px",
-                                    width: "6rem",
-                                  }}
-                                >
-                                  <span>FINAL</span>
-                                </div>
-                                <div
-                                  style={{
-                                    textAlign: "center",
-                                    fontWeight: "600",
-                                    fontSize: "20px",
-                                    marginLeft: "-2rem",
-                                    letterSpacing: "-1px",
-                                    width: "7rem",
-                                  }}
-                                >
-                                  <span>RE-EXAM</span>
-                                </div>
-                              </div>
-                            </td>
-                            <td
-                              style={{
-                                fontWeight: "600",
-                                display: "flex",
-                                fontSize: "20px",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                letterSpacing: "-1px",
-                                width: "7rem",
-                              }}
-                            >
-                              <span>CREDITS</span>
-                            </td>
-                            <td
-                              style={{
-                                fontWeight: "600",
-                                display: "flex",
-                                fontSize: "20px",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                letterSpacing: "-1px",
-                                width: "8.9rem",
-                              }}
-                            >
-                              <span>REMARKS</span>
-                            </td>
-                          </tr>
-                        </thead>
-                        <tbody
-                          style={{ maxWidth: "650px", overflowY: "hidden" }}
-                        >
-                          <tr>
-                            <td
-                              style={{
+                                fontSize: "21px",
+                                marginTop: "-5px",
+                                marginLeft: "2.3rem",
                                 fontWeight: "500",
-                                textUnderlineOffset: "3px",
-                                textDecoration: "underline",
                                 letterSpacing: "-1px",
-                                paddingLeft: "1.5rem",
-                                fontSize: "20px",
+                                wordSpacing: "3px",
+                                height: "30px",
+                              }}
+                            >
+                              {studentData.student_number}
+                            </Typography>
+                          </Box>
+                          <Box style={{ display: "flex" }}>
+                            <Typography
+                              style={{
+                                display: "flex",
+                                width: "17.8rem",
+                                height: "20px",
+                                alignItems: "center",
+                                fontSize: "22px",
+                                letterSpacing: "-1px",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span>DEGREE/TITLE EARNED</span>
+                              <span>:</span>
+                            </Typography>
+                            <Typography
+                              style={{
+                                fontSize: "22px",
+                                marginLeft: "2.3rem",
+                                marginTop: "-5.5px",
+                                fontWeight: "500",
+                                letterSpacing: "-1.5px",
+                                wordSpacing: "5px",
+                                height: "30px",
                               }}
                             >
                               {studentData && studentData.program_description
                                 ? `${studentData.program_description?.toUpperCase()}`
                                 : ""}
-                            </td>
-                          </tr>
-
-                          {pageGroups.map((group, groupIndex) => {
-                            const compactTermLabel =
-                              pageIndex === paginatedSubjects.length - 1 &&
-                              groupIndex === pageGroups.length - 1 &&
-                              group.subjects.length <= 6;
-
-                            return (
-                            <React.Fragment key={group.termKey}>
-                              {group.subjects.map((p, index) => {
-                                const isCompactTermRow =
-                                  compactTermLabel && index === 0;
-
-                                return (
-                                <tr
-                                  style={{
-                                    display: "flex",
-                                    alignItems: isCompactTermRow
-                                      ? "center"
-                                      : "flex-start",
-                                    lineHeight: "22px",
-                                    minHeight: isCompactTermRow
-                                      ? "38px"
-                                      : "22px",
-                                  }}
-                                  key={p.enrolled_id}
-                                >
-                                  <td
-                                    style={{
-                                      width: "13rem",
-                                      fontWeight: "400",
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      justifyContent: compactTermLabel
-                                        ? "center"
-                                        : "center",
-                                      alignItems: "flex-start",
-                                      position: "relative",
-                                      lineHeight: compactTermLabel ? "18px" : "22px",
-                                      paddingTop: index === 0 ? "0" : "0",
-                                    }}
-                                  >
-                                    {!group.isContinuation && index === 0 && (
-                                      <>
-                                        <span
-                                          style={{
-                                            fontSize: compactTermLabel
-                                              ? "17px"
-                                              : "18px",
-                                            textAlign: "center",
-                                            width: "14rem",
-                                            fontWeight: "500",
-                                            lineHeight: compactTermLabel ? "18px" : "22px",
-                                          }}
-                                        >
-                                          {convertSemester(
-                                            p.semester_description,
-                                          )}
-                                        </span>
-                                        <span
-                                          style={{
-                                            fontSize: compactTermLabel
-                                              ? "16px"
-                                              : "17px",
-                                            marginTop: compactTermLabel ? 0 : "3rem",
-                                            position: compactTermLabel
-                                              ? "static"
-                                              : "absolute",
-                                            textAlign: "center",
-                                            width: "13.5rem",
-                                            fontWeight: "500",
-                                            lineHeight: compactTermLabel ? "18px" : "22px",
-                                          }}
-                                        >
-                                          {p.current_year} - {p.next_year}
-                                        </span>
-                                      </>
-                                    )}
-                                  </td>
-                                  <td
-                                    style={{
-                                      display: "flex",
-                                      alignItems: isCompactTermRow
-                                        ? "center"
-                                        : "flex-start",
-                                      width: "38rem",
-                                      lineHeight: "22px",
-                                      padding: 0,
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        width: "9.5rem",
-                                        flex: "0 0 9.5rem",
-                                        margin: "0",
-                                        padding: "0",
-                                        fontSize: "18px",
-                                        lineHeight: "22px",
-                                        letterSpacing: "-0.5px",
-                                        whiteSpace: "normal",
-                                      }}
-                                    >
-                                      {p.course_code}
-                                    </span>
-                                    <span
-                                      style={{
-                                        flex: "1 1 auto",
-                                        marginLeft: 0,
-                                        padding: "0",
-                                        fontSize: "18px",
-                                        lineHeight: "22px",
-                                        letterSpacing: "-0.5px",
-                                      }}
-                                    >
-                                      {p.course_description
-                                        ? p.course_description?.toUpperCase()
-                                        : ""}
-                                      &nbsp;
-                                      {p.component === 1
-                                        ? "CWTS"
-                                        : p.component === 2
-                                          ? "LTS"
-                                          : p.component === 3
-                                            ? "MTS"
-                                            : ""}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        minHeight: isCompactTermRow
-                                          ? "38px"
-                                          : "22px",
-                                        lineHeight: "22px",
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          fontSize: "18px",
-                                          width: "6rem",
-                                          textAlign: "center",
-                                          lineHeight: "22px",
-                                        }}
-                                      >
-                                        <span>
-                                          {handleGradeConversion(
-                                            p.final_grade || p.numeric_grade,
-                                          )}
-                                        </span>
-                                      </div>
-                                      <div
-                                        style={{
-                                          fontSize: "18px",
-                                          textAlign: "center",
-                                          width: "7rem",
-                                          marginLeft: "-2rem",
-                                          lineHeight: "22px",
-                                        }}
-                                      >
-                                        <span></span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        fontSize: "18px",
-                                        alignItems: "center",
-                                        minHeight: isCompactTermRow
-                                          ? "38px"
-                                          : "22px",
-                                        width: "7rem",
-                                        marginLeft: "1.7rem",
-                                        justifyContent: "center",
-                                        lineHeight: "22px",
-                                      }}
-                                    >
-                                      {totalUnitPerSubject(
-                                        p.course_unit,
-                                        p.lab_unit,
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        minHeight: isCompactTermRow
-                                          ? "38px"
-                                          : "22px",
-                                        width: "8.9rem",
-                                        fontSize: "18px",
-                                        justifyContent: "center",
-                                        lineHeight: "22px",
-                                      }}
-                                    >
-                                      {p.en_remarks === 0
-                                        ? "Ongoing"
-                                        : p.en_remarks === 1
-                                          ? "Passed"
-                                          : p.en_remarks === 2
-                                            ? "Failed"
-                                            : p.en_remarks === 3
-                                              ? "Incomplete"
-                                              : p.en_remarks === 4
-                                                ? "Dropped"
-                                                : ""}
-                                    </div>
-                                  </td>
-                                </tr>
-                                );
-                              })}
-                            </React.Fragment>
-                            );
-                          })}
-
-                          <tr
-                            style={{
-                              display: "flex",
-                              height: "auto",
-                              lineHeight: 1,
+                            </Typography>
+                          </Box>
+                          <Box style={{ display: "flex", marginTop: "1px" }}>
+                            <Typography
+                              style={{
+                                display: "flex",
+                                width: "17.8rem",
+                                height: "20px",
+                                alignItems: "center",
+                                fontSize: "22px",
+                                letterSpacing: "-1.5px",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span>MAJOR</span>
+                              <span>:</span>
+                            </Typography>
+                            <Typography
+                              style={{
+                                fontSize: "22px",
+                                marginTop: "-5px",
+                                marginLeft: "2.3rem",
+                                fontWeight: "500",
+                                letterSpacing: "-1.5px",
+                                wordSpacing: "5px",
+                                height: "30px",
+                              }}
+                            >
+                              {studentData && studentData.major
+                                ? `${studentData.major?.toUpperCase()}`
+                                : ""}
+                            </Typography>
+                          </Box>
+                          <Box style={{ display: "flex", marginTop: "1px" }}>
+                            <Typography
+                              style={{
+                                display: "flex",
+                                width: "17.8rem",
+                                height: "20px",
+                                alignItems: "center",
+                                fontSize: "22px",
+                                letterSpacing: "-2px",
+                                justifyContent: "space-between",
+                                wordSpacing: "4px",
+                              }}
+                            >
+                              <span>DATE OF GRADUATION</span>
+                              <span>:</span>
+                            </Typography>
+                            <Typography
+                              style={{
+                                fontSize: "22px",
+                                marginTop: "-5px",
+                                marginLeft: "2.3rem",
+                                fontWeight: "500",
+                                letterSpacing: "-1.5px",
+                                wordSpacing: "5px",
+                              }}
+                            ></Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                      <Box
+                        style={{ marginLeft: "-12.6rem", marginTop: "1.3rem" }}
+                      >
+                        {!studentData?.profile_image ? (
+                          <Avatar
+                            sx={{
+                              width: 225,
+                              height: 225,
+                              mx: "auto",
+                              border: "1px solid black",
+                              color: "maroon",
+                              bgcolor: "transparent",
                             }}
-                          >
-                            {pageIndex === paginatedSubjects.length - 1 ? (
-                              <td
-                                className="table-cell-padding"
-                                style={{
-                                  textAlign: "center",
-                                  width: "79.9rem",
-                                  padding: "1px 0 0",
-                                  lineHeight: 1,
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    display: "block",
-                                    fontSize: "17px",
-                                    fontWeight: "600",
-                                    lineHeight: 1,
-                                    whiteSpace: "nowrap",
-                                    width: "100%",
-                                    overflow: "hidden",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      fontSize: "14px",
-                                      marginRight: "2px",
-                                    }}
-                                  >
-                                    {"earist".repeat(13)} xxx{" "}
-                                  </span>
-                                  NOTHING FOLLOWS
-                                  <span
-                                    style={{
-                                      fontSize: "14px",
-                                      marginLeft: "2px",
-                                    }}
-                                  >
-                                    {" "}
-                                    xxx {"earist".repeat(13)}
-                                  </span>
-                                </span>
-                              </td>
-                            ) : (
-                              <td
-                                style={{
-                                  textAlign: "center",
-                                  borderTop: "dashed 1px black",
-                                  width: "79.9rem",
-                                  padding: "1px 0 0",
-                                  lineHeight: 1,
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontSize: "17px",
-                                    fontWeight: "600",
-                                  }}
-                                >
-                                  - continue on next page -
-                                </span>
-                              </td>
-                            )}
-                          </tr>
-                        </tbody>
-                      </table>
+                            variant="square"
+                          />
+                        ) : (
+                          <Avatar
+                            src={`${API_BASE_URL}/uploads/Student1by1/${studentData.profile_image}`}
+                            sx={{
+                              width: 225,
+                              height: 225,
+                              mx: "auto",
+                              border: "1px solid black"
+                            }}
+                            variant="square"
+                          />
+                        )}
+                      </Box>
                     </Box>
-                  </Box>
-                  {/* End of Main Content */}
-                  {/* Start Of Footer */}
-                  <Box
-                    className="page-footer"
-                    style={{
-                      display: "flex",
-                      marginLeft: "1rem",
-                      marginTop: "-1rem",
-                      flexWrap: "wrap",
-                    }}
-                  >
+                    {/* End of Header */}
+                    {/* Start of Main Content */}
                     <Box
                       style={{
-                        flex: "0 0 50%",
-                        marginBottom: "1rem",
-                        boxSizing: "border-box",
+                        display: "flex",
+                        marginLeft: "1rem",
+                        marginTop: "0.5rem",
+                        flexWrap: "wrap",
+                        width: "80rem",
+                        borderTop: "solid black 1px",
+                        overflow: "hidden",
                       }}
                     >
-                      <table>
-                        <thead>
-                          <tr
-                            className="grading_sytse_tble"
-                            style={{
-                              display: "flex",
-                              height: "145px",
-                              borderTop: "solid 1px black",
-                            }}
-                          >
-                            <td
-                              style={{
-                                fontWeight: "400",
-                                fontSize: "18px",
-                                display: "flex",
-                                alignItems: "start",
-                                justifyContent: "center",
-                                letterSpacing: "-1px",
-                                width: "13rem",
-                              }}
-                            >
-                              <span>GRADING SYSTEM</span>
-                            </td>
-                            <td
+                      <Box
+                        style={{
+                          flex: "0 0 50%",
+                          marginBottom: "1rem",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <table
+                          className="table"
+                          style={{
+                            height: "auto",
+                            minHeight: 0,
+                            borderCollapse: "collapse",
+                          }}
+                        >
+                          <thead>
+                            <tr
                               style={{
                                 display: "flex",
-                                flexDirection: "column",
-                                alignItems: "start",
-                                width: "4.5rem",
+                                height: "65px",
+                                borderBottom: "solid 1px black",
                               }}
                             >
-                              <div
+                              <td
                                 style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "0px",
-                                  paddingTop: "3px",
-                                }}
-                              >
-                                1.00
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "0px",
-                                }}
-                              >
-                                1.25
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "0px",
-                                }}
-                              >
-                                1.50
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "0px",
-                                }}
-                              >
-                                1.75
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                2.00
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                2.25
-                              </div>
-                            </td>
-                            <td
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "start",
-                                width: "6.5rem",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                  paddingTop: "3px",
-                                }}
-                              >
-                                (97-100)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                (94-96)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                (91-93)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                (88-90)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                (85-87)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                (82-84)
-                              </div>
-                            </td>
-                            <td
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "start",
-                                width: "15.5rem",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                  paddingTop: "3px",
-                                }}
-                              >
-                                Marked Excellence
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Excellent
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Very Superior
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Superior
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Very Good
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Good
-                              </div>
-                            </td>
-                            <td
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "start",
-                                width: "4.5rem",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                  paddingTop: "3px",
-                                }}
-                              >
-                                2.50
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                2.75
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                3.00
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                5.00
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                INC
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                DRP
-                              </div>
-                            </td>
-                            <td
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "start",
-                                width: "14rem",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                  paddingTop: "3px",
-                                }}
-                              >
-                                (79-81)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                (76-78)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-2px",
-                                }}
-                              >
-                                (75)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1.5px",
-                                }}
-                              >
-                                (Below 75)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1.5px",
-                                }}
-                              >
-                                (Incomplete)
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1.5px",
-                                }}
-                              >
-                                (Dropped Officially/Unofficialy)
-                              </div>
-                            </td>
-                            <td
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "start",
-                                width: "22rem",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                  paddingTop: "3px",
-                                }}
-                              >
-                                Satisfactory
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Fair
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Passed
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Failed
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Incomplete
-                              </div>
-                              <div
-                                style={{
-                                  margin: "-1px",
-                                  fontWeight: "400",
-                                  fontSize: "16px",
-                                  letterSpacing: "-1px",
-                                }}
-                              >
-                                Dropped
-                              </div>
-                            </td>
-                          </tr>
-                          <tr
-                            style={{
-                              display: "flex",
-                              paddingLeft: "2rem",
-                              height: "35px",
-                              borderBottom: "solid 1px black",
-                            }}
-                          >
-                            <td>
-                              <span style={{ fontSize: "18px" }}>
-                                CREDITS, O
-                              </span>
-                              <span>
-                                ne college units is at least (17) full hours of
-                                instruction in academic or professional subject
-                                within a semester.
-                              </span>
-                            </td>
-                          </tr>
-                          <tr
-                            style={{
-                              display: "flex",
-                              paddingLeft: "2rem",
-                              height: "65px",
-                              borderBottom: "solid 1px black",
-                            }}
-                          >
-                            <td style={{ marginTop: "8px" }}>
-                              <span
-                                style={{
-                                  fontSize: "18px",
-                                  marginRight: "8px",
-                                  letterSpacing: "-0.8px",
-                                  wordSpacing: "1px",
-                                }}
-                              >
-                                {companyName?.toUpperCase()}
-                              </span>
-                              <span
-                                style={{
-                                  letterSpacing: "-0.8px",
-                                  fontSize: "17px",
-                                  wordSpacing: "1px",
-                                }}
-                              >
-                                is a State College; hence, a SPECIAL ORDER is
-                                not issued to its graduates. The <br />
-                                issuance of the Official Transcript of Records
-                                and Diploma is a sufficient proof for
-                                Graduation.
-                              </span>
-                            </td>
-                          </tr>
-                          <tr
-                            style={{
-                              display: "flex",
-                              paddingLeft: "1rem",
-                              marginTop: "0.3rem",
-                              height: "65px",
-                              borderTop: "solid 1px black",
-                              borderBottom: "solid 1px black",
-                            }}
-                          >
-                            <td style={{ marginTop: "8px" }}>
-                              <span
-                                style={{
-                                  fontSize: "18px",
                                   fontWeight: "600",
-                                  marginRight: "8px",
-                                  letterSpacing: "-0.8px",
-                                  wordSpacing: "1px",
+                                  fontSize: "20px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  letterSpacing: "0.8px",
+                                  width: "13rem",
                                 }}
                               >
-                                REMARKS:
-                              </span>
-                            </td>
-                          </tr>
-                          <tr
-                            style={{
-                              display: "flex",
-                              paddingLeft: "1rem",
-                              marginTop: "0.3rem",
-                              height: "35px",
-                            }}
-                          >
-                            <td style={{ marginTop: "3px" }}>
-                              <span
-                                style={{
-                                  fontSize: "18px",
-                                  fontWeight: "400",
-                                  marginRight: "2.4rem",
-                                  letterSpacing: "-0.8px",
-                                  wordSpacing: "1px",
-                                }}
-                              >
-                                DATE ISSUED:
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: "18px",
-                                  letterSpacing: "-1px",
-                                  wordSpacing: "3px",
-                                }}
-                              >
-                                {todayDate}
-                              </span>
-                            </td>
-                          </tr>
-                          <tr
-                            className="no-border"
-                            style={{
-                              display: "flex",
-                              paddingLeft: "1rem",
-                              marginTop: "0.3rem",
-                              height: "9rem",
-                              borderBottom: "solid black 1px",
-                            }}
-                          >
-                            <td style={{ marginTop: "3px", width: "17rem" }}>
-                              <div>
-                                <span
-                                  style={{
-                                    fontSize: "18px",
-                                    letterSpacing: "-1px",
-                                    wordSpacing: "3px",
-                                  }}
-                                ></span>
-                                <span></span>
-                              </div>
-                            </td>
-                            <td style={{ marginTop: "3px", width: "20rem" }}>
-                              <span
-                                style={{
-                                  fontSize: "18px",
-                                  fontWeight: "400",
-                                  marginRight: "2.4rem",
-                                  letterSpacing: "-0.8px",
-                                  wordSpacing: "1px",
-                                }}
-                              >
-                                PREPARED BY:
-                              </span>
-                              <div style={{ marginTop: "0.4rem", textAlign: "left" }}>
-                                {selectedPreparedBy?.signature_image && (
-                                  <img
-                                    src={getSignatureImageSrc(selectedPreparedBy)}
-                                    alt={selectedPreparedBy.signature_name || "Prepared by signature"}
-                                    style={{
-                                      width: "11rem",
-                                      height: "2.7rem",
-                                      objectFit: "contain",
-                                      display: "block",
-                                      margin: "0 0 -0.2rem",
-                                    }}
-                                  />
-                                )}
-                                <span
-                                  style={{
-                                    display: "block",
-                                    fontSize: "20px",
-                                    fontWeight: "500",
-                                    letterSpacing: "-1px",
-                                    wordSpacing: "3px",
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  {selectedPreparedBy?.full_name?.toUpperCase() || ""}
-                                </span>
-                              </div>
-                            </td>
-                            <td style={{ marginTop: "3px", width: "20rem" }}>
-                              <span
-                                style={{
-                                  fontSize: "18px",
-                                  fontWeight: "400",
-                                  marginRight: "2.4rem",
-                                  letterSpacing: "-0.8px",
-                                  wordSpacing: "1px",
-                                }}
-                              >
-                                CHECKED BY:
-                              </span>
-                              <div style={{ marginTop: "0.4rem", textAlign: "left" }}>
-                                {selectedCheckedBy?.signature_image && (
-                                  <img
-                                    src={getSignatureImageSrc(selectedCheckedBy)}
-                                    alt={selectedCheckedBy.signature_name || "Checked by signature"}
-                                    style={{
-                                      width: "11rem",
-                                      height: "2.7rem",
-                                      objectFit: "contain",
-                                      display: "block",
-                                      margin: "0 0 -0.2rem",
-                                    }}
-                                  />
-                                )}
-                                <span
-                                  style={{
-                                    display: "block",
-                                    fontSize: "20px",
-                                    fontWeight: "500",
-                                    letterSpacing: "-1px",
-                                    wordSpacing: "3px",
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  {selectedCheckedBy?.full_name?.toUpperCase() || ""}
-                                </span>
-                              </div>
-                            </td>
-                            <td
-                              style={{
-                                marginTop: "-3px",
-                                width: "21rem",
-                                justifyContent: "center",
-                                alignContent: "center",
-                              }}
-                            >
-                              <div
+                                <span>TERM</span>
+                              </td>
+                              <td
                                 style={{
                                   display: "flex",
                                   flexDirection: "column",
-                                  textAlign: "center",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: "38rem",
                                 }}
                               >
-                                {selectedRegistrar?.signature_image && (
-                                  <img
-                                    src={getSignatureImageSrc(selectedRegistrar)}
-                                    alt={selectedRegistrar.signature_name || "Registrar signature"}
-                                    style={{
-                                      width: "11rem",
-                                      height: "2.7rem",
-                                      objectFit: "contain",
-                                      display: "block",
-                                      margin: "0 auto -0.2rem",
-                                    }}
-                                  />
-                                )}
-                                <span
+                                <div
                                   style={{
-                                    fontSize: "24px",
-                                    letterSpacing: "-2px",
+                                    margin: "-1px",
+                                    fontWeight: "600",
+                                    fontSize: "20px",
+                                    textAlign: "center",
+                                    letterSpacing: "-1px",
+                                    width: "28rem",
+                                  }}
+                                >
+                                  SUBJECTS
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "600",
+                                    fontSize: "20px",
+                                    textAlign: "center",
+                                    letterSpacing: "-1px",
+                                    width: "28rem",
                                     wordSpacing: "3px",
                                   }}
                                 >
-                                  {selectedRegistrar?.full_name?.toUpperCase() || ""}
+                                  CODE NUMBER WITH DESCRIPTIVE TITLE
+                                </div>
+                              </td>
+                              <td>
+                                <div
+                                  style={{
+                                    fontWeight: "600",
+                                    textAlign: "center",
+                                    fontSize: "20px",
+                                    letterSpacing: "-1px",
+                                    width: "13rem",
+                                  }}
+                                >
+                                  <span style={{ marginLeft: "-1.6rem" }}>
+                                    GRADES
+                                  </span>
+                                </div>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontWeight: "600",
+                                      fontSize: "20px",
+                                      textAlign: "center",
+                                      letterSpacing: "-1px",
+                                      width: "6rem",
+                                    }}
+                                  >
+                                    <span>FINAL</span>
+                                  </div>
+                                  <div
+                                    style={{
+                                      textAlign: "center",
+                                      fontWeight: "600",
+                                      fontSize: "20px",
+                                      marginLeft: "-2rem",
+                                      letterSpacing: "-1px",
+                                      width: "7rem",
+                                    }}
+                                  >
+                                    <span>RE-EXAM</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td
+                                style={{
+                                  fontWeight: "600",
+                                  display: "flex",
+                                  fontSize: "20px",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  letterSpacing: "-1px",
+                                  width: "7rem",
+                                }}
+                              >
+                                <span>CREDITS</span>
+                              </td>
+                              <td
+                                style={{
+                                  fontWeight: "600",
+                                  display: "flex",
+                                  fontSize: "20px",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  letterSpacing: "-1px",
+                                  width: "8.9rem",
+                                }}
+                              >
+                                <span>REMARKS</span>
+                              </td>
+                            </tr>
+                          </thead>
+                          <tbody
+                            style={{ maxWidth: "650px", overflowY: "hidden" }}
+                          >
+                            <tr>
+                              <td
+                                style={{
+                                  fontWeight: "500",
+                                  textUnderlineOffset: "3px",
+                                  textDecoration: "underline",
+                                  letterSpacing: "-1px",
+                                  paddingLeft: "1.5rem",
+                                  fontSize: "20px",
+                                }}
+                              >
+                                {studentData && studentData.program_description
+                                  ? `${studentData.program_description?.toUpperCase()}`
+                                  : ""}
+                              </td>
+                            </tr>
+
+                            {pageGroups.map((group, groupIndex) => {
+                              const compactTermLabel =
+                                pageIndex === paginatedSubjects.length - 1 &&
+                                groupIndex === pageGroups.length - 1 &&
+                                group.subjects.length <= 6;
+
+                              return (
+                                <React.Fragment key={group.termKey}>
+                                  {group.subjects.map((p, index) => {
+                                    const isCompactTermRow =
+                                      compactTermLabel && index === 0;
+
+                                    return (
+                                      <tr
+                                        style={{
+                                          display: "flex",
+                                          alignItems: isCompactTermRow
+                                            ? "center"
+                                            : "flex-start",
+                                          lineHeight: "22px",
+                                          minHeight: isCompactTermRow
+                                            ? "38px"
+                                            : "22px",
+                                        }}
+                                        key={p.enrolled_id}
+                                      >
+                                        <td
+                                          style={{
+                                            width: "13rem",
+                                            fontWeight: "400",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            justifyContent: compactTermLabel
+                                              ? "center"
+                                              : "center",
+                                            alignItems: "flex-start",
+                                            position: "relative",
+                                            lineHeight: compactTermLabel ? "18px" : "22px",
+                                            paddingTop: index === 0 ? "0" : "0",
+                                          }}
+                                        >
+                                          {!group.isContinuation && index === 0 && (
+                                            <>
+                                              <span
+                                                style={{
+                                                  fontSize: compactTermLabel
+                                                    ? "17px"
+                                                    : "18px",
+                                                  textAlign: "center",
+                                                  width: "14rem",
+                                                  fontWeight: "500",
+                                                  lineHeight: compactTermLabel ? "18px" : "22px",
+                                                }}
+                                              >
+                                                {convertSemester(
+                                                  p.semester_description,
+                                                )}
+                                              </span>
+                                              <span
+                                                style={{
+                                                  fontSize: compactTermLabel
+                                                    ? "16px"
+                                                    : "17px",
+                                                  marginTop: compactTermLabel ? 0 : "3rem",
+                                                  position: compactTermLabel
+                                                    ? "static"
+                                                    : "absolute",
+                                                  textAlign: "center",
+                                                  width: "13.5rem",
+                                                  fontWeight: "500",
+                                                  lineHeight: compactTermLabel ? "18px" : "22px",
+                                                }}
+                                              >
+                                                {p.current_year} - {p.next_year}
+                                              </span>
+                                            </>
+                                          )}
+                                        </td>
+                                        <td
+                                          style={{
+                                            display: "flex",
+                                            alignItems: isCompactTermRow
+                                              ? "center"
+                                              : "flex-start",
+                                            width: "38rem",
+                                            lineHeight: "22px",
+                                            padding: 0,
+                                          }}
+                                        >
+                                          <span
+                                            style={{
+                                              width: "9.5rem",
+                                              flex: "0 0 9.5rem",
+                                              margin: "0",
+                                              padding: "0",
+                                              fontSize: "18px",
+                                              lineHeight: "22px",
+                                              letterSpacing: "-0.5px",
+                                              whiteSpace: "normal",
+                                            }}
+                                          >
+                                            {p.course_code}
+                                          </span>
+                                          <span
+                                            style={{
+                                              flex: "1 1 auto",
+                                              marginLeft: 0,
+                                              padding: "0",
+                                              fontSize: "18px",
+                                              lineHeight: "22px",
+                                              letterSpacing: "-0.5px",
+                                            }}
+                                          >
+                                            {p.course_description
+                                              ? p.course_description?.toUpperCase()
+                                              : ""}
+                                            &nbsp;
+                                            {p.component === 1
+                                              ? "CWTS"
+                                              : p.component === 2
+                                                ? "LTS"
+                                                : p.component === 3
+                                                  ? "MTS"
+                                                  : ""}
+                                          </span>
+                                        </td>
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              minHeight: isCompactTermRow
+                                                ? "38px"
+                                                : "22px",
+                                              lineHeight: "22px",
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                fontSize: "18px",
+                                                width: "6rem",
+                                                textAlign: "center",
+                                                lineHeight: "22px",
+                                              }}
+                                            >
+                                              <span>
+                                                {handleGradeConversion(
+                                                  p.final_grade || p.numeric_grade,
+                                                )}
+                                              </span>
+                                            </div>
+                                            <div
+                                              style={{
+                                                fontSize: "18px",
+                                                textAlign: "center",
+                                                width: "7rem",
+                                                marginLeft: "-2rem",
+                                                lineHeight: "22px",
+                                              }}
+                                            >
+                                              <span></span>
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              fontSize: "18px",
+                                              alignItems: "center",
+                                              minHeight: isCompactTermRow
+                                                ? "38px"
+                                                : "22px",
+                                              width: "7rem",
+                                              marginLeft: "1.7rem",
+                                              justifyContent: "center",
+                                              lineHeight: "22px",
+                                            }}
+                                          >
+                                            {totalUnitPerSubject(
+                                              p.course_unit,
+                                              p.lab_unit,
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              minHeight: isCompactTermRow
+                                                ? "38px"
+                                                : "22px",
+                                              width: "8.9rem",
+                                              fontSize: "18px",
+                                              justifyContent: "center",
+                                              lineHeight: "22px",
+                                            }}
+                                          >
+                                            {p.en_remarks === 0
+                                              ? "Ongoing"
+                                              : p.en_remarks === 1
+                                                ? "Passed"
+                                                : p.en_remarks === 2
+                                                  ? "Failed"
+                                                  : p.en_remarks === 3
+                                                    ? "Incomplete"
+                                                    : p.en_remarks === 4
+                                                      ? "Dropped"
+                                                      : ""}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </React.Fragment>
+                              );
+                            })}
+
+                            <tr
+                              style={{
+                                display: "flex",
+                                height: "auto",
+                                lineHeight: 1,
+                              }}
+                            >
+                              {pageIndex === paginatedSubjects.length - 1 ? (
+                                <td
+                                  className="table-cell-padding"
+                                  style={{
+                                    textAlign: "center",
+                                    width: "79.9rem",
+                                    padding: "1px 0 0",
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      display: "block",
+                                      fontSize: "17px",
+                                      fontWeight: "600",
+                                      lineHeight: 1,
+                                      whiteSpace: "nowrap",
+                                      width: "100%",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontSize: "14px",
+                                        marginRight: "2px",
+                                      }}
+                                    >
+                                      {"earist".repeat(13)} xxx{" "}
+                                    </span>
+                                    NOTHING FOLLOWS
+                                    <span
+                                      style={{
+                                        fontSize: "14px",
+                                        marginLeft: "2px",
+                                      }}
+                                    >
+                                      {" "}
+                                      xxx {"earist".repeat(13)}
+                                    </span>
+                                  </span>
+                                </td>
+                              ) : (
+                                <td
+                                  style={{
+                                    textAlign: "center",
+                                    borderTop: "dashed 1px black",
+                                    width: "79.9rem",
+                                    padding: "1px 0 0",
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: "17px",
+                                      fontWeight: "600",
+                                    }}
+                                  >
+                                    - continue on next page -
+                                  </span>
+                                </td>
+                              )}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </Box>
+                    </Box>
+                    {/* End of Main Content */}
+                    {/* Start Of Footer */}
+                    <Box
+                      className="page-footer"
+                      style={{
+                        display: "flex",
+                        marginLeft: "1rem",
+                        marginTop: "-1rem",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <Box
+                        style={{
+                          flex: "0 0 50%",
+                          marginBottom: "1rem",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <table>
+                          <thead>
+                            <tr
+                              className="grading_sytse_tble"
+                              style={{
+                                display: "flex",
+                                height: "145px",
+                                borderTop: "solid 1px black",
+                              }}
+                            >
+                              <td
+                                style={{
+                                  fontWeight: "400",
+                                  fontSize: "18px",
+                                  display: "flex",
+                                  alignItems: "start",
+                                  justifyContent: "center",
+                                  letterSpacing: "-1px",
+                                  width: "13rem",
+                                }}
+                              >
+                                <span>GRADING SYSTEM</span>
+                              </td>
+                              <td
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "start",
+                                  width: "4.5rem",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "0px",
+                                    paddingTop: "3px",
+                                  }}
+                                >
+                                  1.00
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "0px",
+                                  }}
+                                >
+                                  1.25
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "0px",
+                                  }}
+                                >
+                                  1.50
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "0px",
+                                  }}
+                                >
+                                  1.75
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  2.00
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  2.25
+                                </div>
+                              </td>
+                              <td
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "start",
+                                  width: "6.5rem",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                    paddingTop: "3px",
+                                  }}
+                                >
+                                  (97-100)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  (94-96)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  (91-93)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  (88-90)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  (85-87)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  (82-84)
+                                </div>
+                              </td>
+                              <td
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "start",
+                                  width: "15.5rem",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                    paddingTop: "3px",
+                                  }}
+                                >
+                                  Marked Excellence
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Excellent
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Very Superior
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Superior
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Very Good
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Good
+                                </div>
+                              </td>
+                              <td
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "start",
+                                  width: "4.5rem",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                    paddingTop: "3px",
+                                  }}
+                                >
+                                  2.50
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  2.75
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  3.00
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  5.00
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  INC
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  DRP
+                                </div>
+                              </td>
+                              <td
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "start",
+                                  width: "14rem",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                    paddingTop: "3px",
+                                  }}
+                                >
+                                  (79-81)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  (76-78)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-2px",
+                                  }}
+                                >
+                                  (75)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1.5px",
+                                  }}
+                                >
+                                  (Below 75)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1.5px",
+                                  }}
+                                >
+                                  (Incomplete)
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1.5px",
+                                  }}
+                                >
+                                  (Dropped Officially/Unofficialy)
+                                </div>
+                              </td>
+                              <td
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "start",
+                                  width: "22rem",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                    paddingTop: "3px",
+                                  }}
+                                >
+                                  Satisfactory
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Fair
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Passed
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Failed
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Incomplete
+                                </div>
+                                <div
+                                  style={{
+                                    margin: "-1px",
+                                    fontWeight: "400",
+                                    fontSize: "16px",
+                                    letterSpacing: "-1px",
+                                  }}
+                                >
+                                  Dropped
+                                </div>
+                              </td>
+                            </tr>
+                            <tr
+                              style={{
+                                display: "flex",
+                                paddingLeft: "2rem",
+                                height: "35px",
+                                borderBottom: "solid 1px black",
+                              }}
+                            >
+                              <td>
+                                <span style={{ fontSize: "18px" }}>
+                                  CREDITS, O
                                 </span>
-                                <hr />
+                                <span>
+                                  ne college units is at least (17) full hours of
+                                  instruction in academic or professional subject
+                                  within a semester.
+                                </span>
+                              </td>
+                            </tr>
+                            <tr
+                              style={{
+                                display: "flex",
+                                paddingLeft: "2rem",
+                                height: "65px",
+                                borderBottom: "solid 1px black",
+                              }}
+                            >
+                              <td style={{ marginTop: "8px" }}>
+                                <span
+                                  style={{
+                                    fontSize: "18px",
+                                    marginRight: "8px",
+                                    letterSpacing: "-0.8px",
+                                    wordSpacing: "1px",
+                                  }}
+                                >
+                                  {companyName?.toUpperCase()}
+                                </span>
+                                <span
+                                  style={{
+                                    letterSpacing: "-0.8px",
+                                    fontSize: "17px",
+                                    wordSpacing: "1px",
+                                  }}
+                                >
+                                  is a State College; hence, a SPECIAL ORDER is
+                                  not issued to its graduates. The <br />
+                                  issuance of the Official Transcript of Records
+                                  and Diploma is a sufficient proof for
+                                  Graduation.
+                                </span>
+                              </td>
+                            </tr>
+                            <tr
+                              style={{
+                                display: "flex",
+                                paddingLeft: "1rem",
+                                marginTop: "0.3rem",
+                                height: "65px",
+                                borderTop: "solid 1px black",
+                                borderBottom: "solid 1px black",
+                              }}
+                            >
+                              <td style={{ marginTop: "8px" }}>
+                                <span
+                                  style={{
+                                    fontSize: "18px",
+                                    fontWeight: "600",
+                                    marginRight: "8px",
+                                    letterSpacing: "-0.8px",
+                                    wordSpacing: "1px",
+                                  }}
+                                >
+                                  REMARKS:
+                                </span>
+                              </td>
+                            </tr>
+                            <tr
+                              style={{
+                                display: "flex",
+                                paddingLeft: "1rem",
+                                marginTop: "0.3rem",
+                                height: "35px",
+                              }}
+                            >
+                              <td style={{ marginTop: "3px" }}>
+                                <span
+                                  style={{
+                                    fontSize: "18px",
+                                    fontWeight: "400",
+                                    marginRight: "2.4rem",
+                                    letterSpacing: "-0.8px",
+                                    wordSpacing: "1px",
+                                  }}
+                                >
+                                  DATE ISSUED:
+                                </span>
                                 <span
                                   style={{
                                     fontSize: "18px",
                                     letterSpacing: "-1px",
                                     wordSpacing: "3px",
                                   }}
-                                >REGISTRAR
+                                >
+                                  {todayDate}
                                 </span>
-                              </div>
-                            </td>
-                          </tr>
-                        </thead>
-                      </table>
+                              </td>
+                            </tr>
+                            <tr
+                              className="no-border"
+                              style={{
+                                display: "flex",
+                                paddingLeft: "1rem",
+                                marginTop: "0.3rem",
+                                height: "9rem",
+                                borderBottom: "solid black 1px",
+                              }}
+                            >
+                              <td style={{ marginTop: "3px", width: "17rem" }}>
+                                <div>
+                                  <span
+                                    style={{
+                                      fontSize: "18px",
+                                      letterSpacing: "-1px",
+                                      wordSpacing: "3px",
+                                    }}
+                                  ></span>
+                                  <span></span>
+                                </div>
+                              </td>
+                              <td style={{ marginTop: "3px", width: "20rem" }}>
+                                <span
+                                  style={{
+                                    fontSize: "18px",
+                                    fontWeight: "400",
+                                    marginRight: "2.4rem",
+                                    letterSpacing: "-0.8px",
+                                    wordSpacing: "1px",
+                                  }}
+                                >
+                                  PREPARED BY:
+                                </span>
+                                <div style={{ marginTop: "0.4rem", textAlign: "left" }}>
+                                  {selectedPreparedBy?.signature_image && (
+                                    <img
+                                      src={getSignatureImageSrc(selectedPreparedBy)}
+                                      alt={selectedPreparedBy.signature_name || "Prepared by signature"}
+                                      style={{
+                                        width: "11rem",
+                                        height: "2.7rem",
+                                        objectFit: "contain",
+                                        display: "block",
+                                        margin: "0 0 -0.2rem",
+                                      }}
+                                    />
+                                  )}
+                                  <span
+                                    style={{
+                                      display: "block",
+                                      fontSize: "20px",
+                                      fontWeight: "500",
+                                      letterSpacing: "-1px",
+                                      wordSpacing: "3px",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {selectedPreparedBy?.full_name?.toUpperCase() || ""}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ marginTop: "3px", width: "20rem" }}>
+                                <span
+                                  style={{
+                                    fontSize: "18px",
+                                    fontWeight: "400",
+                                    marginRight: "2.4rem",
+                                    letterSpacing: "-0.8px",
+                                    wordSpacing: "1px",
+                                  }}
+                                >
+                                  CHECKED BY:
+                                </span>
+                                <div style={{ marginTop: "0.4rem", textAlign: "left" }}>
+                                  {selectedCheckedBy?.signature_image && (
+                                    <img
+                                      src={getSignatureImageSrc(selectedCheckedBy)}
+                                      alt={selectedCheckedBy.signature_name || "Checked by signature"}
+                                      style={{
+                                        width: "11rem",
+                                        height: "2.7rem",
+                                        objectFit: "contain",
+                                        display: "block",
+                                        margin: "0 0 -0.2rem",
+                                      }}
+                                    />
+                                  )}
+                                  <span
+                                    style={{
+                                      display: "block",
+                                      fontSize: "20px",
+                                      fontWeight: "500",
+                                      letterSpacing: "-1px",
+                                      wordSpacing: "3px",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {selectedCheckedBy?.full_name?.toUpperCase() || ""}
+                                  </span>
+                                </div>
+                              </td>
+                              <td
+                                style={{
+                                  marginTop: "-3px",
+                                  width: "21rem",
+                                  justifyContent: "center",
+                                  alignContent: "center",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {selectedRegistrar?.signature_image && (
+                                    <img
+                                      src={getSignatureImageSrc(selectedRegistrar)}
+                                      alt={selectedRegistrar.signature_name || "Registrar signature"}
+                                      style={{
+                                        width: "11rem",
+                                        height: "2.7rem",
+                                        objectFit: "contain",
+                                        display: "block",
+                                        margin: "0 auto -0.2rem",
+                                      }}
+                                    />
+                                  )}
+                                  <span
+                                    style={{
+                                      fontSize: "24px",
+                                      letterSpacing: "-2px",
+                                      wordSpacing: "3px",
+                                    }}
+                                  >
+                                    {selectedRegistrar?.full_name?.toUpperCase() || ""}
+                                  </span>
+                                  <hr />
+                                  <span
+                                    style={{
+                                      fontSize: "18px",
+                                      letterSpacing: "-1px",
+                                      wordSpacing: "3px",
+                                    }}
+                                  >REGISTRAR
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          </thead>
+                        </table>
+                      </Box>
                     </Box>
+                    {/* End Of Footer */}
                   </Box>
-                  {/* End Of Footer */}
                 </Box>
               </Box>
-            </Box>
-          ))}
+            ))}
+          </Box>
         </Box>
       </Box>
       <Snackbar

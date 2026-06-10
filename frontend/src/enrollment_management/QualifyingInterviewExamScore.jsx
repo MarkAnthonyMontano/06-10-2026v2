@@ -168,8 +168,8 @@ const QualifyingExamScore = () => {
       icon: <PersonIcon fontSize="large" />,
     },
     {
-      label: "Student Requirements",
-      to: "/registrar_requirements",
+      label: "Applicant Online Requirements",
+      to: "applicant_online_requirements_college",
       icon: <AssignmentIcon fontSize="large" />,
     },
     {

@@ -138,7 +138,7 @@ const ReportOfGrade = () => {
     const tabs = [
         { label: "Student List", to: "/student_list", icon: <SchoolIcon fontSize="large" /> },
         { label: "Student Profile", to: "/readmission_dashboard1", icon: <PersonIcon fontSize="large" /> },
-        { label: "Submitted Documents", to: "/submitted_documents", icon: <AssignmentIcon fontSize="large" /> },
+        { label: "Student Online Requirements Registrar", to: "student_online_requirements_college", icon: <AssignmentIcon fontSize="large" /> },
         { label: "Search Certificate of Registration", to: "/search_cor", icon: <ListAltIcon fontSize="large" /> },
         { label: "Report of Grades", to: "/report_of_grades", icon: <GradeIcon fontSize="large" /> },
         { label: "Transcript of Records", to: "/transcript_of_records", icon: <ReceiptLongIcon fontSize="large" /> },
@@ -754,60 +754,59 @@ const ReportOfGrade = () => {
                 </Table>
             </TableContainer>
             <TableContainer component={Paper} sx={{ maxWidth: '100%', border: `1px solid ${borderColor}`, p: 2, position: "relative", }}>
-                <Box sx={{ display: "flex", alignItems: "center", margin: "1rem 0", padding: "0 1rem", }} gap={20}>
-                    <Box style={{ display: "flex", flexDirection: "column" }}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                            <Typography fontSize={13} sx={{ minWidth: "100px" }}>School Year:</Typography>
-                            <FormControl fullWidth>
-                                <InputLabel id="demo-simple-select-label">School Years</InputLabel>
-                                <Select
-                                    labelId="demo-simple-select-label"
-                                    id="demo-simple-select"
-                                    style={{ width: "200px" }}
-                                    value={selectedSchoolYear}
-                                    label="School Years"
-                                    onChange={handleSchoolYearChange}
-                                >
-                                    {schoolYears.length > 0 ? (
-                                        schoolYears.map((sy) => (
-                                            <MenuItem value={sy.year_id} key={sy.year_id}>
-                                                {sy.current_year} - {sy.next_year}
-                                            </MenuItem>
-                                        ))
-                                    ) : (
-                                        <MenuItem disabled>School Year is not found</MenuItem>
-                                    )
-                                    }
-                                </Select>
-                            </FormControl>
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                            <Typography fontSize={13} sx={{ minWidth: "100px" }}>Semester: </Typography>
-                            <FormControl fullWidth>
-                                <InputLabel id="demo-simple-select-label">School Semester</InputLabel>
-                                <Select
-                                    labelId="demo-simple-select-label"
-                                    id="demo-simple-select"
-                                    style={{ width: "200px", }}
-                                    value={selectedSchoolSemester}
-                                    label="School Semester"
-                                    onChange={handleSchoolSemesterChange}
-                                >
-                                    {schoolSemester.length > 0 ? (
-                                        schoolSemester.map((sem) => (
-                                            <MenuItem value={sem.semester_id} key={sem.semester_id}>
-                                                {sem.semester_description}
-                                            </MenuItem>
-                                        ))
-                                    ) : (
-                                        <MenuItem disabled>School Semester is not found</MenuItem>
-                                    )
-                                    }
-                                </Select>
-                            </FormControl>
-                        </Box>
-                    </Box>
-                </Box>
+  <Box sx={{ display: "flex", alignItems: "center", margin: "1rem 0", padding: "0 1rem" }} gap={4}>
+    <Box display="flex" alignItems="center" gap={1}>
+        <Typography fontSize={13} sx={{ minWidth: "100px" }}>
+            School Year:
+        </Typography>
+
+        <FormControl>
+            <InputLabel>School Years</InputLabel>
+            <Select
+                style={{ width: "200px" }}
+                value={selectedSchoolYear}
+                label="School Years"
+                onChange={handleSchoolYearChange}
+            >
+                {schoolYears.length > 0 ? (
+                    schoolYears.map((sy) => (
+                        <MenuItem value={sy.year_id} key={sy.year_id}>
+                            {sy.current_year} - {sy.next_year}
+                        </MenuItem>
+                    ))
+                ) : (
+                    <MenuItem disabled>School Year is not found</MenuItem>
+                )}
+            </Select>
+        </FormControl>
+    </Box>
+
+    <Box display="flex" alignItems="center" gap={1}>
+        <Typography fontSize={13} sx={{ minWidth: "100px" }}>
+            Semester:
+        </Typography>
+
+        <FormControl>
+            <InputLabel>School Semester</InputLabel>
+            <Select
+                style={{ width: "200px" }}
+                value={selectedSchoolSemester}
+                label="School Semester"
+                onChange={handleSchoolSemesterChange}
+            >
+                {schoolSemester.length > 0 ? (
+                    schoolSemester.map((sem) => (
+                        <MenuItem value={sem.semester_id} key={sem.semester_id}>
+                            {sem.semester_description}
+                        </MenuItem>
+                    ))
+                ) : (
+                    <MenuItem disabled>School Semester is not found</MenuItem>
+                )}
+            </Select>
+        </FormControl>
+    </Box>
+</Box>
             </TableContainer>
             <Box
                 className="print-container"

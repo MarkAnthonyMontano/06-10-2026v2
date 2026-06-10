@@ -240,8 +240,8 @@ const MedicalStudentList = () => {
       icon: <PersonIcon fontSize="large" />,
     },
     {
-      label: "Submitted Documents",
-      to: "/medical_requirements",
+      label: "Student Online Requirements",
+      to: "/medical_online_requirements",
       icon: <AssignmentIcon fontSize="large" />,
     }, // updated icon
     {

@@ -82,8 +82,8 @@ const AdminDashboard5 = () => {
       icon: <PersonIcon fontSize="large" />,
     },
     {
-      label: "Student Requirements",
-      to: "/student_requirements",
+      label: "Applicant Online Requirements",
+      to: "/admission_online_requirements",
       icon: <AssignmentIcon fontSize="large" />,
     },
     {
@@ -1106,7 +1106,7 @@ const AdminDashboard5 = () => {
                 onClick={(e) => {
 
                   if (isFormValid()) {
-                    navigate("/student_requirements"); // Proceed only if valid
+                    navigate("/admission_online_requirements"); // Proceed only if valid
                   } else {
                     alert("Please complete all required fields before submitting.");
                   }

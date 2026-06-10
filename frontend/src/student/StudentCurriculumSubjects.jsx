@@ -217,6 +217,8 @@ const StudentCurriculumSubjects = () => {
           .filter((row) => `${row.year_level_description} ${row.semester_description}` === term);
         const yearLevel = termSubjects[0]?.year_level_description;
         const semesterLabel = termSubjects[0]?.semester_description;
+        const sectionDescription = termSubjects[0]?.section_description;
+
 
         const totalLec = termSubjects.reduce((sum, row) => sum + Number(row.lec_unit || 0), 0);
         const totalLab = termSubjects.reduce((sum, row) => sum + Number(row.lab_unit || 0), 0);
@@ -291,6 +293,12 @@ const StudentCurriculumSubjects = () => {
                           {formatYearLabel(yearLevel)} — {semesterLabel}
                         </Box>
                       </Typography>
+                      <Typography sx={{ fontSize: { xs: 12, sm: 14 }, fontWeight: 700, color: titleColor }}>
+                        SECTION:{" "}
+                        <Box component="span" sx={{ fontWeight: 400, ml: 1 }}>
+                          {sectionDescription || "—"}
+                        </Box>
+                      </Typography>
                     </Box>
                   </Box>
                 )}
@@ -353,7 +361,9 @@ const StudentCurriculumSubjects = () => {
                         <TableCell sx={{ ...colStyle, width: "40px" }}>{i + 1}</TableCell>
                         <TableCell sx={{ ...colStyle, width: "110px" }}>{row.course_code}</TableCell>
                         <TableCell sx={{ ...colStyle, width: "320px" }}>{row.course_description}</TableCell>
-                        <TableCell sx={{ ...colStyle, width: "90px" }}></TableCell>
+                        <TableCell sx={{ ...colStyle, width: "90px", textAlign: "center" }}>
+                          {row.section_description || "—"}
+                        </TableCell>
                         <TableCell sx={{ ...colStyle, width: "90px", textAlign: "center" }}>{formatUnit(row.lec_unit)}</TableCell>
                         <TableCell sx={{ ...colStyle, width: "90px", textAlign: "center" }}>{formatUnit(row.lab_unit)}</TableCell>
                         <TableCell sx={{ ...colStyle, width: "110px", textAlign: "center" }}>{formatUnit(row.course_unit)}</TableCell>

@@ -978,7 +978,7 @@ const SuperAdminApplicantDashboard5 = () => {
                                     });
 
                                     setTimeout(() => {
-                                        navigate("/applicant_requirements_uploader");
+                                        navigate("/applicant_online_requirements_admin");
                                     }, 2000);
                                 }}
                                 endIcon={

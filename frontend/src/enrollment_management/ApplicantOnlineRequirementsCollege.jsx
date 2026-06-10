@@ -20,82 +20,80 @@ import {
   TableRow,
   MenuItem,
 } from "@mui/material";
-import API_BASE_URL from "../apiConfig";
 import Search from "@mui/icons-material/Search";
+import API_BASE_URL from "../apiConfig";
+import { restrictToRegistrarCurriculum } from "../utils/registrarCurriculumRestriction";
 import { Link, useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { io } from "socket.io-client";
 import { Snackbar, Alert } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import SchoolIcon from "@mui/icons-material/School";
-import ListAltIcon from "@mui/icons-material/ListAlt";
-import PersonIcon from "@mui/icons-material/Person";
-import DescriptionIcon from "@mui/icons-material/Description";
-import PsychologyIcon from "@mui/icons-material/Psychology";
-import HowToRegIcon from "@mui/icons-material/HowToReg";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import PersonSearchIcon from "@mui/icons-material/PersonSearch";
+import PeopleIcon from "@mui/icons-material/People";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import Unauthorized from "../components/Unauthorized";
 import LoadingOverlay from "../components/LoadingOverlay";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import GradeIcon from "@mui/icons-material/Grade";
+import KeyIcon from "@mui/icons-material/Key";
+import CampaignIcon from "@mui/icons-material/Campaign";
+import ScoreIcon from "@mui/icons-material/Score";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import AssignmentIcon from "@mui/icons-material/Assignment";
+import SearchIcon from "@mui/icons-material/Search";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import PersonIcon from "@mui/icons-material/Person";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
-const tabs1 = [
-  { label: "Student List", to: "/student_list", icon: <SchoolIcon fontSize="large" /> },
-  { label: "Student Profile", to: "/readmission_dashboard1", icon: <PersonIcon fontSize="large" /> },
-  { label: "Submitted Documents", to: "/submitted_documents", icon: <AssignmentIcon fontSize="large" /> },
-  { label: "Search Certificate of Registration", to: "/search_cor", icon: <ListAltIcon fontSize="large" /> },
-  { label: "Report of Grades", to: "/report_of_grades", icon: <GradeIcon fontSize="large" /> },
-  { label: "Transcript of Records", to: "/transcript_of_records", icon: <ReceiptLongIcon fontSize="large" /> },
+const tabs = [
+  {
+    label: "Applicant List",
+    to: "/applicant_list",
+    icon: <SchoolIcon fontSize="large" />,
+  },
+  {
+    label: "Applicant Profile",
+    to: "/registrar_dashboard1",
+    icon: <PersonIcon fontSize="large" />,
+  },
+  {
+    label: "Applicant Online Requirements",
+    to: "/applicant_online_requirements_college",
+    icon: <AssignmentIcon fontSize="large" />,
+  },
+  {
+    label: "Entrance Examination Score",
+    to: "/entrance_examination_score",
+    icon: <ScoreIcon fontSize="large" />,
+  },
+  {
+    label: "Qualifying / Interview Schedule Management",
+    to: "/assign_schedule_applicants_qualifying_interview",
+    icon: <ScheduleIcon fontSize="large" />,
+  },
+  {
+    label: "Qualifying / Interview Exam Score",
+    to: "/qualifying_interview_exam_scores",
+    icon: <ScoreIcon fontSize="large" />,
+  },
+  {
+    label: "Student Numbering",
+    to: "/student_numbering_per_college",
+    icon: <DashboardIcon fontSize="large" />,
+  },
+
 ];
 
-const MedicalRequirements = () => {
-  const settings = useContext(SettingsContext);
-
-  const [titleColor, setTitleColor] = useState("#000000");
-  const [subtitleColor, setSubtitleColor] = useState("#555555");
-  const [borderColor, setBorderColor] = useState("#000000");
-  const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
-  const [subButtonColor, setSubButtonColor] = useState("#ffffff");
-  const [stepperColor, setStepperColor] = useState("#000000");
-
-  const [fetchedLogo, setFetchedLogo] = useState(null);
-  const [companyName, setCompanyName] = useState("");
-  const [shortTerm, setShortTerm] = useState("");
-  const [campusAddress, setCampusAddress] = useState("");
-
-  useEffect(() => {
-    if (!settings) return;
-
-    if (settings.title_color) setTitleColor(settings.title_color);
-    if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
-    if (settings.border_color) setBorderColor(settings.border_color);
-    if (settings.main_button_color)
-      setMainButtonColor(settings.main_button_color);
-    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color);
-    if (settings.stepper_color) setStepperColor(settings.stepper_color);
-
-    if (settings.logo_url) {
-      setFetchedLogo(`${API_BASE_URL}${settings.logo_url}`);
-    }
-
-    if (settings.company_name) setCompanyName(settings.company_name);
-    if (settings.short_term) setShortTerm(settings.short_term);
-    if (settings.campus_address) setCampusAddress(settings.campus_address);
-  }, [settings]);
-
+const RegistrarRequirements = () => {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(2);
   const [clickedSteps, setClickedSteps] = useState(
-    Array(tabs1.length).fill(false),
+    Array(tabs.length).fill(false),
   );
 
   // ------------------------------------
   const [requirements, setRequirements] = useState([]);
-
   const [selectedPerson, setSelectedPerson] = useState(null);
 
   useEffect(() => {
@@ -131,7 +129,7 @@ const MedicalRequirements = () => {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success",
+    severity: "success", // success | error | warning | info
   });
 
   const showSnackbar = (message, severity = "success") => {
@@ -140,28 +138,29 @@ const MedicalRequirements = () => {
 
   const [explicitSelection, setExplicitSelection] = useState(false);
 
-  // ✅ CONSOLIDATED: Single fetch function using /api/student_data_as_applicant/:id
-  // Replaces: fetchByPersonId + fetchPersonData + fetchDocumentStatus
   const fetchByPersonId = async (personID) => {
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/student_data_as_applicant/${personID}`,
+        `${API_BASE_URL}/api/person_with_applicant/${personID}`,
       );
-      const data = res.data;
-
-      // Set person data (includes document_status and evaluator from backend)
-      setPerson(data);
-      setSelectedPerson(data);
-
-      // ✅ document_status already returned by the endpoint — no separate call needed
-      setDocumentStatus(data.document_status || "On process");
-
-      // Fetch uploads if student_number is available
-      if (data?.student_number) {
-        await fetchUploadsByStudentNumber(data.student_number);
+      setPerson(res.data);
+      setSelectedPerson(res.data);
+      if (res.data?.applicant_number) {
+        await fetchUploadsByApplicantNumber(res.data.applicant_number);
       }
     } catch (err) {
-      console.error("❌ fetchByPersonId failed:", err);
+      console.error("❌ person_with_applicant failed:", err);
+    }
+  };
+
+  const handleStepClick = (index, to) => {
+    setActiveStep(index);
+    const pid = sessionStorage.getItem("admin_edit_person_id");
+
+    if (pid && to !== "/applicant_list_admin") {
+      navigate(`${to}?person_id=${pid}`);
+    } else {
+      navigate(to);
     }
   };
 
@@ -170,6 +169,7 @@ const MedicalRequirements = () => {
   const [persons, setPersons] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFiles, setSelectedFiles] = useState({});
+
   const [remarksMap, setRemarksMap] = useState({});
   const [userID, setUserID] = useState("");
   const [user, setUser] = useState("");
@@ -186,10 +186,8 @@ const MedicalRequirements = () => {
     first_name: "",
     middle_name: "",
     extension: "",
-    student_number: "",
-    evaluator: null,
+    applicant_number: "",
   });
-
 
   const [curriculumOptions, setCurriculumOptions] = useState([]);
 
@@ -197,7 +195,7 @@ const MedicalRequirements = () => {
     const fetchCurriculums = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/applied_program`);
-        setCurriculumOptions(response.data);
+        setCurriculumOptions(restrictToRegistrarCurriculum(response.data));
       } catch (error) {
         console.error("Error fetching curriculum options:", error);
       }
@@ -214,9 +212,6 @@ const MedicalRequirements = () => {
 
   }
 
-  const [editingRemarkId, setEditingRemarkId] = useState(null);
-  const [newRemarkMode, setNewRemarkMode] = useState({});
-  const [documentStatus, setDocumentStatus] = useState("");
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -224,14 +219,17 @@ const MedicalRequirements = () => {
 
     if (!personIdFromUrl) return;
 
+    // fetch info of that person
     axios
       .get(`${API_BASE_URL}/api/person_with_applicant/${personIdFromUrl}`)
       .then((res) => {
-        if (res.data?.student_number) {
-          setSearchQuery(res.data.student_number);
+        if (res.data?.applicant_number) {
+          // AUTO-INSERT applicant_number into search bar
+          setSearchQuery(res.data.applicant_number);
 
+          // If you have a fetchUploads() or fetchExamScore() — call it
           if (typeof fetchUploadsByApplicantNumber === "function") {
-            fetchUploadsByApplicantNumber(res.data.student_number);
+            fetchUploadsByApplicantNumber(res.data.applicant_number);
           }
 
           if (typeof fetchApplicants === "function") {
@@ -242,43 +240,48 @@ const MedicalRequirements = () => {
       .catch((err) => console.error("Auto search failed:", err));
   }, [location.search]);
 
-  const handleStepClick = (index, to) => {
-    setActiveStep(index);
+  const [editingRemarkId, setEditingRemarkId] = useState(null);
+  const [newRemarkMode, setNewRemarkMode] = useState({}); // { [upload_id]: true|false }
+  const [documentStatus, setDocumentStatus] = useState("");
 
-    const pid =
-      selectedPerson?.person_id ||
-      person?.person_id ||
-      sessionStorage.getItem("edit_person_id") ||
-      sessionStorage.getItem("admin_edit_person_id");
-    const sn =
-      selectedPerson?.student_number ||
-      person?.student_number ||
-      sessionStorage.getItem("edit_student_number");
+  const settings = useContext(SettingsContext);
 
-    if (pid) {
-      sessionStorage.setItem("edit_person_id", String(pid));
-      if (sn) sessionStorage.setItem("edit_student_number", String(sn));
-      navigate(`${to}?person_id=${pid}`);
-    } else if (sn) {
-      sessionStorage.setItem("edit_student_number", String(sn));
-      navigate(`${to}?student_number=${sn}`);
-    } else {
-      navigate(to);
-    }
-  };
+  const [titleColor, setTitleColor] = useState("#000000");
+  const [subtitleColor, setSubtitleColor] = useState("#555555");
+  const [borderColor, setBorderColor] = useState("#000000");
+  const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
+  const [subButtonColor, setSubButtonColor] = useState("#ffffff"); // ✅ NEW
+  const [stepperColor, setStepperColor] = useState("#000000"); // ✅ NEW
+
+  const [fetchedLogo, setFetchedLogo] = useState(null);
+  const [companyName, setCompanyName] = useState("");
+  const [shortTerm, setShortTerm] = useState("");
+  const [campusAddress, setCampusAddress] = useState("");
 
   useEffect(() => {
-    const storedId = sessionStorage.getItem("edit_student_number");
+    if (!settings) return;
 
-    if (
-      storedId &&
-      storedId !== "undefined" &&
-      storedId !== "null" &&
-      storedId.length >= 9
-    ) {
-      setSearchQuery(storedId);
+    // 🎨 Colors
+    if (settings.title_color) setTitleColor(settings.title_color);
+    if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
+    if (settings.border_color) setBorderColor(settings.border_color);
+    if (settings.main_button_color)
+      setMainButtonColor(settings.main_button_color);
+    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color); // ✅ NEW
+    if (settings.stepper_color) setStepperColor(settings.stepper_color); // ✅ NEW
+
+    // 🏫 Logo
+    if (settings.logo_url) {
+      setFetchedLogo(`${API_BASE_URL}/${settings.logo_url}`);
+    } else {
+      setFetchedLogo(EaristLogo);
     }
-  }, []);
+
+    // 🏷️ School Information
+    if (settings.company_name) setCompanyName(settings.company_name);
+    if (settings.short_term) setShortTerm(settings.short_term);
+    if (settings.campus_address) setCampusAddress(settings.campus_address);
+  }, [settings]);
 
   const [hasAccess, setHasAccess] = useState(null);
   const [canCreate, setCanCreate] = useState(false);
@@ -286,7 +289,7 @@ const MedicalRequirements = () => {
   const [canDelete, setCanDelete] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const pageId = 106;
+  const pageId = 49;
 
   const [employeeID, setEmployeeID] = useState("");
 
@@ -348,18 +351,73 @@ const MedicalRequirements = () => {
       setCanCreate(false);
       setCanEdit(false);
       setCanDelete(false);
+      if (error.response && error.response.data.message) {
+        console.log(error.response.data.message);
+      } else {
+        console.log("An unexpected error occurred.");
+      }
       setLoading(false);
     }
   };
 
-  // ✅ REMOVED: Second duplicate useEffect for localStorage — merged into the one above
-  // ✅ REMOVED: fetchPersonData — replaced by fetchByPersonId
-  // ✅ REMOVED: fetchDocumentStatus — document_status now comes from fetchByPersonId
-  // ✅ REMOVED: useEffect watching person.student_number for fetchDocumentStatus
-  // ✅ REMOVED: useEffect watching selectedPerson for fetchPersonData
+  useEffect(() => {
+    const storedUser = localStorage.getItem("email");
+    const storedRole = localStorage.getItem("role");
+    const storedID = localStorage.getItem("person_id");
+    setUserID(storedID);
+
+    if (storedUser && storedRole && storedID) {
+      setUser(storedUser);
+      setUserRole(storedRole);
+      setUserID(storedID);
+
+      if (storedRole === "registrar") {
+        if (storedID !== "undefined") {
+        } else {
+          console.warn("Stored person_id is invalid:", storedID);
+        }
+      } else {
+        window.location.href = "/login";
+      }
+    } else {
+      window.location.href = "/login";
+    }
+  }, []);
 
   const queryParams = new URLSearchParams(location.search);
   const queryPersonId = queryParams.get("person_id")?.trim() || "";
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("email");
+    const storedRole = localStorage.getItem("role");
+    const loggedInPersonId = localStorage.getItem("person_id");
+
+    if (!storedUser || !storedRole || !loggedInPersonId) {
+      window.location.href = "/login";
+      return;
+    }
+
+    setUser(storedUser);
+    setUserRole(storedRole);
+
+    const allowedRoles = ["registrar", "applicant", "superadmin"];
+    if (!allowedRoles.includes(storedRole)) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const lastSelected = sessionStorage.getItem("admin_edit_person_id");
+
+    // ⭐ CASE 1: URL HAS ?person_id=
+    if (queryPersonId !== "") {
+      sessionStorage.setItem("admin_edit_person_id", queryPersonId);
+      setUserID(queryPersonId);
+      return;
+    }
+
+    // ⭐ CASE 3: No URL ID and no last selected → start blank
+    setUserID("");
+  }, [queryPersonId]);
 
   useEffect(() => {
     let consumedFlag = false;
@@ -372,12 +430,13 @@ const MedicalRequirements = () => {
         return;
       }
 
+      // fallback only if it's a fresh selection from Applicant List
       const source = sessionStorage.getItem("admin_edit_person_id_source");
       const tsStr = sessionStorage.getItem("admin_edit_person_id_ts");
       const id = sessionStorage.getItem("admin_edit_person_id");
       const ts = tsStr ? parseInt(tsStr, 10) : 0;
       const isFresh =
-        source === "Student_list" && Date.now() - ts < 5 * 60 * 1000;
+        source === "applicant_list" && Date.now() - ts < 5 * 60 * 1000;
 
       if (id && isFresh) {
         await fetchByPersonId(id);
@@ -387,6 +446,7 @@ const MedicalRequirements = () => {
     };
 
     tryLoad().finally(() => {
+      // consume the freshness so it won't auto-load again later
       if (consumedFlag) {
         sessionStorage.removeItem("admin_edit_person_id_source");
         sessionStorage.removeItem("admin_edit_person_id_ts");
@@ -395,9 +455,10 @@ const MedicalRequirements = () => {
   }, [queryPersonId]);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null);
-  const [targetDoc, setTargetDoc] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null); // "upload" or "delete"
+  const [targetDoc, setTargetDoc] = useState(null); // document info
 
+  // When clicking upload
   const handleConfirmUpload = (doc) => {
     if (!canCreate) {
       showSnackbar("You do not have permission to upload documents.", "warning");
@@ -408,6 +469,7 @@ const MedicalRequirements = () => {
     setConfirmOpen(true);
   };
 
+  // When clicking delete
   const handleConfirmDelete = (doc) => {
     if (!canDelete) {
       showSnackbar("You do not have permission to delete documents.", "warning");
@@ -418,9 +480,10 @@ const MedicalRequirements = () => {
     setConfirmOpen(true);
   };
 
-
+  // Execute action after confirm
   const handleConfirmAction = async () => {
     if (confirmAction === "upload") {
+      // call your upload logic here
       await handleUploadSubmit(targetDoc);
       console.log(
         `📂 Document uploaded by: ${localStorage.getItem("username")}`,
@@ -438,19 +501,71 @@ const MedicalRequirements = () => {
     fetchPersons();
   }, []);
 
-  const fetchUploadsByStudentNumber = async (student_number) => {
-    if (!student_number) return;
+  const fetchUploadsByApplicantNumber = async (applicant_number) => {
+    if (!applicant_number) return;
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/uploads/by-student/${student_number}`,
+        `${API_BASE_URL}/api/uploads/by-applicant/${applicant_number}`,
       );
       setUploads(res.data);
     } catch (err) {
       console.error("Fetch uploads failed:", err);
+      console.log("Fetching for applicant number:", applicant_number);
+    }
+  };
+
+  const fetchPersonData = async (personID) => {
+    if (!personID || personID === "undefined") {
+      console.warn("Invalid personID for person data:", personID);
+      return;
+    }
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/person_with_applicant/${personID}`,
+      );
+      const safePerson = {
+        ...res.data,
+        document_status: res.data.document_status || "",
+      };
+      setPerson(safePerson); // ✅ only update person
+      // ❌ don't call setSelectedPerson here
+    } catch (error) {
+      console.error(
+        "❌ Failed to fetch person data:",
+        error?.response?.data || error.message,
+      );
+    }
+  };
+
+  const fetchDocumentStatus = async (applicant_number) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/document_status/${applicant_number}`,
+      );
+      setDocumentStatus(response.data.document_status);
+      setPerson((prev) => ({
+        ...prev,
+        evaluator: response.data.evaluator || null,
+      }));
+    } catch (err) {
+      console.error("Error fetching document status:", err);
     }
   };
 
   useEffect(() => {
+    if (person.applicant_number) {
+      fetchDocumentStatus(person.applicant_number); // <-- pass the param
+    }
+  }, [person.applicant_number]);
+
+  useEffect(() => {
+    if (selectedPerson?.person_id) {
+      fetchPersonData(selectedPerson.person_id);
+    }
+  }, [selectedPerson]);
+
+  useEffect(() => {
+    // No search text: keep explicit selection if present
     if (!searchQuery.trim()) {
       if (!explicitSelection) {
         setSelectedPerson(null);
@@ -459,66 +574,54 @@ const MedicalRequirements = () => {
         setPerson({
           profile_img: "",
           generalAverage1: "",
-          height: "",
-          applyingAs: "",
           program: "",
           strand: "",
+          height: "",
+          applyingAs: "",
           document_status: "",
           last_name: "",
           first_name: "",
           middle_name: "",
           extension: "",
-          student_number: "",
-          evaluator: null,
         });
-        setDocumentStatus("");
       }
       return;
     }
 
+    // User started typing -> manual search takes over
     if (explicitSelection) setExplicitSelection(false);
 
     const match = persons.find((p) =>
-      `${p.first_name} ${p.middle_name} ${p.last_name} ${p.emailAddress} ${p.student_number || ""}`
+      `${p.first_name} ${p.middle_name} ${p.last_name} ${p.emailAddress} ${p.applicant_number || ""}`
         .toLowerCase()
         .includes(searchQuery.toLowerCase()),
     );
 
     if (match) {
       setSelectedPerson(match);
-      fetchUploadsByStudentNumber(match.student_number);
-
-      // ✅ Also fetch full person data (document_status + evaluator) when searching by name
-      if (match.person_id) {
-        fetchByPersonId(match.person_id);
-      }
+      fetchUploadsByApplicantNumber(match.applicant_number);
     } else {
       setSelectedPerson(null);
       setUploads([]);
-      setDocumentStatus("");
       setPerson({
         profile_img: "",
         generalAverage1: "",
         height: "",
-        applyingAs: "",
         program: "",
         strand: "",
+        applyingAs: "",
         document_status: "",
         last_name: "",
         first_name: "",
         middle_name: "",
         extension: "",
-        student_number: "",
-        evaluator: null,
       });
     }
   }, [searchQuery, persons, explicitSelection]);
 
   const fetchPersons = async () => {
     try {
-      const res = await axios.get(
-        `${API_BASE_URL}/api/student_upload_documents_data`,
-      );
+      const res = await axios.get(`${API_BASE_URL}/api/upload_documents`);
       setPersons(res.data);
     } catch (err) {
       console.error("Error fetching persons:", err);
@@ -531,27 +634,24 @@ const MedicalRequirements = () => {
       return;
     }
 
-    const remarks = remarksMap[uploadId] || "";
-
     try {
-      await axios.put(`${API_BASE_URL}/api/uploads/student/remarks/${uploadId}`, {
+      await axios.put(`${API_BASE_URL}/uploads/status/${uploadId}`, {
         status: remarkValue,
-        remarks,
         user_id: userID,
       }, getAuditConfig());
 
+      // ✅ Optimistic update for UI
       setUploads((prev) =>
         prev.map((u) =>
           u.upload_id === uploadId
-            ? { ...u, status: parseInt(remarkValue, 10), remarks }
+            ? { ...u, status: parseInt(remarkValue, 10) }
             : u,
         ),
       );
 
-      setEditingRemarkId(null);
-
-      if (selectedPerson?.student_number) {
-        fetchUploadsByStudentNumber(selectedPerson.student_number);
+      // ✅ Refresh from backend to ensure sync
+      if (selectedPerson?.applicant_number) {
+        await fetchUploadsByApplicantNumber(selectedPerson.applicant_number);
       }
     } catch (err) {
       console.error("Error updating Status:", err);
@@ -569,7 +669,7 @@ const MedicalRequirements = () => {
 
     try {
       await axios.put(
-        `${API_BASE_URL}/api/document_status/${person.student_number}`,
+        `${API_BASE_URL}/api/document_status/${person.applicant_number}`,
         {
           document_status: newStatus,
           user_id: localStorage.getItem("person_id"),
@@ -577,14 +677,12 @@ const MedicalRequirements = () => {
         getAuditConfig(),
       );
 
-      // ✅ Re-fetch full person data to refresh evaluator + document_status in one call
-      if (person.person_id) {
-        await fetchByPersonId(person.person_id);
-      }
+      // ✅ Refresh evaluator and document status
+      await fetchDocumentStatus(person.applicant_number);
 
-      // ✅ Also refresh uploads list
-      if (person.student_number) {
-        await fetchUploadsByStudentNumber(person.student_number);
+      // ✅ Also refresh uploads list to update row values in the table
+      if (person.applicant_number) {
+        await fetchUploadsByApplicantNumber(person.applicant_number);
       }
 
       console.log("Document status updated and UI refreshed!");
@@ -604,6 +702,7 @@ const MedicalRequirements = () => {
       return;
     }
 
+    // If remarks is chosen but no file selected
     if (selectedFiles.remarks && !selectedFiles.file) {
       alert("Please select a file for the chosen remarks.");
       return;
@@ -616,10 +715,10 @@ const MedicalRequirements = () => {
       formData.append("person_id", selectedPerson.person_id);
       formData.append("remarks", selectedFiles.remarks || "");
 
-      await axios.post(`${API_BASE_URL}/api/student/upload`, formData, {
+      await axios.post(`${API_BASE_URL}/api/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
-          "x-person-id": localStorage.getItem("person_id"),
+          "x-person-id": localStorage.getItem("person_id"), // ✅ now inside headers
           ...getAuditConfig().headers,
         },
       });
@@ -627,8 +726,8 @@ const MedicalRequirements = () => {
       showSnackbar("✅ Upload successful!", "success");
 
       setSelectedFiles({});
-      if (selectedPerson?.student_number) {
-        fetchUploadsByStudentNumber(selectedPerson.student_number);
+      if (selectedPerson?.applicant_number) {
+        fetchUploadsByApplicantNumber(selectedPerson.applicant_number);
       }
     } catch (error) {
       console.error("Upload failed:", error);
@@ -651,8 +750,8 @@ const MedicalRequirements = () => {
         withCredentials: true,
       });
 
-      if (selectedPerson?.student_number) {
-        fetchUploadsByStudentNumber(selectedPerson.student_number);
+      if (selectedPerson?.applicant_number) {
+        fetchUploadsByApplicantNumber(selectedPerson.applicant_number);
       }
     } catch (err) {
       console.error("Delete error:", err);
@@ -685,11 +784,13 @@ const MedicalRequirements = () => {
             <span style={{ marginLeft: 2 }}>(Optional)</span>
           )}
         </TableCell>
-
         <TableCell sx={{ width: "20%", border: `1px solid ${borderColor}` }}>
           {uploadId && editingRemarkId === uploadId ? (
+            // 🔥 TEXTFIELD ONLY
             <TextField
-              disabled
+              InputProps={{
+                readOnly: true,
+              }}
               size="small"
               fullWidth
               autoFocus
@@ -703,6 +804,7 @@ const MedicalRequirements = () => {
               }
               onBlur={async () => {
                 const finalRemark = (remarksMap[uploadId] || "").trim();
+
                 await axios.put(`${API_BASE_URL}/api/uploads/remarks/${uploadId}`, {
                   remarks: finalRemark,
                   status:
@@ -710,17 +812,20 @@ const MedicalRequirements = () => {
                     "0",
                   user_id: userID,
                 }, getAuditConfig());
+
                 if (selectedPerson?.applicant_number) {
                   await fetchUploadsByApplicantNumber(
                     selectedPerson.applicant_number,
                   );
                 }
+
                 setEditingRemarkId(null);
               }}
               onKeyDown={async (e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   const finalRemark = (remarksMap[uploadId] || "").trim();
+
                   await axios.put(
                     `${API_BASE_URL}/api/uploads/remarks/${uploadId}`,
                     {
@@ -732,17 +837,21 @@ const MedicalRequirements = () => {
                     },
                     getAuditConfig(),
                   );
+
                   if (selectedPerson?.applicant_number) {
                     await fetchUploadsByApplicantNumber(
                       selectedPerson.applicant_number,
                     );
                   }
+
                   setEditingRemarkId(null);
                 }
               }}
             />
           ) : (
+            // 📌 DISPLAY MODE with GRAY BORDER (click to edit)
             <Box
+              disabled
               onClick={() => {
                 if (!uploadId) return;
                 setEditingRemarkId(uploadId);
@@ -759,6 +868,8 @@ const MedicalRequirements = () => {
                 display: "flex",
                 alignItems: "center",
                 px: 1,
+
+                // ⭐ Added border here
                 border: "1px solid #bdbdbd",
                 borderRadius: "4px",
                 backgroundColor: "#fafafa",
@@ -776,6 +887,7 @@ const MedicalRequirements = () => {
           {uploaded ? (
             uploaded.status === 1 ? (
               <Box
+                disabled
                 sx={{
                   backgroundColor: "#4CAF50",
                   color: "white",
@@ -792,6 +904,7 @@ const MedicalRequirements = () => {
               </Box>
             ) : uploaded.status === 2 ? (
               <Box
+                disabled
                 sx={{
                   backgroundColor: "#F44336",
                   color: "white",
@@ -847,24 +960,8 @@ const MedicalRequirements = () => {
         </TableCell>
 
         <TableCell style={{ border: `1px solid ${borderColor}` }}>
-          {selectedPerson?.student_number || person?.student_number
-            ? `[${selectedPerson?.student_number || person?.student_number}] ${(
-              selectedPerson?.last_name ||
-              person?.last_name ||
-              ""
-            ).toUpperCase()}, ${(
-              selectedPerson?.first_name ||
-              person?.first_name ||
-              ""
-            ).toUpperCase()} ${(
-              selectedPerson?.middle_name ||
-              person?.middle_name ||
-              ""
-            ).toUpperCase()} ${(
-              selectedPerson?.extension ||
-              person?.extension ||
-              ""
-            ).toUpperCase()}`
+          {selectedPerson?.applicant_number || person?.applicant_number
+            ? `[${selectedPerson?.applicant_number || person?.applicant_number}] ${(selectedPerson?.last_name || person?.last_name || "").toUpperCase()}, ${(selectedPerson?.first_name || person?.first_name || "").toUpperCase()} ${(selectedPerson?.middle_name || person?.middle_name || "").toUpperCase()} ${(selectedPerson?.extension || person?.extension || "").toUpperCase()}`
             : ""}
         </TableCell>
 
@@ -879,7 +976,9 @@ const MedicalRequirements = () => {
                   sx={{
                     backgroundColor: "green",
                     color: "white",
-                    "&:hover": { backgroundColor: "#006400" },
+                    "&:hover": {
+                      backgroundColor: "#006400",
+                    },
                   }}
                   onClick={() => {
                     setEditingRemarkId(uploaded.upload_id);
@@ -897,6 +996,7 @@ const MedicalRequirements = () => {
                   sx={{ backgroundColor: "#1976d2", color: "white" }}
                   href={`${API_BASE_URL}/ApplicantOnlineDocuments/${uploaded.file_path}`}
                   target="_blank"
+                  startIcon={<VisibilityIcon />}
                 >
                   Preview
                 </Button>
@@ -927,6 +1027,7 @@ const MedicalRequirements = () => {
     );
   };
 
+  // Put this at the very bottom before the return
   if (loading || hasAccess === null) {
     return <LoadingOverlay open={loading} message="Loading..." />;
   }
@@ -952,16 +1053,20 @@ const MedicalRequirements = () => {
         alignItems="center"
         mb={2}
       >
-        <Typography
-          variant="h4"
-          sx={{ fontWeight: "bold", color: titleColor, fontSize: "36px" }}
+        <Typography variant="h4"
+          sx={{
+            fontWeight: 'bold',
+            color: titleColor,
+            fontSize: '36px',
+          }}
         >
-          APPLICANT ONLINE REQUIREMENTS
+       APPLICANT ONLINE REQUIREMENTS
         </Typography>
+
 
         <TextField
           variant="outlined"
-          placeholder="Search Student Name / Email / Student ID"
+          placeholder="Search Applicant Name / Email / Applicant ID"
           size="small"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -994,12 +1099,12 @@ const MedicalRequirements = () => {
           gap: 2,
         }}
       >
-        {tabs1.map((tab, index) => (
+        {tabs.map((tab, index) => (
           <Card
             key={index}
             onClick={() => handleStepClick(index, tab.to)}
             sx={{
-              flex: `1 1 ${100 / tabs1.length}%`, // evenly divide row
+              flex: `1 1 ${100 / tabs.length}%`, // evenly divide row
               height: 135,
               display: "flex",
               alignItems: "center",
@@ -1042,8 +1147,7 @@ const MedicalRequirements = () => {
 
       <br />
       <br />
-
-      {/* Student Number and Name header */}
+      {/* Applicant ID and Name */}
       <TableContainer
         component={Paper}
         sx={{ width: "100%", border: `1px solid ${borderColor}` }}
@@ -1053,15 +1157,15 @@ const MedicalRequirements = () => {
             sx={{ backgroundColor: settings?.header_color || "#1976d2" }}
           >
             <TableRow>
+              {/* Left cell: Applicant ID */}
               <TableCell
                 sx={{
                   color: "white",
                   fontSize: "20px",
                   fontFamily: "Poppins, sans-serif",
-                  border: "none",
                 }}
               >
-                Student Number:&nbsp;
+                Applicant ID:&nbsp;
                 <span
                   style={{
                     fontFamily: "Poppins, sans-serif",
@@ -1069,22 +1173,22 @@ const MedicalRequirements = () => {
                     textDecoration: "underline",
                   }}
                 >
-                  {selectedPerson?.student_number ||
-                    person?.student_number ||
+                  {selectedPerson?.applicant_number ||
+                    person?.applicant_number ||
                     "N/A"}
                 </span>
               </TableCell>
 
+              {/* Right cell: Applicant Name, right-aligned */}
               <TableCell
                 align="right"
                 sx={{
                   color: "white",
                   fontSize: "20px",
                   fontFamily: "Poppins, sans-serif",
-                  border: "none",
                 }}
               >
-                Student Name:&nbsp;
+                Applicant Name:&nbsp;
                 <span
                   style={{
                     fontFamily: "Poppins, sans-serif",
@@ -1097,7 +1201,7 @@ const MedicalRequirements = () => {
                     person?.last_name ||
                     ""
                   ).toUpperCase()}
-                  ,&nbsp;
+                  , &nbsp;
                   {(
                     selectedPerson?.first_name ||
                     person?.first_name ||
@@ -1124,7 +1228,7 @@ const MedicalRequirements = () => {
         component={Paper}
         sx={{ width: "100%", border: `1px solid ${borderColor}` }}
       >
-        {/* SHS GWA and Height */}
+        {/* SHS GWA and Height row below Applicant Name */}
         <Box sx={{ px: 2, mb: 2, mt: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", mb: 1, }}>
             <Typography
@@ -1254,6 +1358,7 @@ const MedicalRequirements = () => {
             <div style={{ fontSize: "12px", marginLeft: "10px" }}>cm.</div>
           </Box>
         </Box>
+
         <br />
         <br />
 
@@ -1266,6 +1371,7 @@ const MedicalRequirements = () => {
             px: 2,
           }}
         >
+          {/* Left side: Applying As and Strand */}
           <Box>
             {/* Applying As */}
             <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
@@ -1274,6 +1380,7 @@ const MedicalRequirements = () => {
                   fontSize: "14px",
                   fontFamily: "Poppins, sans-serif",
                   minWidth: "120px",
+
                   mr: 4.8,
                 }}
               >
@@ -1285,6 +1392,7 @@ const MedicalRequirements = () => {
                 size="small"
                 name="applyingAs"
                 value={person.applyingAs || ""}
+                placeholder="Select applyingAs"
                 sx={{ width: "400px" }}
                 InputProps={{ sx: { height: 35 } }}
                 inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
@@ -1309,7 +1417,6 @@ const MedicalRequirements = () => {
               </TextField>
             </Box>
 
-            {/* Document Status */}
             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
               <Typography
                 sx={{
@@ -1337,30 +1444,24 @@ const MedicalRequirements = () => {
                 </MenuItem>
                 <MenuItem value="On Process">On Process</MenuItem>
                 <MenuItem value="Documents Verified & ECAT">
-                  Documents Verified &amp; ECAT
+                  Documents Verified & ECAT
                 </MenuItem>
                 <MenuItem value="Disapproved / Program Closed">
                   Disapproved / Program Closed
                 </MenuItem>
               </TextField>
 
-              {/* ✅ Evaluator info — uses flat structure returned by /api/student_data_as_applicant/:id */}
               {person?.evaluator?.evaluator_email && (
                 <Typography variant="caption" sx={{ marginLeft: 1 }}>
                   Status Changed By:{" "}
                   {person.evaluator.evaluator_email.replace(
                     /@gmail\.com$/i,
                     "",
-                  )}
-                  {/* ✅ evaluator_lname/fname/mname available if added to backend SELECT */}
-                  {person.evaluator.evaluator_lname && (
-                    <>
-                      {" "}
-                      ({person.evaluator.evaluator_lname},{" "}
-                      {person.evaluator.evaluator_fname}{" "}
-                      {person.evaluator.evaluator_mname})
-                    </>
-                  )}
+                  )}{" "}
+                  ({person.evaluator.evaluator_lname || ""},{" "}
+                  {person.evaluator.evaluator_fname || ""}{" "}
+                  {person.evaluator.evaluator_mname || ""}
+                  )
                   <br />
                   Updated At:{" "}
                   {new Date(person.evaluator.created_at).toLocaleString()}
@@ -1368,8 +1469,39 @@ const MedicalRequirements = () => {
               )}
             </Box>
 
-            {/* Document Type and File Upload */}
+            {/* Document Type, Remarks, and Document File */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 4, mb: 2 }}>
+              {/* Document Type */}
+              {/* <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, }}>
+                  <Typography sx={{ fontSize: "14px", fontFamily: "Poppins, sans-serif", width: "90px" }}>
+                    Document Type:
+                  </Typography>
+                  <TextField
+                    select
+                    size="small"
+                    placeholder="Select Documents"
+                    value={selectedFiles.requirements_id || ''}
+                    onChange={(e) =>
+                      setSelectedFiles(prev => ({
+                        ...prev,
+                        requirements_id: e.target.value,
+                      }))
+                    }
+                    sx={{ width: 200 }} // match width
+                    InputProps={{ sx: { height: 38 } }} // match height
+                    inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+                  >
+                    <MenuItem value="">
+                      <em>Select Documents</em>
+                    </MenuItem>
+                    <MenuItem value={1}>PSA Birth Certificate</MenuItem>
+                    <MenuItem value={2}>Form 138 (With at least 3rd Quarter posting / No failing grade)</MenuItem>
+                    <MenuItem value={3}>Certificate of Good Moral Character</MenuItem>
+                    <MenuItem value={4}>Certificate Belonging to Graduating Class</MenuItem>
+                  </TextField>
+                </Box> */}
+
+              {/* ---------------------------------------------------------------------- */}
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography
                   sx={{
@@ -1401,6 +1533,7 @@ const MedicalRequirements = () => {
                   <MenuItem value="">
                     <em>Select Documents</em>
                   </MenuItem>
+                  {/* ✅ Dynamically map requirements from DB */}
                   {requirements.map((req) => (
                     <MenuItem key={req.id} value={req.id}>
                       {req.description}
@@ -1419,7 +1552,39 @@ const MedicalRequirements = () => {
                   ))}
                 </TextField>
               </Box>
-
+              {/* ---------------------------------------------------------------------- */}
+              {/*
+                Remarks
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: "14px", fontFamily: "Poppins, sans-serif", width: "80px" }}>
+                    Remarks
+                  </Typography>
+                  <TextField
+                    select
+                    size="small"
+                    placeholder="Select Remarks"
+                    value={selectedFiles.remarks || ''}
+                    onChange={(e) =>
+                      setSelectedFiles(prev => ({
+                        ...prev,
+                        remarks: e.target.value,
+                      }))
+                    }
+                    sx={{ width: 250 }}
+                    InputProps={{ sx: { height: 38 } }}
+                    inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+                  >
+                    <MenuItem value="">
+                      <em>Select Remarks</em>
+                    </MenuItem>
+                    {remarksOptions.map((option, index) => (
+                      <MenuItem key={index} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Box>
+*/}
               <Box
                 sx={{
                   display: "flex",
@@ -1439,6 +1604,7 @@ const MedicalRequirements = () => {
                   Document File:
                 </Typography>
 
+                {/* 📂 Gray Box Always Visible */}
                 <Box
                   sx={{
                     backgroundColor: "#e0e0e0",
@@ -1466,6 +1632,7 @@ const MedicalRequirements = () => {
                     : "No file selected"}
                 </Box>
 
+                {/* 📁 Browse Button */}
                 <Button
                   disabled
                   variant="contained"
@@ -1499,7 +1666,9 @@ const MedicalRequirements = () => {
                   }
                 />
 
+                {/* 🟢 Submit Button */}
                 <Button
+                  disabled
                   variant="contained"
                   color="success"
                   sx={{
@@ -1509,7 +1678,6 @@ const MedicalRequirements = () => {
                     width: 250,
                   }}
                   onClick={() => handleConfirmUpload({ label: "New Document" })}
-                  disabled={!selectedFiles.file}
                 >
                   Submit Documents
                 </Button>
@@ -1517,11 +1685,11 @@ const MedicalRequirements = () => {
             </Box>
           </Box>
 
-          {/* Profile Image */}
+          {/* Right side: ID Photo */}
           {person.profile_img && (
             <Box
               sx={{
-                width: "2.10in",
+                width: "2.10in", // standard 2×2 size
                 height: "2.10in",
                 border: "1px solid #ccc",
                 overflow: "hidden",
@@ -1530,7 +1698,7 @@ const MedicalRequirements = () => {
               }}
             >
               <img
-                src={`${API_BASE_URL}/uploads/Student1by1/${person.profile_img}`}
+                src={`${API_BASE_URL}/uploads/Applicant1by1/${person.profile_img}`}
                 alt="Profile"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
@@ -1549,25 +1717,60 @@ const MedicalRequirements = () => {
               sx={{ backgroundColor: settings?.header_color || "#1976d2" }}
             >
               <TableRow>
-                {[
-                  "Document Type",
-                  "Remarks",
-                  "Status",
-                  "Date and Time Submitted",
-                  "User",
-                  "Action",
-                ].map((header) => (
-                  <TableCell
-                    key={header}
-                    sx={{
-                      color: "white",
-                      textAlign: "Center",
-                      border: `1px solid ${borderColor}`,
-                    }}
-                  >
-                    {header}
-                  </TableCell>
-                ))}
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  Document Type
+                </TableCell>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  Remarks
+                </TableCell>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  Status
+                </TableCell>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  Date and Time Submitted
+                </TableCell>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  User
+                </TableCell>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  Action
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody
@@ -1607,7 +1810,6 @@ const MedicalRequirements = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
-
         {/* Confirmation Dialog */}
         <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
           <DialogTitle>
@@ -1622,7 +1824,7 @@ const MedicalRequirements = () => {
               </>
             ) : (
               <>
-                Are you sure you want to delete{" "}
+                Are you sure you want to delete
                 <strong>
                   {targetDoc?.label ||
                     targetDoc?.short_label ||
@@ -1634,10 +1836,10 @@ const MedicalRequirements = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setConfirmOpen(false)}
+            <Button
               color="error"
               variant="outlined"
-            >
+              onClick={() => setConfirmOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -1653,4 +1855,4 @@ const MedicalRequirements = () => {
   );
 };
 
-export default MedicalRequirements;
+export default RegistrarRequirements;

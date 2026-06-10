@@ -22,6 +22,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import ClassIcon from "@mui/icons-material/Class";
 import FilterNoneIcon from "@mui/icons-material/FilterNone";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 // ─── Remark Badge ─────────────────────────────────────────────────
 const REMARK_MAP = {
   0: { label: "Ongoing", bg: "#E8F5E9", color: "#9e9c1e", border: "#807700" },
@@ -112,7 +113,6 @@ const canShowGrade = (subject, latestMigratedTermKey) => {
   return getAcademicTermKey(subject) !== latestMigratedTermKey;
 };
 
-// ─── Mobile grade card ────────────────────────────────────────────
 const MobileGradeCard = ({
   row,
   index,
@@ -171,6 +171,16 @@ const MobileGradeCard = ({
           {getUnitDisplay(row)} unit{getUnitDisplay(row) !== 1 ? "s" : ""}
         </Typography>
       </Box>
+
+      {/* Schedule */}
+      {row.schedule && (
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.5, width: "100%" }}>
+          <AccessTimeIcon sx={{ fontSize: 13, color: "#000", mt: "1px", flexShrink: 0 }} />
+          <Typography sx={{ fontSize: 11, color: "#000", whiteSpace: "pre-line", lineHeight: 1.5 }}>
+            {row.schedule}
+          </Typography>
+        </Box>
+      )}
 
       <RemarkBadge value={row.en_remarks} />
     </Box>
@@ -415,6 +425,8 @@ const StudentGradingPage = () => {
           const yearLevel = termSubjects[0]?.year_level_description;
           const semesterLabel = termSubjects[0]?.semester_description;
           const gwaValue = termSubjects[0]?.gwa;
+          const sectionDescription = termSubjects[0]?.section_description;
+
 
           return (
             <Box key={idx} sx={{ mb: 5 }}>
@@ -486,6 +498,12 @@ const StudentGradingPage = () => {
                             {formatYearLabel(yearLevel)} - {semesterLabel}
                           </Box>
                         </Typography>
+                        <Typography sx={{ fontSize: { xs: 12, sm: 14 }, fontWeight: 700, color: titleColor }}>
+                          SECTION:{" "}
+                          <Box component="span" sx={{ fontWeight: "normal", ml: "8px" }}>
+                            {sectionDescription || "—"}
+                          </Box>
+                        </Typography>
                       </Box>
                     </Box>
                   )}
@@ -516,7 +534,10 @@ const StudentGradingPage = () => {
                           { label: "#", width: "48px", align: "center" },
                           { label: "Code", width: "120px" },
                           { label: "Subject", width: undefined },
+
                           { label: "Faculty", width: "200px" },
+                          { label: "Schedule", width: "200px", align: "center" },
+
                           { label: "Units", width: "70px", align: "center" },
                           { label: "Section", width: "120px", align: "center" },
                           { label: "Final Grade", width: "110px", align: "center" },
@@ -551,16 +572,20 @@ const StudentGradingPage = () => {
                           <TableCell sx={{ ...bodyCell, border: `1px solid ${borderColor}`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {row.course_description}
                           </TableCell>
+
                           <TableCell sx={{ ...bodyCell, border: `1px solid ${borderColor}`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {row.fname === "TBA" && row.lname === "TBA"
                               ? <span style={{ color: "#9CA3AF", fontStyle: "italic" }}>TBA</span>
                               : `Prof. ${row.fname} ${row.lname}`}
                           </TableCell>
+                          <TableCell sx={{ ...bodyCell, border: `1px solid ${borderColor}`, textAlign: "center", whiteSpace: "pre-line", fontSize: 12 }}>
+                            {row.schedule || "—"}
+                          </TableCell>
                           <TableCell sx={{ ...bodyCell, border: `1px solid ${borderColor}`, textAlign: "center", fontWeight: 500 }}>
                             {getUnitDisplay(row)}
                           </TableCell>
                           <TableCell sx={{ ...bodyCell, border: `1px solid ${borderColor}`, textAlign: "center" }}>
-                            {row.program_code}-{row.section_description}
+                            {row.section_description}
                           </TableCell>
                           <TableCell sx={{ ...bodyCell, border: `1px solid ${borderColor}`, textAlign: "center" }}>
                             {row.numeric_grade

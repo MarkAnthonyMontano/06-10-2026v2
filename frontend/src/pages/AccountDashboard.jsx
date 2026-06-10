@@ -127,15 +127,20 @@ const AccountDashboard = () => {
       key: "applicantManagement", label: "Applicant Management", icon: Badge,
       items: [
         { title: "Applicant Information", link: "/super_admin_applicant_dashboard1", icon: Info, page_id: 75 },
-        { title: "Applicant Online Requirements", link: "/applicant_requirements_uploader", icon: Assignment, page_id: 84 },
+        { title: "Applicant Online Requirements", link: "/applicant_online_requirements_admin", icon: Assignment, page_id: 160 },
+        { title: "Archive", link: "/archived", icon: FolderCopy, page_id: 142 },
       ],
     },
     {
       key: "studentManagement", label: "Student Management", icon: School,
       items: [
         { title: "Student Information", link: "/super_admin_student_dashboard1", icon: Info, page_id: 86 },
-        { title: "Student Online Requirements", link: "/student_requirements_uploader", icon: Assignment, page_id: 150 },
-        { title: "Archive", link: "/archived", icon: FolderCopy, page_id: 142 },
+        { title: "Student Online Requirements", link: "/student_online_requirements_admin", icon: Assignment, page_id: 150 },
+        { title: "Edit Personal Information", link: "/admin_student_edit_permissions1", icon: FolderCopy, page_id: 155 },
+        { title: "Edit Family Background", link: "/admin_student_edit_permissions2", icon: FolderCopy, page_id: 156 },
+        { title: "Edit Educational Background", link: "/admin_student_edit_permissions3", icon: FolderCopy, page_id: 157 },
+        { title: "Edit Health & Medical Records", link: "/admin_student_edit_permissions4", icon: FolderCopy, page_id: 158 },
+        { title: "Edit Other Information", link: "/admin_student_edit_permissions5", icon: FolderCopy, page_id: 159 },
       ],
     },
     {

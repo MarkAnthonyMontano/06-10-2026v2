@@ -83,8 +83,8 @@ const RegistrarDashboard5 = () => {
            icon: <PersonIcon fontSize="large" />,
          },
          {
-           label: "Student Requirements",
-           to: "/registrar_requirements",
+           label: "Applicant Online Requirements",
+           to: "applicant_online_requirements_college",
            icon: <AssignmentIcon fontSize="large" />,
          },
            {
@@ -1115,7 +1115,7 @@ const RegistrarDashboard5 = () => {
                                     handleUpdate(); // Save data
 
                                     if (isFormValid()) {
-                                        navigate("/student_requirements"); // Proceed only if valid
+                                        navigate("/applicant_online_requirements_college"); // Proceed only if valid
                                     } else {
                                         alert("Please complete all required fields before submitting.");
                                     }

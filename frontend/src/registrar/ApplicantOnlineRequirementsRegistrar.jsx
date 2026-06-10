@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import Search from "@mui/icons-material/Search";
 import API_BASE_URL from "../apiConfig";
+import { restrictToRegistrarCurriculum } from "../utils/registrarCurriculumRestriction";
 import { Link, useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -36,19 +37,23 @@ import PeopleIcon from "@mui/icons-material/People";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import Unauthorized from "../components/Unauthorized";
 import LoadingOverlay from "../components/LoadingOverlay";
+import KeyIcon from "@mui/icons-material/Key";
+import CampaignIcon from "@mui/icons-material/Campaign";
+import ScoreIcon from "@mui/icons-material/Score";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SearchIcon from "@mui/icons-material/Search";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import PersonIcon from "@mui/icons-material/Person";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 
-const StudentRequirementsUploader = () => {
+const RegistrarRequirements = () => {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(2);
-
+  
   // ------------------------------------
   const [requirements, setRequirements] = useState([]);
-
   const [selectedPerson, setSelectedPerson] = useState(null);
+
   useEffect(() => {
     axios
       .get(`${API_BASE_URL}/api/requirements`)
@@ -56,14 +61,17 @@ const StudentRequirementsUploader = () => {
         const allRequirements = res.data;
 
         if (selectedPerson) {
+          // Filter by applicant's applyingAs value OR applicant_type === 0
           const filtered = allRequirements.filter(
             (req) =>
               Number(req.applicant_type) ===
               Number(selectedPerson.applyingAs) ||
               Number(req.applicant_type) === 0,
           );
+
           setRequirements(filtered);
         } else {
+          // Default filter when no applicant is selected
           const filtered = allRequirements.filter(
             (req) =>
               Number(req.applicant_type) === 1 ||
@@ -79,7 +87,7 @@ const StudentRequirementsUploader = () => {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success",
+    severity: "success", // success | error | warning | info
   });
 
   const showSnackbar = (message, severity = "success") => {
@@ -91,15 +99,26 @@ const StudentRequirementsUploader = () => {
   const fetchByPersonId = async (personID) => {
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/student_with_number/${personID}`,
+        `${API_BASE_URL}/api/person_with_applicant/${personID}`,
       );
       setPerson(res.data);
       setSelectedPerson(res.data);
-      if (res.data?.student_number) {
-        await fetchUploadsByStudentNumber(res.data.student_number);
+      if (res.data?.applicant_number) {
+        await fetchUploadsByApplicantNumber(res.data.applicant_number);
       }
     } catch (err) {
-      console.error("❌ student_with_number failed:", err);
+      console.error("❌ person_with_applicant failed:", err);
+    }
+  };
+
+  const handleStepClick = (index, to) => {
+    setActiveStep(index);
+    const pid = sessionStorage.getItem("admin_edit_person_id");
+
+    if (pid && to !== "/applicant_list_admin") {
+      navigate(`${to}?person_id=${pid}`);
+    } else {
+      navigate(to);
     }
   };
 
@@ -125,7 +144,7 @@ const StudentRequirementsUploader = () => {
     first_name: "",
     middle_name: "",
     extension: "",
-    student_number: "",
+    applicant_number: "",
   });
 
   const [curriculumOptions, setCurriculumOptions] = useState([]);
@@ -134,16 +153,53 @@ const StudentRequirementsUploader = () => {
     const fetchCurriculums = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/applied_program`);
-        setCurriculumOptions(response.data);
+        setCurriculumOptions(restrictToRegistrarCurriculum(response.data));
       } catch (error) {
         console.error("Error fetching curriculum options:", error);
       }
     };
+
     fetchCurriculums();
   }, []);
 
+  {
+    curriculumOptions.find(
+      (item) =>
+        item?.curriculum_id?.toString() === (person?.program ?? "").toString()
+    )?.program_description || (person?.program ?? "")
+
+  }
+
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const personIdFromUrl = queryParams.get("person_id");
+
+    if (!personIdFromUrl) return;
+
+    // fetch info of that person
+    axios
+      .get(`${API_BASE_URL}/api/person_with_applicant/${personIdFromUrl}`)
+      .then((res) => {
+        if (res.data?.applicant_number) {
+          // AUTO-INSERT applicant_number into search bar
+          setSearchQuery(res.data.applicant_number);
+
+          // If you have a fetchUploads() or fetchExamScore() — call it
+          if (typeof fetchUploadsByApplicantNumber === "function") {
+            fetchUploadsByApplicantNumber(res.data.applicant_number);
+          }
+
+          if (typeof fetchApplicants === "function") {
+            fetchApplicants();
+          }
+        }
+      })
+      .catch((err) => console.error("Auto search failed:", err));
+  }, [location.search]);
+
   const [editingRemarkId, setEditingRemarkId] = useState(null);
-  const [newRemarkMode, setNewRemarkMode] = useState({});
+  const [newRemarkMode, setNewRemarkMode] = useState({}); // { [upload_id]: true|false }
   const [documentStatus, setDocumentStatus] = useState("");
 
   const settings = useContext(SettingsContext);
@@ -152,8 +208,8 @@ const StudentRequirementsUploader = () => {
   const [subtitleColor, setSubtitleColor] = useState("#555555");
   const [borderColor, setBorderColor] = useState("#000000");
   const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
-  const [subButtonColor, setSubButtonColor] = useState("#ffffff");
-  const [stepperColor, setStepperColor] = useState("#000000");
+  const [subButtonColor, setSubButtonColor] = useState("#ffffff"); // ✅ NEW
+  const [stepperColor, setStepperColor] = useState("#000000"); // ✅ NEW
 
   const [fetchedLogo, setFetchedLogo] = useState(null);
   const [companyName, setCompanyName] = useState("");
@@ -163,19 +219,23 @@ const StudentRequirementsUploader = () => {
   useEffect(() => {
     if (!settings) return;
 
+    // 🎨 Colors
     if (settings.title_color) setTitleColor(settings.title_color);
     if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
     if (settings.border_color) setBorderColor(settings.border_color);
-    if (settings.main_button_color) setMainButtonColor(settings.main_button_color);
-    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color);
-    if (settings.stepper_color) setStepperColor(settings.stepper_color);
+    if (settings.main_button_color)
+      setMainButtonColor(settings.main_button_color);
+    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color); // ✅ NEW
+    if (settings.stepper_color) setStepperColor(settings.stepper_color); // ✅ NEW
 
+    // 🏫 Logo
     if (settings.logo_url) {
-      setFetchedLogo(`${API_BASE_URL}${settings.logo_url}`);
+      setFetchedLogo(`${API_BASE_URL}/${settings.logo_url}`);
     } else {
-      setFetchedLogo(null);
+      setFetchedLogo(EaristLogo);
     }
 
+    // 🏷️ School Information
     if (settings.company_name) setCompanyName(settings.company_name);
     if (settings.short_term) setShortTerm(settings.short_term);
     if (settings.campus_address) setCampusAddress(settings.campus_address);
@@ -187,7 +247,7 @@ const StudentRequirementsUploader = () => {
   const [canDelete, setCanDelete] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const pageId = 150;
+  const pageId = 160;
 
   const [employeeID, setEmployeeID] = useState("");
 
@@ -201,8 +261,7 @@ const StudentRequirementsUploader = () => {
         localStorage.getItem("employee_id") ||
         localStorage.getItem("email") ||
         "unknown",
-      "x-audit-actor-role":
-        userRole || localStorage.getItem("role") || "registrar",
+      "x-audit-actor-role": userRole || localStorage.getItem("role") || "registrar",
     },
   });
 
@@ -250,6 +309,11 @@ const StudentRequirementsUploader = () => {
       setCanCreate(false);
       setCanEdit(false);
       setCanDelete(false);
+      if (error.response && error.response.data.message) {
+        console.log(error.response.data.message);
+      } else {
+        console.log("An unexpected error occurred.");
+      }
       setLoading(false);
     }
   };
@@ -282,6 +346,38 @@ const StudentRequirementsUploader = () => {
   const queryPersonId = queryParams.get("person_id")?.trim() || "";
 
   useEffect(() => {
+    const storedUser = localStorage.getItem("email");
+    const storedRole = localStorage.getItem("role");
+    const loggedInPersonId = localStorage.getItem("person_id");
+
+    if (!storedUser || !storedRole || !loggedInPersonId) {
+      window.location.href = "/login";
+      return;
+    }
+
+    setUser(storedUser);
+    setUserRole(storedRole);
+
+    const allowedRoles = ["registrar", "applicant", "superadmin"];
+    if (!allowedRoles.includes(storedRole)) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const lastSelected = sessionStorage.getItem("admin_edit_person_id");
+
+    // ⭐ CASE 1: URL HAS ?person_id=
+    if (queryPersonId !== "") {
+      sessionStorage.setItem("admin_edit_person_id", queryPersonId);
+      setUserID(queryPersonId);
+      return;
+    }
+
+    // ⭐ CASE 3: No URL ID and no last selected → start blank
+    setUserID("");
+  }, [queryPersonId]);
+
+  useEffect(() => {
     let consumedFlag = false;
 
     const tryLoad = async () => {
@@ -292,6 +388,7 @@ const StudentRequirementsUploader = () => {
         return;
       }
 
+      // fallback only if it's a fresh selection from Applicant List
       const source = sessionStorage.getItem("admin_edit_person_id_source");
       const tsStr = sessionStorage.getItem("admin_edit_person_id_ts");
       const id = sessionStorage.getItem("admin_edit_person_id");
@@ -307,6 +404,7 @@ const StudentRequirementsUploader = () => {
     };
 
     tryLoad().finally(() => {
+      // consume the freshness so it won't auto-load again later
       if (consumedFlag) {
         sessionStorage.removeItem("admin_edit_person_id_source");
         sessionStorage.removeItem("admin_edit_person_id_ts");
@@ -315,9 +413,10 @@ const StudentRequirementsUploader = () => {
   }, [queryPersonId]);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null);
-  const [targetDoc, setTargetDoc] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null); // "upload" or "delete"
+  const [targetDoc, setTargetDoc] = useState(null); // document info
 
+  // When clicking upload
   const handleConfirmUpload = (doc) => {
     if (!canCreate) {
       showSnackbar("You do not have permission to upload documents.", "warning");
@@ -328,6 +427,7 @@ const StudentRequirementsUploader = () => {
     setConfirmOpen(true);
   };
 
+  // When clicking delete
   const handleConfirmDelete = (doc) => {
     if (!canDelete) {
       showSnackbar("You do not have permission to delete documents.", "warning");
@@ -338,13 +438,19 @@ const StudentRequirementsUploader = () => {
     setConfirmOpen(true);
   };
 
+  // Execute action after confirm
   const handleConfirmAction = async () => {
     if (confirmAction === "upload") {
+      // call your upload logic here
       await handleUploadSubmit(targetDoc);
-      console.log(`📂 Document uploaded by: ${localStorage.getItem("username")}`);
+      console.log(
+        `📂 Document uploaded by: ${localStorage.getItem("username")}`,
+      );
     } else if (confirmAction === "delete") {
       await handleDelete(targetDoc.upload_id);
-      console.log(`🗑️ Document deleted by: ${localStorage.getItem("username")}`);
+      console.log(
+        `🗑️ Document deleted by: ${localStorage.getItem("username")}`,
+      );
     }
     setConfirmOpen(false);
   };
@@ -353,17 +459,16 @@ const StudentRequirementsUploader = () => {
     fetchPersons();
   }, []);
 
-  // ── KEY CHANGE: uses student_number ──
-  const fetchUploadsByStudentNumber = async (student_number) => {
-    if (!student_number) return;
+  const fetchUploadsByApplicantNumber = async (applicant_number) => {
+    if (!applicant_number) return;
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/uploads/by-student/${student_number}`,
+        `${API_BASE_URL}/api/uploads/by-applicant/${applicant_number}`,
       );
       setUploads(res.data);
     } catch (err) {
       console.error("Fetch uploads failed:", err);
-      console.log("Fetching for student number:", student_number);
+      console.log("Fetching for applicant number:", applicant_number);
     }
   };
 
@@ -374,13 +479,14 @@ const StudentRequirementsUploader = () => {
     }
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/student_with_number/${personID}`,
+        `${API_BASE_URL}/api/person_with_applicant/${personID}`,
       );
       const safePerson = {
         ...res.data,
         document_status: res.data.document_status || "",
       };
-      setPerson(safePerson);
+      setPerson(safePerson); // ✅ only update person
+      // ❌ don't call setSelectedPerson here
     } catch (error) {
       console.error(
         "❌ Failed to fetch person data:",
@@ -389,10 +495,10 @@ const StudentRequirementsUploader = () => {
     }
   };
 
-  const fetchDocumentStatus = async (student_number) => {
+  const fetchDocumentStatus = async (applicant_number) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/api/student/document_status/${student_number}`,
+        `${API_BASE_URL}/api/document_status/${applicant_number}`,
       );
       setDocumentStatus(response.data.document_status);
       setPerson((prev) => ({
@@ -405,10 +511,10 @@ const StudentRequirementsUploader = () => {
   };
 
   useEffect(() => {
-    if (person.student_number) {
-      fetchDocumentStatus(person.student_number);
+    if (person.applicant_number) {
+      fetchDocumentStatus(person.applicant_number); // <-- pass the param
     }
-  }, [person.student_number]);
+  }, [person.applicant_number]);
 
   useEffect(() => {
     if (selectedPerson?.person_id) {
@@ -417,6 +523,7 @@ const StudentRequirementsUploader = () => {
   }, [selectedPerson]);
 
   useEffect(() => {
+    // No search text: keep explicit selection if present
     if (!searchQuery.trim()) {
       if (!explicitSelection) {
         setSelectedPerson(null);
@@ -434,23 +541,23 @@ const StudentRequirementsUploader = () => {
           first_name: "",
           middle_name: "",
           extension: "",
-          student_number: "",
         });
       }
       return;
     }
 
+    // User started typing -> manual search takes over
     if (explicitSelection) setExplicitSelection(false);
 
     const match = persons.find((p) =>
-      `${p.first_name} ${p.middle_name} ${p.last_name} ${p.emailAddress} ${p.student_number || ""}`
+      `${p.first_name} ${p.middle_name} ${p.last_name} ${p.emailAddress} ${p.applicant_number || ""}`
         .toLowerCase()
         .includes(searchQuery.toLowerCase()),
     );
 
     if (match) {
       setSelectedPerson(match);
-      fetchUploadsByStudentNumber(match.student_number);
+      fetchUploadsByApplicantNumber(match.applicant_number);
     } else {
       setSelectedPerson(null);
       setUploads([]);
@@ -458,24 +565,21 @@ const StudentRequirementsUploader = () => {
         profile_img: "",
         generalAverage1: "",
         height: "",
-        applyingAs: "",
         program: "",
         strand: "",
+        applyingAs: "",
         document_status: "",
         last_name: "",
         first_name: "",
         middle_name: "",
         extension: "",
-        student_number: "",
       });
     }
   }, [searchQuery, persons, explicitSelection]);
 
   const fetchPersons = async () => {
     try {
-      const res = await axios.get(
-        `${API_BASE_URL}/api/student_upload_documents_superadmin`,
-      );
+      const res = await axios.get(`${API_BASE_URL}/api/upload_documents`);
       setPersons(res.data);
     } catch (err) {
       console.error("Error fetching persons:", err);
@@ -484,20 +588,17 @@ const StudentRequirementsUploader = () => {
 
   const handleStatusChange = async (uploadId, remarkValue) => {
     if (!canEdit) {
-      showSnackbar(
-        "You do not have permission to update document status.",
-        "warning",
-      );
+      showSnackbar("You do not have permission to update document status.", "warning");
       return;
     }
 
     try {
-      await axios.put(
-        `${API_BASE_URL}/api/student/uploads/status/${uploadId}`,
-        { status: remarkValue, user_id: userID },
-        getAuditConfig(),
-      );
+      await axios.put(`${API_BASE_URL}/uploads/status/${uploadId}`, {
+        status: remarkValue,
+        user_id: userID,
+      }, getAuditConfig());
 
+      // ✅ Optimistic update for UI
       setUploads((prev) =>
         prev.map((u) =>
           u.upload_id === uploadId
@@ -506,8 +607,9 @@ const StudentRequirementsUploader = () => {
         ),
       );
 
-      if (selectedPerson?.student_number) {
-        await fetchUploadsByStudentNumber(selectedPerson.student_number);
+      // ✅ Refresh from backend to ensure sync
+      if (selectedPerson?.applicant_number) {
+        await fetchUploadsByApplicantNumber(selectedPerson.applicant_number);
       }
     } catch (err) {
       console.error("Error updating Status:", err);
@@ -516,10 +618,7 @@ const StudentRequirementsUploader = () => {
 
   const handleDocumentStatus = async (event) => {
     if (!canEdit) {
-      showSnackbar(
-        "You do not have permission to update document status.",
-        "warning",
-      );
+      showSnackbar("You do not have permission to update document status.", "warning");
       return;
     }
 
@@ -528,7 +627,7 @@ const StudentRequirementsUploader = () => {
 
     try {
       await axios.put(
-        `${API_BASE_URL}/api/student/document_status/${person.student_number}`,
+        `${API_BASE_URL}/api/document_status/${person.applicant_number}`,
         {
           document_status: newStatus,
           user_id: localStorage.getItem("person_id"),
@@ -536,10 +635,12 @@ const StudentRequirementsUploader = () => {
         getAuditConfig(),
       );
 
-      await fetchDocumentStatus(person.student_number);
+      // ✅ Refresh evaluator and document status
+      await fetchDocumentStatus(person.applicant_number);
 
-      if (person.student_number) {
-        await fetchUploadsByStudentNumber(person.student_number);
+      // ✅ Also refresh uploads list to update row values in the table
+      if (person.applicant_number) {
+        await fetchUploadsByApplicantNumber(person.applicant_number);
       }
 
       console.log("Document status updated and UI refreshed!");
@@ -559,20 +660,7 @@ const StudentRequirementsUploader = () => {
       return;
     }
 
-    const file = selectedFiles.file;
-
-    if (!file) {
-      showSnackbar("Please select a file first.", "warning");
-      return;
-    }
-
-    const maxSize = 4 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-      showSnackbar("File must not exceed 4MB", "error");
-      return;
-    }
-
+    // If remarks is chosen but no file selected
     if (selectedFiles.remarks && !selectedFiles.file) {
       alert("Please select a file for the chosen remarks.");
       return;
@@ -585,10 +673,10 @@ const StudentRequirementsUploader = () => {
       formData.append("person_id", selectedPerson.person_id);
       formData.append("remarks", selectedFiles.remarks || "");
 
-      await axios.post(`${API_BASE_URL}/api/student/upload`, formData, {
+      await axios.post(`${API_BASE_URL}/api/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
-          "x-person-id": localStorage.getItem("person_id"),
+          "x-person-id": localStorage.getItem("person_id"), // ✅ now inside headers
           ...getAuditConfig().headers,
         },
       });
@@ -596,8 +684,8 @@ const StudentRequirementsUploader = () => {
       showSnackbar("✅ Upload successful!", "success");
 
       setSelectedFiles({});
-      if (selectedPerson?.student_number) {
-        fetchUploadsByStudentNumber(selectedPerson.student_number);
+      if (selectedPerson?.applicant_number) {
+        fetchUploadsByApplicantNumber(selectedPerson.applicant_number);
       }
     } catch (error) {
       console.error("Upload failed:", error);
@@ -607,15 +695,12 @@ const StudentRequirementsUploader = () => {
 
   const handleDelete = async (uploadId) => {
     if (!canDelete) {
-      showSnackbar(
-        "You do not have permission to delete documents.",
-        "warning"
-      );
+      showSnackbar("You do not have permission to delete documents.", "warning");
       return;
     }
 
     try {
-      await axios.delete(`${API_BASE_URL}/api/student/uploads/${uploadId}`, {
+      await axios.delete(`${API_BASE_URL}/api/admin/uploads/${uploadId}`, {
         headers: {
           "x-person-id": localStorage.getItem("person_id"),
           ...getAuditConfig().headers,
@@ -623,29 +708,12 @@ const StudentRequirementsUploader = () => {
         withCredentials: true,
       });
 
-      // ✅ Refresh uploads
-      if (selectedPerson?.student_number) {
-        fetchUploadsByStudentNumber(selectedPerson.student_number);
+      if (selectedPerson?.applicant_number) {
+        fetchUploadsByApplicantNumber(selectedPerson.applicant_number);
       }
-
-      // ✅ Success Snackbar
-      showSnackbar("🗑️ Document deleted successfully!", "success");
-
     } catch (err) {
       console.error("Delete error:", err);
-
-      // ❌ Error Snackbar
-      showSnackbar("❌ Failed to delete document.", "error");
     }
-  };
-
-  const actionButtonStyle = {
-    height: "40px",
-    width: "100px",
-    minWidth: "100px",
-    textTransform: "none",
-    color: "white",
-    fontWeight: "bold",
   };
 
   const renderRow = (doc) => {
@@ -674,10 +742,13 @@ const StudentRequirementsUploader = () => {
             <span style={{ marginLeft: 2 }}>(Optional)</span>
           )}
         </TableCell>
-
         <TableCell sx={{ width: "20%", border: `1px solid ${borderColor}` }}>
           {uploadId && editingRemarkId === uploadId ? (
+            // 🔥 TEXTFIELD ONLY
             <TextField
+              InputProps={{
+                readOnly: true,
+              }}
               size="small"
               fullWidth
               autoFocus
@@ -691,26 +762,28 @@ const StudentRequirementsUploader = () => {
               }
               onBlur={async () => {
                 const finalRemark = (remarksMap[uploadId] || "").trim();
-                await axios.put(
-                  `${API_BASE_URL}/api/uploads/remarks/${uploadId}`,
-                  {
-                    remarks: finalRemark,
-                    status:
-                      uploads.find((u) => u.upload_id === uploadId)?.status ||
-                      "0",
-                    user_id: userID,
-                  },
-                  getAuditConfig(),
-                );
-                if (selectedPerson?.student_number) {
-                  await fetchUploadsByStudentNumber(selectedPerson.student_number);
+
+                await axios.put(`${API_BASE_URL}/api/uploads/remarks/${uploadId}`, {
+                  remarks: finalRemark,
+                  status:
+                    uploads.find((u) => u.upload_id === uploadId)?.status ||
+                    "0",
+                  user_id: userID,
+                }, getAuditConfig());
+
+                if (selectedPerson?.applicant_number) {
+                  await fetchUploadsByApplicantNumber(
+                    selectedPerson.applicant_number,
+                  );
                 }
+
                 setEditingRemarkId(null);
               }}
               onKeyDown={async (e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   const finalRemark = (remarksMap[uploadId] || "").trim();
+
                   await axios.put(
                     `${API_BASE_URL}/api/uploads/remarks/${uploadId}`,
                     {
@@ -722,17 +795,21 @@ const StudentRequirementsUploader = () => {
                     },
                     getAuditConfig(),
                   );
-                  if (selectedPerson?.student_number) {
-                    await fetchUploadsByStudentNumber(
-                      selectedPerson.student_number,
+
+                  if (selectedPerson?.applicant_number) {
+                    await fetchUploadsByApplicantNumber(
+                      selectedPerson.applicant_number,
                     );
                   }
+
                   setEditingRemarkId(null);
                 }
               }}
             />
           ) : (
+            // 📌 DISPLAY MODE with GRAY BORDER (click to edit)
             <Box
+              disabled
               onClick={() => {
                 if (!uploadId) return;
                 setEditingRemarkId(uploadId);
@@ -749,6 +826,8 @@ const StudentRequirementsUploader = () => {
                 display: "flex",
                 alignItems: "center",
                 px: 1,
+
+                // ⭐ Added border here
                 border: "1px solid #bdbdbd",
                 borderRadius: "4px",
                 backgroundColor: "#fafafa",
@@ -766,6 +845,7 @@ const StudentRequirementsUploader = () => {
           {uploaded ? (
             uploaded.status === 1 ? (
               <Box
+                disabled
                 sx={{
                   backgroundColor: "#4CAF50",
                   color: "white",
@@ -782,6 +862,7 @@ const StudentRequirementsUploader = () => {
               </Box>
             ) : uploaded.status === 2 ? (
               <Box
+                disabled
                 sx={{
                   backgroundColor: "#F44336",
                   color: "white",
@@ -802,7 +883,11 @@ const StudentRequirementsUploader = () => {
                   disabled
                   variant="contained"
                   onClick={() => handleStatusChange(uploaded.upload_id, "1")}
-                  sx={{ ...buttonStyle, backgroundColor: "green", color: "white" }}
+                  sx={{
+                    ...buttonStyle,
+                    backgroundColor: "green",
+                    color: "white",
+                  }}
                 >
                   Verified
                 </Button>
@@ -810,7 +895,11 @@ const StudentRequirementsUploader = () => {
                   disabled
                   variant="contained"
                   onClick={() => handleStatusChange(uploaded.upload_id, "2")}
-                  sx={{ ...buttonStyle, backgroundColor: "red", color: "white" }}
+                  sx={{
+                    ...buttonStyle,
+                    backgroundColor: "red",
+                    color: "white",
+                  }}
                 >
                   Rejected
                 </Button>
@@ -828,10 +917,9 @@ const StudentRequirementsUploader = () => {
             })}
         </TableCell>
 
-        {/* ── KEY CHANGE: student_number instead of applicant_number ── */}
         <TableCell style={{ border: `1px solid ${borderColor}` }}>
-          {selectedPerson?.student_number || person?.student_number
-            ? `[${selectedPerson?.student_number || person?.student_number}] ${(selectedPerson?.last_name || person?.last_name || "").toUpperCase()}, ${(selectedPerson?.first_name || person?.first_name || "").toUpperCase()} ${(selectedPerson?.middle_name || person?.middle_name || "").toUpperCase()} ${(selectedPerson?.extension || person?.extension || "").toUpperCase()}`
+          {selectedPerson?.applicant_number || person?.applicant_number
+            ? `[${selectedPerson?.applicant_number || person?.applicant_number}] ${(selectedPerson?.last_name || person?.last_name || "").toUpperCase()}, ${(selectedPerson?.first_name || person?.first_name || "").toUpperCase()} ${(selectedPerson?.middle_name || person?.middle_name || "").toUpperCase()} ${(selectedPerson?.extension || person?.extension || "").toUpperCase()}`
             : ""}
         </TableCell>
 
@@ -839,13 +927,16 @@ const StudentRequirementsUploader = () => {
           <Box display="flex" justifyContent="center" gap={1}>
             {uploaded ? (
               <>
-                <Button
+                {/* <Button
+                  disabled
                   variant="contained"
                   size="small"
-                  startIcon={<EditIcon />}
                   sx={{
-                    ...actionButtonStyle,
                     backgroundColor: "green",
+                    color: "white",
+                    "&:hover": {
+                      backgroundColor: "#006400",
+                    },
                   }}
                   onClick={() => {
                     setEditingRemarkId(uploaded.upload_id);
@@ -856,33 +947,36 @@ const StudentRequirementsUploader = () => {
                   }}
                 >
                   Edit
-                </Button>
+                </Button> */}
 
-                {/* ── KEY CHANGE: StudentOnlineRequirements path ── */}
                 <Button
                   variant="contained"
-                  startIcon={<VisibilityIcon />}
-                  sx={{
-                    ...actionButtonStyle,
-                    backgroundColor: "#1976d2",
-                  }}
-                  href={`${API_BASE_URL}/StudentOnlineDocuments/${uploaded.file_path}`}
+                  sx={{ backgroundColor: "#1976d2", color: "white" }}
+                  href={`${API_BASE_URL}/ApplicantOnlineDocuments/${uploaded.file_path}`}
                   target="_blank"
+                  startIcon={<VisibilityIcon />}
                 >
                   Preview
                 </Button>
 
-                <Button
-                  variant="contained"
+                {/* <Button
+                  disabled
                   onClick={() => handleConfirmDelete(uploaded)}
-                  startIcon={<DeleteIcon />}
                   sx={{
-                    ...actionButtonStyle,
-                    backgroundColor: "#9E0000",
+                    backgroundColor: uploaded.canDelete
+                      ? "maroon"
+                      : "lightgray",
+                    color: uploaded.canDelete ? "white" : "#888",
+                    cursor: uploaded.canDelete ? "pointer" : "not-allowed",
+                    "&:hover": {
+                      backgroundColor: uploaded.canDelete
+                        ? "#600000"
+                        : "lightgray",
+                    },
                   }}
                 >
                   Delete
-                </Button>
+                </Button> */}
               </>
             ) : null}
           </Box>
@@ -891,6 +985,7 @@ const StudentRequirementsUploader = () => {
     );
   };
 
+  // Put this at the very bottom before the return
   if (loading || hasAccess === null) {
     return <LoadingOverlay open={loading} message="Loading..." />;
   }
@@ -910,26 +1005,26 @@ const StudentRequirementsUploader = () => {
         padding: 2,
       }}
     >
-      {/* Top header */}
       <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          mb: 2,
-        }}
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
       >
-        <Typography
-          variant="h4"
-          sx={{ fontWeight: "bold", color: titleColor, fontSize: "36px" }}
+        <Typography variant="h4"
+          sx={{
+            fontWeight: 'bold',
+            color: titleColor,
+            fontSize: '36px',
+          }}
         >
-          SUBMITTED DOCUMENTS
+       APPLICANT ONLINE REQUIREMENTS
         </Typography>
+
 
         <TextField
           variant="outlined"
-          placeholder="Search Student Name / Email / Student ID"
+          placeholder="Search Applicant Name / Email / Applicant ID"
           size="small"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -937,7 +1032,9 @@ const StudentRequirementsUploader = () => {
             width: 450,
             backgroundColor: "#fff",
             borderRadius: 1,
-            "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "10px",
+            },
           }}
           InputProps={{
             startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
@@ -946,17 +1043,22 @@ const StudentRequirementsUploader = () => {
       </Box>
 
       <hr style={{ border: "1px solid #ccc", width: "100%" }} />
-      <br />
-      <br />
 
-      {/* Student ID and Name header */}
+
+
+      <br />
+      <br />
+      {/* Applicant ID and Name */}
       <TableContainer
         component={Paper}
         sx={{ width: "100%", border: `1px solid ${borderColor}` }}
       >
         <Table>
-          <TableHead sx={{ backgroundColor: settings?.header_color || "#1976d2" }}>
+          <TableHead
+            sx={{ backgroundColor: settings?.header_color || "#1976d2" }}
+          >
             <TableRow>
+              {/* Left cell: Applicant ID */}
               <TableCell
                 sx={{
                   color: "white",
@@ -964,7 +1066,7 @@ const StudentRequirementsUploader = () => {
                   fontFamily: "Poppins, sans-serif",
                 }}
               >
-                Student ID:&nbsp;
+                Applicant ID:&nbsp;
                 <span
                   style={{
                     fontFamily: "Poppins, sans-serif",
@@ -972,12 +1074,13 @@ const StudentRequirementsUploader = () => {
                     textDecoration: "underline",
                   }}
                 >
-                  {selectedPerson?.student_number ||
-                    person?.student_number ||
+                  {selectedPerson?.applicant_number ||
+                    person?.applicant_number ||
                     "N/A"}
                 </span>
               </TableCell>
 
+              {/* Right cell: Applicant Name, right-aligned */}
               <TableCell
                 align="right"
                 sx={{
@@ -986,7 +1089,7 @@ const StudentRequirementsUploader = () => {
                   fontFamily: "Poppins, sans-serif",
                 }}
               >
-                Student Name:&nbsp;
+                Applicant Name:&nbsp;
                 <span
                   style={{
                     fontFamily: "Poppins, sans-serif",
@@ -1026,13 +1129,15 @@ const StudentRequirementsUploader = () => {
         component={Paper}
         sx={{ width: "100%", border: `1px solid ${borderColor}` }}
       >
+        {/* SHS GWA and Height row below Applicant Name */}
         <Box sx={{ px: 2, mb: 2, mt: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1, }}>
             <Typography
               sx={{
                 fontSize: "14px",
                 fontFamily: "Poppins, sans-serif",
                 minWidth: "100px",
+
                 mr: 1,
               }}
             >
@@ -1041,26 +1146,34 @@ const StudentRequirementsUploader = () => {
             <TextField
               size="small"
               name="program"
-              value={
-                curriculumOptions.length > 0
-                  ? curriculumOptions.find(
-                    (item) =>
-                      item?.curriculum_id?.toString() ===
-                      (person?.program ?? "").toString(),
-                  )?.program_description || (person?.program ?? "")
-                  : "Loading..."
-              }
+              value={curriculumOptions.length > 0
+                ? curriculumOptions.find(
+                  (item) =>
+                    item?.curriculum_id?.toString() ===
+                    (person?.program ?? "").toString()
+                )?.program_description || (person?.program ?? "")
+                : "Loading..."}
               sx={{ width: "500px" }}
-              InputProps={{ sx: { height: 35 } }}
-              inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+              InputProps={{
+                sx: {
+                  height: 35, // control outer height
+                },
+              }}
+              inputProps={{
+                style: {
+                  padding: "4px 8px", // control inner padding
+                  fontSize: "12px",
+                },
+              }}
             />
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1, }}>
             <Typography
               sx={{
                 fontSize: "14px",
                 fontFamily: "Poppins, sans-serif",
                 minWidth: "100px",
+
                 mr: 1,
               }}
             >
@@ -1071,16 +1184,26 @@ const StudentRequirementsUploader = () => {
               name="strand"
               value={person.strand || ""}
               sx={{ width: "350px" }}
-              InputProps={{ sx: { height: 35 } }}
-              inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+              InputProps={{
+                sx: {
+                  height: 35, // control outer height
+                },
+              }}
+              inputProps={{
+                style: {
+                  padding: "4px 8px", // control inner padding
+                  fontSize: "12px",
+                },
+              }}
             />
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1, }}>
             <Typography
               sx={{
                 fontSize: "14px",
                 fontFamily: "Poppins, sans-serif",
                 minWidth: "100px",
+
                 mr: 1,
               }}
             >
@@ -1091,10 +1214,20 @@ const StudentRequirementsUploader = () => {
               name="generalAverage1"
               value={person.generalAverage1 || ""}
               sx={{ width: "250px" }}
-              InputProps={{ sx: { height: 35 } }}
-              inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+              InputProps={{
+                sx: {
+                  height: 35, // control outer height
+                },
+              }}
+              inputProps={{
+                style: {
+                  padding: "4px 8px", // control inner padding
+                  fontSize: "12px",
+                },
+              }}
             />
           </Box>
+
           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
             <Typography
               sx={{
@@ -1111,12 +1244,22 @@ const StudentRequirementsUploader = () => {
               name="height"
               value={person.height || ""}
               sx={{ width: "100px" }}
-              InputProps={{ sx: { height: 35 } }}
-              inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+              InputProps={{
+                sx: {
+                  height: 35,
+                },
+              }}
+              inputProps={{
+                style: {
+                  padding: "4px 8px",
+                  fontSize: "12px",
+                },
+              }}
             />
             <div style={{ fontSize: "12px", marginLeft: "10px" }}>cm.</div>
           </Box>
         </Box>
+
         <br />
         <br />
 
@@ -1129,6 +1272,7 @@ const StudentRequirementsUploader = () => {
             px: 2,
           }}
         >
+          {/* Left side: Applying As and Strand */}
           <Box>
             {/* Applying As */}
             <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
@@ -1137,12 +1281,14 @@ const StudentRequirementsUploader = () => {
                   fontSize: "14px",
                   fontFamily: "Poppins, sans-serif",
                   minWidth: "120px",
+
                   mr: 4.8,
                 }}
               >
                 Applying As:
               </Typography>
               <TextField
+                disabled
                 select
                 size="small"
                 name="applyingAs"
@@ -1156,9 +1302,15 @@ const StudentRequirementsUploader = () => {
                   <em>Select Applying</em>
                 </MenuItem>
                 <MenuItem value="1">Senior High School Graduate</MenuItem>
-                <MenuItem value="2">Senior High School Graduating Student</MenuItem>
-                <MenuItem value="3">ALS (Alternative Learning System) Passer</MenuItem>
-                <MenuItem value="4">Transferee from other University/College</MenuItem>
+                <MenuItem value="2">
+                  Senior High School Graduating Student
+                </MenuItem>
+                <MenuItem value="3">
+                  ALS (Alternative Learning System) Passer
+                </MenuItem>
+                <MenuItem value="4">
+                  Transferee from other University/College
+                </MenuItem>
                 <MenuItem value="5">Cross Enrolee Student</MenuItem>
                 <MenuItem value="6">Foreign Applicant/Student</MenuItem>
                 <MenuItem value="7">Baccalaureate Graduate</MenuItem>
@@ -1203,10 +1355,14 @@ const StudentRequirementsUploader = () => {
               {person?.evaluator?.evaluator_email && (
                 <Typography variant="caption" sx={{ marginLeft: 1 }}>
                   Status Changed By:{" "}
-                  {person.evaluator.evaluator_email.replace(/@gmail\.com$/i, "")}{" "}
+                  {person.evaluator.evaluator_email.replace(
+                    /@gmail\.com$/i,
+                    "",
+                  )}{" "}
                   ({person.evaluator.evaluator_lname || ""},{" "}
                   {person.evaluator.evaluator_fname || ""}{" "}
-                  {person.evaluator.evaluator_mname || ""})
+                  {person.evaluator.evaluator_mname || ""}
+                  )
                   <br />
                   Updated At:{" "}
                   {new Date(person.evaluator.created_at).toLocaleString()}
@@ -1214,8 +1370,39 @@ const StudentRequirementsUploader = () => {
               )}
             </Box>
 
-            {/* Document Type + File upload row */}
+            {/* Document Type, Remarks, and Document File */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 4, mb: 2 }}>
+              {/* Document Type */}
+              {/* <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, }}>
+                  <Typography sx={{ fontSize: "14px", fontFamily: "Poppins, sans-serif", width: "90px" }}>
+                    Document Type:
+                  </Typography>
+                  <TextField
+                    select
+                    size="small"
+                    placeholder="Select Documents"
+                    value={selectedFiles.requirements_id || ''}
+                    onChange={(e) =>
+                      setSelectedFiles(prev => ({
+                        ...prev,
+                        requirements_id: e.target.value,
+                      }))
+                    }
+                    sx={{ width: 200 }} // match width
+                    InputProps={{ sx: { height: 38 } }} // match height
+                    inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+                  >
+                    <MenuItem value="">
+                      <em>Select Documents</em>
+                    </MenuItem>
+                    <MenuItem value={1}>PSA Birth Certificate</MenuItem>
+                    <MenuItem value={2}>Form 138 (With at least 3rd Quarter posting / No failing grade)</MenuItem>
+                    <MenuItem value={3}>Certificate of Good Moral Character</MenuItem>
+                    <MenuItem value={4}>Certificate Belonging to Graduating Class</MenuItem>
+                  </TextField>
+                </Box> */}
+
+              {/* ---------------------------------------------------------------------- */}
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography
                   sx={{
@@ -1227,6 +1414,7 @@ const StudentRequirementsUploader = () => {
                   Document Type:
                 </Typography>
                 <TextField
+                  disabled
                   select
                   size="small"
                   placeholder="Select Documents"
@@ -1239,11 +1427,14 @@ const StudentRequirementsUploader = () => {
                   }
                   sx={{ width: 200 }}
                   InputProps={{ sx: { height: 38 } }}
-                  inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+                  inputProps={{
+                    style: { padding: "4px 8px", fontSize: "12px" },
+                  }}
                 >
                   <MenuItem value="">
                     <em>Select Documents</em>
                   </MenuItem>
+                  {/* ✅ Dynamically map requirements from DB */}
                   {requirements.map((req) => (
                     <MenuItem key={req.id} value={req.id}>
                       {req.description}
@@ -1262,7 +1453,39 @@ const StudentRequirementsUploader = () => {
                   ))}
                 </TextField>
               </Box>
-
+              {/* ---------------------------------------------------------------------- */}
+              {/*
+                Remarks
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: "14px", fontFamily: "Poppins, sans-serif", width: "80px" }}>
+                    Remarks
+                  </Typography>
+                  <TextField
+                    select
+                    size="small"
+                    placeholder="Select Remarks"
+                    value={selectedFiles.remarks || ''}
+                    onChange={(e) =>
+                      setSelectedFiles(prev => ({
+                        ...prev,
+                        remarks: e.target.value,
+                      }))
+                    }
+                    sx={{ width: 250 }}
+                    InputProps={{ sx: { height: 38 } }}
+                    inputProps={{ style: { padding: "4px 8px", fontSize: "12px" } }}
+                  >
+                    <MenuItem value="">
+                      <em>Select Remarks</em>
+                    </MenuItem>
+                    {remarksOptions.map((option, index) => (
+                      <MenuItem key={index} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Box>
+*/}
               <Box
                 sx={{
                   display: "flex",
@@ -1282,7 +1505,7 @@ const StudentRequirementsUploader = () => {
                   Document File:
                 </Typography>
 
-                {/* Gray box showing selected file name */}
+                {/* 📂 Gray Box Always Visible */}
                 <Box
                   sx={{
                     backgroundColor: "#e0e0e0",
@@ -1299,15 +1522,23 @@ const StudentRequirementsUploader = () => {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                   }}
-                  title={selectedFiles.file ? selectedFiles.file.name : "No file selected"}
+                  title={
+                    selectedFiles.file
+                      ? selectedFiles.file.name
+                      : "No file selected"
+                  }
                 >
-                  {selectedFiles.file ? selectedFiles.file.name : "No file selected"}
+                  {selectedFiles.file
+                    ? selectedFiles.file.name
+                    : "No file selected"}
                 </Box>
 
+                {/* 📁 Browse Button */}
                 <Button
+                  disabled
                   variant="contained"
                   startIcon={<CloudUploadIcon />}
-                  onClick={() => document.getElementById("studentFileInput").click()}
+                  onClick={() => document.getElementById("fileInput").click()}
                   sx={{
                     backgroundColor: "#1976d2",
                     color: "white",
@@ -1324,7 +1555,7 @@ const StudentRequirementsUploader = () => {
                 </Button>
 
                 <input
-                  id="studentFileInput"
+                  id="fileInput"
                   type="file"
                   hidden
                   accept=".jpg,.jpeg,.png,.pdf"
@@ -1336,7 +1567,9 @@ const StudentRequirementsUploader = () => {
                   }
                 />
 
+                {/* 🟢 Submit Button */}
                 <Button
+                  disabled
                   variant="contained"
                   color="success"
                   sx={{
@@ -1346,7 +1579,6 @@ const StudentRequirementsUploader = () => {
                     width: 250,
                   }}
                   onClick={() => handleConfirmUpload({ label: "New Document" })}
-                  disabled={!selectedFiles.file}
                 >
                   Submit Documents
                 </Button>
@@ -1354,11 +1586,11 @@ const StudentRequirementsUploader = () => {
             </Box>
           </Box>
 
-          {/* Right side: ID Photo — uses /Student1by1 path */}
+          {/* Right side: ID Photo */}
           {person.profile_img && (
             <Box
               sx={{
-                width: "2.10in",
+                width: "2.10in", // standard 2×2 size
                 height: "2.10in",
                 border: "1px solid #ccc",
                 overflow: "hidden",
@@ -1367,7 +1599,7 @@ const StudentRequirementsUploader = () => {
               }}
             >
               <img
-                src={`${API_BASE_URL}/uploads/Student1by1/${person.profile_img}`}
+                src={`${API_BASE_URL}/uploads/Applicant1by1/${person.profile_img}`}
                 alt="Profile"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
@@ -1382,29 +1614,67 @@ const StudentRequirementsUploader = () => {
           sx={{ width: "100%", border: `1px solid ${borderColor}` }}
         >
           <Table>
-            <TableHead sx={{ backgroundColor: settings?.header_color || "#1976d2" }}>
+            <TableHead
+              sx={{ backgroundColor: settings?.header_color || "#1976d2" }}
+            >
               <TableRow>
-                <TableCell sx={{ color: "white", textAlign: "Center", border: `1px solid ${borderColor}` }}>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
                   Document Type
                 </TableCell>
-                <TableCell sx={{ color: "white", textAlign: "Center", border: `1px solid ${borderColor}` }}>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
                   Remarks
                 </TableCell>
-                <TableCell sx={{ color: "white", textAlign: "Center", border: `1px solid ${borderColor}` }}>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
                   Status
                 </TableCell>
-                <TableCell sx={{ color: "white", textAlign: "Center", border: `1px solid ${borderColor}` }}>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
                   Date and Time Submitted
                 </TableCell>
-                <TableCell sx={{ color: "white", textAlign: "Center", border: `1px solid ${borderColor}` }}>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
                   User
                 </TableCell>
-                <TableCell sx={{ color: "white", textAlign: "Center", border: `1px solid ${borderColor}` }}>
+                <TableCell
+                  sx={{
+                    color: "white",
+                    textAlign: "Center",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
                   Action
                 </TableCell>
               </TableRow>
             </TableHead>
-                 <TableBody
+            <TableBody
               sx={{
                 border: `1px solid ${borderColor}`,
                 "& .MuiTableRow-root:nth-of-type(odd)": {
@@ -1441,7 +1711,7 @@ const StudentRequirementsUploader = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
-
+        {/* Confirmation Dialog */}
         <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
           <DialogTitle>
             {confirmAction === "upload" ? "Confirm Upload" : "Confirm Deletion"}
@@ -1455,7 +1725,7 @@ const StudentRequirementsUploader = () => {
               </>
             ) : (
               <>
-                Are you sure you want to delete{" "}
+                Are you sure you want to delete
                 <strong>
                   {targetDoc?.label ||
                     targetDoc?.short_label ||
@@ -1468,13 +1738,15 @@ const StudentRequirementsUploader = () => {
           </DialogContent>
           <DialogActions>
             <Button
-              onClick={() => setConfirmOpen(false)}
               color="error"
               variant="outlined"
-            >
+              onClick={() => setConfirmOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmAction} variant="contained">
+            <Button
+              onClick={handleConfirmAction}
+              variant="contained"
+            >
               Yes, Confirm
             </Button>
           </DialogActions>
@@ -1484,4 +1756,4 @@ const StudentRequirementsUploader = () => {
   );
 };
 
-export default StudentRequirementsUploader;
+export default RegistrarRequirements;

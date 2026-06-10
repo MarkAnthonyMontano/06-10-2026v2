@@ -2,7 +2,7 @@ import { Box, Typography, TextField, Snackbar, Alert, Autocomplete } from "@mui/
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { SettingsContext } from "../App";
 import EaristLogo from "../assets/EaristLogo.png";
-import { Search } from "@mui/icons-material";
+import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
 import { FcPrint } from "react-icons/fc";
 import Unauthorized from "../components/Unauthorized";
@@ -415,8 +415,18 @@ const ProgramEvaluationForRegistrar = () => {
               setStudentNumber(e.target.value);
               setSearchQuery(e.target.value);
             }}
-            InputProps={{ startAdornment: <Search sx={{ mr: 1 }} /> }}
-            sx={{ width: 425, background: "white" }}
+       
+            sx={{
+              width: 450,
+              backgroundColor: "#fff",
+              borderRadius: 1,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+              },
+            }}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
+            }}
           />
           <button
             onClick={printDiv}
@@ -445,7 +455,7 @@ const ProgramEvaluationForRegistrar = () => {
 
       <button
         onClick={() => setIsEditing(!isEditing)}
-        
+
         style={{
           padding: "8px 12px", marginBottom: "1rem", cursor: "pointer",
           fontWeight: "bold", backgroundColor: "#1976d2", color: "white",
@@ -454,9 +464,9 @@ const ProgramEvaluationForRegistrar = () => {
       >
         {isEditing ? "Cancel Editing" : "Edit Student Grade"}
       </button>
-      
-      <br/>
-      <br/>
+
+      <br />
+      <br />
       <style>
         {`
           /* Both columns visible on screen */
@@ -703,7 +713,7 @@ const ProgramEvaluationForRegistrar = () => {
           </Box>
 
           <Box style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <Typography style={{ width: "100%", marginTop: "-0.2rem", fontSize: "1.8rem", letterSpacing: "-1px", fontWeight: "600", textAlign: "center"}}>
+            <Typography style={{ width: "100%", marginTop: "-0.2rem", fontSize: "1.8rem", letterSpacing: "-1px", fontWeight: "600", textAlign: "center" }}>
               ACADEMIC PROGRAM EVALUATION
             </Typography>
           </Box>
@@ -862,7 +872,7 @@ const ProgramEvaluationForRegistrar = () => {
                               </td>
 
                               {/* GRADE — GradeSelect dropdown, screen only */}
-                              <td className="col-raw-grade" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "7rem" }}>
+                              <td className="col-raw-grade" style={{ display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", width: "7rem" }}>
                                 <GradeSelect
                                   value={displayGrade}
                                   disabled={!isEditing}

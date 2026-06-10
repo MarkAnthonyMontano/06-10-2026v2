@@ -36,7 +36,7 @@ import barangays from "../data/barangay.json";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import ExamPermit from "../applicant/ExamPermit";
+import ExamPermit from "./ExamPermit";
 import { Snackbar, Alert } from "@mui/material";
 import API_BASE_URL from "../apiConfig";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";

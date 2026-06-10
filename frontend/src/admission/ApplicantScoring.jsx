@@ -146,8 +146,8 @@ const ApplicantScoring = () => {
             icon: <PersonIcon fontSize="large" />,
         },
         {
-            label: "Student Requirements",
-            to: "/student_requirements",
+            label: "Applicant Online Requirements",
+            to: "/admission_online_requirements",
             icon: <AssignmentIcon fontSize="large" />,
         },
         {

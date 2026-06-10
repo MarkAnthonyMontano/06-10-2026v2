@@ -255,7 +255,7 @@ const CourseTagging = () => {
   const tabs = [
     { label: "Student List", to: "/student_list", icon: <SchoolIcon fontSize="large" /> },
     { label: "Applicant Form", to: "/readmission_dashboard1", icon: <PersonIcon fontSize="large" /> },
-    { label: "Submitted Documents", to: "/submitted_documents", icon: <AssignmentIcon fontSize="large" /> },
+    { label: "Student Online Requirements Registrar", to: "student_online_requirements_college", icon: <AssignmentIcon fontSize="large" /> },
     { label: "Course Tagging", to: "/course_tagging", icon: <AddIcon fontSize="large" /> },
     { label: "Search Certificate of Registration", to: "/search_cor", icon: <ListAltIcon fontSize="large" /> },
     { label: "Report of Grades", to: "/report_of_grades", icon: <GradeIcon fontSize="large" /> },

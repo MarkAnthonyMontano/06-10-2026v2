@@ -28,7 +28,7 @@ router.get("/student-assessment/:person_id", async (req, res) => {
         console.log("Person ID: ", person_id);
 
         const [studentRows] = await db3.query(`
-            SELECT
+            SELECT DISTINCT
                 p.person_id,
                 sn.student_number,
                 p.first_name,
@@ -45,11 +45,8 @@ router.get("/student-assessment/:person_id", async (req, res) => {
             return res.status(404).json({ success: false, error: "Student not found" });
         }
 
-        //////////////////////////////////////////////////////////
-        // ALL STATUS ROWS
-        //////////////////////////////////////////////////////////
         const [statusRows] = await db3.query(`
-            SELECT
+            SELECT DISTINCT 
                 ss.*,
                 yt.year_description,
                 sem.semester_id,
@@ -68,18 +65,22 @@ router.get("/student-assessment/:person_id", async (req, res) => {
             return res.status(404).json({ success: false, error: "Student status not found" });
         }
 
-        //////////////////////////////////////////////////////////
-        // FETCH TOSF ONCE
-        //////////////////////////////////////////////////////////
+        // ✅ Deduplicate by active_school_year_id — keep first occurrence
+        const uniqueStatusRows = Object.values(
+            statusRows.reduce((acc, row) => {
+                const key = row.active_school_year_id;
+                if (!acc[key]) acc[key] = row;
+                return acc;
+            }, {})
+        );
+
         const [tosfRows] = await db3.query(`SELECT * FROM tosf LIMIT 1`);
         const tosf = tosfRows[0] || {};
 
-        //////////////////////////////////////////////////////////
-        // LOOP ALL STATUS ROWS
-        //////////////////////////////////////////////////////////
         const rows = await Promise.all(
-            statusRows.map(async (s) => {
+            uniqueStatusRows.map(async (s) => {
                 const semesterId = s.semester_id || 1;
+
                 const [unifastRows] = await db3.query(
                     `SELECT id, total_tosf, scholarship_id, remark, active_school_year_id
                      FROM unifast
@@ -92,7 +93,7 @@ router.get("/student-assessment/:person_id", async (req, res) => {
                 );
 
                 const [matriculationRows] = await db3.query(
-                    `SELECT
+                    `SELECT DISTINCT
                         m.id,
                         m.total_tosf,
                         m.payment,
@@ -115,7 +116,7 @@ router.get("/student-assessment/:person_id", async (req, res) => {
                 const matriculationPayment = unifastPayment ? null : (matriculationRows[0] || null);
 
                 const [subjects] = await db3.query(`
-                    SELECT
+                    SELECT DISTINCT
                         c.course_id,
                         c.course_code,
                         c.course_description,
@@ -135,105 +136,84 @@ router.get("/student-assessment/:person_id", async (req, res) => {
                     ORDER BY c.course_code ASC
                 `, [s.active_curriculum, s.year_level_id, semesterId]);
 
-                //////////////////////////////////////////////////////////
-                // TUITION FEE = lec_fee + lab_fee (matches program tagging)
-                //////////////////////////////////////////////////////////
                 let tuitionFee = 0;
-
                 subjects.forEach((subject) => {
                     tuitionFee += Number(subject.lec_fee || 0);
                     tuitionFee += Number(subject.lab_fee || 0);
                 });
 
-                //////////////////////////////////////////////////////////
-                // NSTP FEE = tosf.nstp_fees (matches program tagging)
-                //////////////////////////////////////////////////////////
                 const hasNSTP = subjects.some((subject) =>
                     Number(subject.is_nstp) === 1 || isNstpRelatedCourse(subject)
                 );
                 const nstpFee = hasNSTP ? Number(tosf.nstp_fees || 0) : 0;
 
-                //////////////////////////////////////////////////////////
-                // COMPUTER FEE = tosf.computer_fees only if has computer lab
-                //////////////////////////////////////////////////////////
                 const hasComputerLab = subjects.some(s => Number(s.iscomputer_lab) === 1);
                 const computerFee = hasComputerLab ? Number(tosf.computer_fees || 0) : 0;
 
-                //////////////////////////////////////////////////////////
-                // SCHOOL ID FEE = only for 1st year, 1st semester
-                //////////////////////////////////////////////////////////
                 const isFirstYearFirstSem =
                     Number(s.year_level_id) === 1 &&
                     Number(semesterId) === 1;
                 const schoolIdFee = isFirstYearFirstSem ? Number(tosf.school_id_fees || 0) : 0;
 
-                //////////////////////////////////////////////////////////
-                // MISCELLANEOUS FEE = BASE TOSF only
-                // (excludes nstp_fees, computer_fees, school_id_fees, laboratory_fees)
-                // matches computeMiscFee() in CurriculumCourseMap
-                //////////////////////////////////////////////////////////
                 const miscellaneousFee =
-                    Number(tosf.athletic_fee          || 0) +
-                    Number(tosf.cultural_fee          || 0) +
-                    Number(tosf.developmental_fee     || 0) +
-                    Number(tosf.guidance_fee          || 0) +
-                    Number(tosf.library_fee           || 0) +
-                    Number(tosf.medical_and_dental_fee|| 0) +
-                    Number(tosf.registration_fee      || 0) +
-                    schoolIdFee                             +
+                    Number(tosf.athletic_fee           || 0) +
+                    Number(tosf.cultural_fee           || 0) +
+                    Number(tosf.developmental_fee      || 0) +
+                    Number(tosf.guidance_fee           || 0) +
+                    Number(tosf.library_fee            || 0) +
+                    Number(tosf.medical_and_dental_fee || 0) +
+                    Number(tosf.registration_fee       || 0) +
+                    schoolIdFee                              +
                     computerFee;
 
                 const miscellaneousBreakdown = [
-                    { label: "Athletic Fee", amount: Number(tosf.athletic_fee || 0) },
-                    { label: "Cultural Fee", amount: Number(tosf.cultural_fee || 0) },
-                    { label: "Developmental Fee", amount: Number(tosf.developmental_fee || 0) },
-                    { label: "Guidance Fee", amount: Number(tosf.guidance_fee || 0) },
-                    { label: "Library Fee", amount: Number(tosf.library_fee || 0) },
-                    { label: "Medical & Dental Fee", amount: Number(tosf.medical_and_dental_fee || 0) },
-                    { label: "Registration Fee", amount: Number(tosf.registration_fee || 0) },
-                    { label: "School ID Fee", amount: schoolIdFee },
-                    { label: "Computer Fee", amount: computerFee },
+                    { label: "Athletic Fee",        amount: Number(tosf.athletic_fee           || 0) },
+                    { label: "Cultural Fee",        amount: Number(tosf.cultural_fee           || 0) },
+                    { label: "Developmental Fee",   amount: Number(tosf.developmental_fee      || 0) },
+                    { label: "Guidance Fee",        amount: Number(tosf.guidance_fee           || 0) },
+                    { label: "Library Fee",         amount: Number(tosf.library_fee            || 0) },
+                    { label: "Medical & Dental Fee",amount: Number(tosf.medical_and_dental_fee || 0) },
+                    { label: "Registration Fee",    amount: Number(tosf.registration_fee       || 0) },
+                    { label: "School ID Fee",       amount: schoolIdFee },
+                    { label: "Computer Fee",        amount: computerFee },
                 ].filter((fee) => Number(fee.amount) > 0);
 
-                //////////////////////////////////////////////////////////
-                // TOTALS
-                //////////////////////////////////////////////////////////
-                const totalTuition = tuitionFee + nstpFee;
-                const grandTotal   = totalTuition + miscellaneousFee;
+                const totalTuition    = tuitionFee + nstpFee;
+                const grandTotal      = totalTuition + miscellaneousFee;
                 const storedAssessment = Number(
                     matriculationPayment?.total_tosf ??
                     unifastPayment?.total_tosf ??
                     grandTotal
                 );
-                const storedPayment = unifastPayment
+                const storedPayment   = unifastPayment
                     ? storedAssessment
                     : Number(matriculationPayment?.payment || 0);
-                const discountAmount = Math.max(grandTotal - storedAssessment, 0);
-                const storedBalance = unifastPayment
+                const discountAmount  = Math.max(grandTotal - storedAssessment, 0);
+                const storedBalance   = unifastPayment
                     ? 0
                     : Math.max(storedAssessment - storedPayment, 0);
-                const paymentType = unifastPayment
+                const paymentType     = unifastPayment
                     ? "UNIFAST"
                     : matriculationPayment
                         ? "Matriculation"
                         : "";
 
-                console.log("Tuition Fee:", tuitionFee);
-                console.log("NSTP Fee:", nstpFee);
-                console.log("Computer Fee:", computerFee);
+                console.log("Tuition Fee:",   tuitionFee);
+                console.log("NSTP Fee:",      nstpFee);
+                console.log("Computer Fee:",  computerFee);
                 console.log("School ID Fee:", schoolIdFee);
-                console.log("Misc Fee:", miscellaneousFee);
-                console.log("Grand Total:", grandTotal);
+                console.log("Misc Fee:",      miscellaneousFee);
+                console.log("Grand Total:",   grandTotal);
 
                 return {
                     active_school_year_id: s.active_school_year_id,
-                    curriculum_id: s.active_curriculum,
-                    year_level_id: s.year_level_id,
-                    semester_id: semesterId,
-                    school_year : s.year_description        || "",
-                    semester    : s.semester_description    || "First Semester",
-                    year_level  : s.year_level_description  || "",
-                    payment_type: paymentType,
+                    curriculum_id:         s.active_curriculum,
+                    year_level_id:         s.year_level_id,
+                    semester_id:           semesterId,
+                    school_year:           s.year_description       || "",
+                    semester:              s.semester_description   || "First Semester",
+                    year_level:            s.year_level_description || "",
+                    payment_type:          paymentType,
                     payment_status: unifastPayment
                         ? "Fully Paid"
                         : storedBalance > 0
@@ -246,8 +226,8 @@ router.get("/student-assessment/:person_id", async (req, res) => {
                         : matriculationPayment?.scholarship_name ||
                           matriculationPayment?.matriculation_remark ||
                           "",
-                    payment: storedPayment,
-                    balance: storedBalance,
+                    payment:    storedPayment,
+                    balance:    storedBalance,
                     assessment: storedAssessment,
                     subjects,
                     fees: {
@@ -266,9 +246,6 @@ router.get("/student-assessment/:person_id", async (req, res) => {
             })
         );
 
-        //////////////////////////////////////////////////////////
-        // RESPONSE
-        //////////////////////////////////////////////////////////
         return res.json({
             success: true,
             student,

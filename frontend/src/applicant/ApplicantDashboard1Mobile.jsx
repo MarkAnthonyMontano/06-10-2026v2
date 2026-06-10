@@ -31,7 +31,7 @@ import { motion } from "framer-motion";
 import CloseIcon from "@mui/icons-material/Close";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import ExamPermit from "../applicant/ExamPermit";
+import ExamPermit from "./ExamPermit";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 // ─── Inline mobile-only styles ──────────────────────────────────────────────
 const S = {

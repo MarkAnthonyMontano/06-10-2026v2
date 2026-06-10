@@ -700,14 +700,14 @@ const SideBar = ({
     key: "enrollmentOfficer", label: "Enrollment Officer", icon: AssignmentIndIcon, items: [
       { title: "Applicant List", link: "/applicant_list", icon: ListAlt, page_id: 6 },
       { title: "Applicant Profile", link: "/registrar_dashboard1", icon: AccountCircle, page_id: 43 },
-      { title: "Applicant Online Requirements", link: "/registrar_requirements", icon: FolderCopy, page_id: 49 },
+      { title: "Applicant Online Requirements", link: "/applicant_online_requirements_college", icon: FolderCopy, page_id: 49 },
       { title: "Entrance Examination Score", link: "/entrance_examination_score", icon: Assessment, page_id: 151 },
       { title: "Qualifying Schedule Mgmt", link: "/assign_schedule_applicants_qualifying_interview", icon: EditCalendar, page_id: 12 },
       { title: "Qualifying / Interview Scores", link: "/qualifying_interview_exam_scores", icon: Assessment, page_id: 37 },
       { title: "Student Numbering", link: "/student_numbering_per_college", icon: FormatListNumbered, page_id: 60 },
       { title: "Student List", link: "/student_list_for_enrollment", icon: ListAlt, page_id: 137 },
       { title: "Student Profile", link: "/official_student_dashboard1", icon: AccountCircle, page_id: 43 },
-      { title: "Student Online Requirements", link: "/student_official_requirements", icon: FolderCopy, page_id: 124 },
+      { title: "Student Online Requirements", link: "/student_online_requirements_college", icon: FolderCopy, page_id: 124 },
       { title: "Course Tagging", link: "/course_tagging_for_college", icon: Class, page_id: 124 },
       { title: "Course Tagging For Summer", link: "/summer_tagging_for_college", icon: Class, page_id: 141 },
       { title: "Search COR", link: "/search_cor_for_college", icon: Search, page_id: 125 },
@@ -720,7 +720,7 @@ const SideBar = ({
     key: "medicalDental", label: "Medical & Dental", icon: MedicalServices, items: [
       { title: "Student List", link: "/medical_student_list", icon: ListAltOutlined, page_id: 24 },
       { title: "Student Profile", link: "/medical_dashboard1", icon: AccountCircle, page_id: 25 },
-      { title: "Student Online Requirements", link: "/medical_requirements", icon: FolderCopy, page_id: 30 },
+      { title: "Student Online Requirements", link: "/medical_online_requirements", icon: FolderCopy, page_id: 30 },
       { title: "Medical Requirements", link: "/medical_requirements_form", icon: MedicalServices, page_id: 31 },
       { title: "Dental Assessment", link: "/dental_assessment", icon: HealthAndSafety, page_id: 19 },
       { title: "Physical & Neuro Exam", link: "/physical_neuro_exam", icon: Psychology, page_id: 32 },
@@ -729,16 +729,18 @@ const SideBar = ({
   const registrarMenuGroups = [{
     key: "registrarOffice", label: "Registrar's Office", icon: HistoryEdu, items: [
       { title: "Applicant List", link: "/super_admin_applicant_list", icon: ListAltOutlined, page_id: 80 },
+      { title: "Applicant Online Requirements", link: "/applicant_online_requirements_registrar", icon: FolderCopy, page_id: 160 },
       { title: "Student Numbering Panel", link: "/student_numbering", icon: Numbers, page_id: 59 },
       { title: "Course Tagging", link: "/course_tagging", icon: Class, page_id: 17 },
       { title: "Course Tagging For Summer", link: "/course_tagging_for_summer", icon: Class, page_id: 140 },
       { title: "Student List", link: "/student_list", icon: ListAltOutlined, page_id: 104 },
       { title: "Student Profile", link: "/readmission_dashboard1", icon: AccountCircle, page_id: 38 },
-      { title: "Student Online Requirements", link: "/submitted_documents", icon: FolderCopy, page_id: 106 },
-      { title: "Class List", link: classRosterRegistrarLink, icon: Class, page_id: 15, activeCheck: () => isClassRosterActive(classRosterRegistrarLink) },
+      { title: "Student Online Requirements", link: "/student_online_requirements_registrar", icon: FolderCopy, page_id: 106 },
       { title: "Search COR", link: "/search_cor", icon: Search, page_id: 153 },
       { title: "Report of Grades", link: "/report_of_grades", icon: Assessment, page_id: 50 },
       { title: "Transcript of Records", link: "/transcript_of_records", icon: HistoryEdu, page_id: 62 },
+      { title: "Class List", link: classRosterRegistrarLink, icon: Class, page_id: 15, activeCheck: () => isClassRosterActive(classRosterRegistrarLink) },
+
       { title: "Grading Evaluation", link: "/grading_evaluation_for_registrar", icon: FactCheck, page_id: 105 },
       { title: "COR Exporting Module", link: "/cor_exporting_module", icon: FolderCopy, page_id: 117 },
     ]
@@ -805,8 +807,7 @@ const SideBar = ({
       key: "applicantManagement", label: "Applicant Management", icon: Badge,
       items: [
         { title: "Applicant Information", link: "/super_admin_applicant_dashboard1", icon: Info, page_id: 75 },
-        { title: "Applicant Online Requirements", link: "/applicant_requirements_uploader", icon: Assignment, page_id: 84 },
-
+        { title: "Applicant Online Requirements", link: "/applicant_online_requirements_admin", icon: Assignment, page_id: 84 },
         { title: "Archive", link: "/archived", icon: FolderCopy, page_id: 142 },
       ],
     },
@@ -814,13 +815,12 @@ const SideBar = ({
       key: "studentManagement", label: "Student Management", icon: School,
       items: [
         { title: "Student Information", link: "/super_admin_student_dashboard1", icon: Info, page_id: 86 },
-        { title: "Student Online Requirements", link: "/student_requirements_uploader", icon: Assignment, page_id: 150 },
-     
-        { title: "Personal Information", link: "/admin_student_edit_permissions1", icon: FolderCopy, page_id: 155 },
-        { title: "Family Background", link: "/admin_student_edit_permissions2", icon: FolderCopy, page_id: 156 },
-        { title: "Educational Background", link: "/admin_student_edit_permissions3", icon: FolderCopy, page_id: 157 },
-        { title: "Health & Medical Records", link: "/admin_student_edit_permissions4", icon: FolderCopy, page_id: 158 },
-        { title: "Other Information", link: "/admin_student_edit_permissions5", icon: FolderCopy, page_id: 159 },
+        { title: "Student Online Requirements", link: "/student_online_requirements_admin", icon: Assignment, page_id: 150 },
+        { title: "Edit Personal Information", link: "/admin_student_edit_permissions1", icon: FolderCopy, page_id: 155 },
+        { title: "Edit Family Background", link: "/admin_student_edit_permissions2", icon: FolderCopy, page_id: 156 },
+        { title: "Edit Educational Background", link: "/admin_student_edit_permissions3", icon: FolderCopy, page_id: 157 },
+        { title: "Edit Health & Medical Records", link: "/admin_student_edit_permissions4", icon: FolderCopy, page_id: 158 },
+        { title: "Edit Other Information", link: "/admin_student_edit_permissions5", icon: FolderCopy, page_id: 159 },
       ],
     },
     {
@@ -1116,8 +1116,8 @@ const SideBar = ({
                       if (isMobile) onMobileClose?.();
                       window.location.href = `/dashboard/${keys.step1}`;
                     }} />
-                  <NavItem to="/requirements_uploader" icon={CloudUploadIcon} label="Upload Requirements"
-                    active={isActivePrefix("/requirements_uploader")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
+                  <NavItem to="/applicant_online_requirements" icon={CloudUploadIcon} label="Upload Requirements"
+                    active={isActivePrefix("/applicant_online_requirements")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <div className="sb-section-label">Setting</div>
                   <NavItem to="/applicant_reset_password" icon={LockResetIcon} label="Change Password"
                     active={isActivePrefix("/applicant_reset_password")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
@@ -1148,7 +1148,7 @@ const SideBar = ({
                   <NavItem to="/student_curriculum_subjects" icon={MenuBook} label="Curriculum" active={isActive("/student_curriculum_subjects")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <NavItem to="/student_faculty_evaluation" icon={AssignmentTurnedInIcon} label="Faculty Evaluation" active={isActive("/student_faculty_evaluation")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <NavItem to="/student_dashboard1" icon={PersonIcon} label="Student Profile" active={/^\/student_dashboard[1-5]$/.test(loc)} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
-                  <NavItem to="/student_online_requirements" icon={FolderCopy} label="Official Student Requirements" active={isActive("/student_online_requirements")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
+                  <NavItem to="/student_online_requirements" icon={FolderCopy} label="Official admission_online_requirements" active={isActive("/student_online_requirements")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <NavItem to="/student_account_balance" icon={PaymentIcon} label="Student Account Balance" active={isActive("/student_account_balance")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <div className="sb-section-label">Setting</div>
                   <NavItem to="/student_reset_password" icon={Settings} label="Change Password" active={isActive("/student_reset_password")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
