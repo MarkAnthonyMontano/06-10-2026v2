@@ -737,29 +737,13 @@ const SuperAdminStudentDashboard2 = () => {
 
 
                 <Container>
-                    <h1
-                        style={{
-                            fontSize: "50px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            color: subtitleColor,
-                            marginTop: "25px",
-                        }}
-                    >
-                        APPLICANT FORM
-                    </h1>
-                    <div style={{ textAlign: "center" }}>
-                        Complete the applicant form to secure your place for the upcoming academic year at{" "}
-                        {shortTerm ? (
-                            <>
-                                <strong>{shortTerm.toUpperCase()}</strong> <br />
-                                {companyName || ""}
-                            </>
-                        ) : (
-                            companyName || ""
-                        )}
-                        .
-                    </div>
+                                <h1 style={{ fontSize: "50px", fontWeight: "bold", textAlign: "center", color: subtitleColor, marginTop: "25px" }}>
+            STUDENT FORM
+          </h1>
+          <div style={{ textAlign: "center" }}>
+            Please update your personal information to keep your student records accurate and up to date for the upcoming academic year at{" "}
+            {shortTerm ? <><strong>{shortTerm.toUpperCase()}</strong> - {companyName || ""}</> : companyName || ""}.
+          </div>
 
 
                 </Container>

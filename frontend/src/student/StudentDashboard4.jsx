@@ -43,9 +43,26 @@ import HowToRegIcon from "@mui/icons-material/HowToReg";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import DescriptionIcon from "@mui/icons-material/Description";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
+import LockIcon from "@mui/icons-material/Lock";
 import API_BASE_URL from "../apiConfig";
 import DateField from "../components/DateField";
 import { Snackbar, Alert } from "@mui/material";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: given a permissions object and a field key, returns true when a
+// STUDENT is allowed to edit that field.
+//
+// Rules:
+//   • If userRole !== "student"  → always editable (admins/registrar can edit all)
+//   • If the field is not present in permissions at all → default editable
+//   • Otherwise → follow the stored permission value
+// ─────────────────────────────────────────────────────────────────────────────
+const canStudentEdit = (permissions, fieldId, userRole) => {
+  if (userRole !== "student") return true;
+  if (permissions === null) return true;        // still loading — optimistic
+  return permissions[fieldId] !== false;        // false = locked by admin
+};
+
 const StudentDashboard4 = () => {
   const settings = useContext(SettingsContext);
 
@@ -53,38 +70,53 @@ const StudentDashboard4 = () => {
   const [subtitleColor, setSubtitleColor] = useState("#555555");
   const [borderColor, setBorderColor] = useState("#000000");
   const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
-  const [subButtonColor, setSubButtonColor] = useState("#ffffff"); // ✅ NEW
-  const [stepperColor, setStepperColor] = useState("#000000"); // ✅ NEW
+  const [subButtonColor, setSubButtonColor] = useState("#ffffff");
+  const [stepperColor, setStepperColor] = useState("#000000");
 
   const [fetchedLogo, setFetchedLogo] = useState(null);
   const [companyName, setCompanyName] = useState("");
   const [shortTerm, setShortTerm] = useState("");
   const [campusAddress, setCampusAddress] = useState("");
 
+  // ── Field-level edit permissions fetched from the shared store ──────────
+  const [fieldPermissions, setFieldPermissions] = useState(null);
+
   useEffect(() => {
     if (!settings) return;
 
-    // 🎨 Colors
     if (settings.title_color) setTitleColor(settings.title_color);
     if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
     if (settings.border_color) setBorderColor(settings.border_color);
-    if (settings.main_button_color)
-      setMainButtonColor(settings.main_button_color);
-    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color); // ✅ NEW
-    if (settings.stepper_color) setStepperColor(settings.stepper_color); // ✅ NEW
+    if (settings.main_button_color) setMainButtonColor(settings.main_button_color);
+    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color);
+    if (settings.stepper_color) setStepperColor(settings.stepper_color);
 
-    // 🏫 Logo
     if (settings.logo_url) {
       setFetchedLogo(`${API_BASE_URL}${settings.logo_url}`);
-    } else {
-      setFetchedLogo(EaristLogo);
     }
 
-    // 🏷️ School Information
     if (settings.company_name) setCompanyName(settings.company_name);
     if (settings.short_term) setShortTerm(settings.short_term);
     if (settings.campus_address) setCampusAddress(settings.campus_address);
   }, [settings]);
+
+  // ── Fetch field permissions ──────────────────────────────────────────────
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/student_edit_permissions`);
+        if (res.data && typeof res.data === "object") {
+          setFieldPermissions(res.data);
+        } else {
+          setFieldPermissions({});
+        }
+      } catch (err) {
+        console.warn("Could not load field permissions, defaulting to all editable:", err.message);
+        setFieldPermissions({});
+      }
+    };
+    loadPermissions();
+  }, []);
 
   const navigate = useNavigate();
 
@@ -93,19 +125,16 @@ const StudentDashboard4 = () => {
   const [userID, setUserID] = useState("");
   const [user, setUser] = useState("");
   const [userRole, setUserRole] = useState("");
-  const isReadOnly = userRole === "student";
-  const readOnlySx = isReadOnly
-    ? {
-      "& input, & textarea": { pointerEvents: "none" },
-      "& .MuiSelect-select": { pointerEvents: "none" },
-      "& .MuiCheckbox-root": { pointerEvents: "none" },
-    }
-    : {};
+
+  // Convenience: returns whether a given field is editable for the current user
+  const isFieldEditable = (fieldId) => canStudentEdit(fieldPermissions, fieldId, userRole);
+
   const [person, setPerson] = useState({
     cough: "",
     colds: "",
     fever: "",
     asthma: "",
+    faintingSpells: "",
     fainting: "",
     heartDisease: "",
     tuberculosis: "",
@@ -118,6 +147,7 @@ const StudentDashboard4 = () => {
     diabetesMellitus: "",
     allergies: "",
     cancer: "",
+    smokingCigarette: "",
     smoking: "",
     alcoholDrinking: "",
     hospitalized: "",
@@ -181,13 +211,10 @@ const StudentDashboard4 = () => {
     setUser(storedUser);
     setUserRole(storedRole);
 
-    // Roles that can access
     const allowedRoles = ["student", "registrar"];
     if (allowedRoles.includes(storedRole)) {
-      // ✅ Prefer URL param if admin is editing, otherwise logged-in student
       const targetId = queryPersonId || searchedPersonId || loggedInPersonId;
 
-      // Make sure student_number is in sessionStorage for later steps
       if (studentNumber) {
         sessionStorage.setItem("student_number", studentNumber);
       }
@@ -210,7 +237,6 @@ const StudentDashboard4 = () => {
         return;
       }
 
-      // fallback only if it's a fresh selection from Applicant List
       const source = sessionStorage.getItem("student_edit_person_id_source");
       const tsStr = sessionStorage.getItem("student_edit_person_id_ts");
       const id = sessionStorage.getItem("student_edit_person_id");
@@ -232,6 +258,20 @@ const StudentDashboard4 = () => {
       }
     });
   }, [queryPersonId]);
+
+  const fetchByPersonId = async (id) => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/student_data_as_applicant/${id}`,
+      );
+      if (res.data) {
+        setPerson(res.data);
+        setSelectedPerson(res.data);
+      }
+    } catch (err) {
+      console.error("❌ Failed to fetch person by ID:", err);
+    }
+  };
 
   const handleUpdate = async (updatedData) => {
     try {
@@ -259,20 +299,6 @@ const StudentDashboard4 = () => {
     }
   };
 
-  const autoSave = async () => {
-    try {
-      const { person_id, created_at, current_step, ...personToSave } = person;
-      await axios.put(
-        `${API_BASE_URL}/api/enrollment/person/${userID}`,
-        personToSave,
-      );
-      console.log("✅ Auto-saved (manual trigger)");
-    } catch (err) {
-      console.error("❌ Auto-save failed:", err);
-    }
-  };
-
-  // Fetch person by ID (when navigating with ?person_id=... or sessionStorage)
   useEffect(() => {
     const fetchPersonById = async () => {
       if (!userID) return;
@@ -327,13 +353,8 @@ const StudentDashboard4 = () => {
   const [clickedSteps, setClickedSteps] = useState(
     Array(steps.length).fill(false),
   );
-  const [currentStep, setCurrentStep] = useState(0);
 
-
-  // 1. Add errors state alongside your other state declarations
   const [errors, setErrors] = useState({});
-
-
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -386,13 +407,51 @@ const StudentDashboard4 = () => {
     color: "black",
   };
 
+  // ── Locked-field overlay style: visually shows the field is read-only ───
+  const lockedInputStyle = {
+    ...inputStyle,
+    backgroundColor: "#f5f5f5",
+    color: "#999",
+    cursor: "not-allowed",
+    pointerEvents: "none",
+  };
+
+  // Returns the correct style depending on whether the field is editable
+  const getInputStyle = (fieldId) =>
+    isFieldEditable(fieldId) ? inputStyle : lockedInputStyle;
+
+  // ── Locked indicator chip shown next to a section title when all its
+  //    fields are locked by the admin ──────────────────────────────────────
+  const LockedBadge = () => (
+    <Box
+      component="span"
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.4,
+        ml: 1,
+        px: 0.8,
+        py: 0.2,
+        borderRadius: "4px",
+        backgroundColor: "#fce4ec",
+        color: "#c62828",
+        fontSize: "11px",
+        fontWeight: "bold",
+        verticalAlign: "middle",
+      }}
+    >
+      <LockIcon sx={{ fontSize: 12 }} />
+      Locked by Admin
+    </Box>
+  );
+
   const links = [
     { to: `/student_ecat_application_form`, label: "ECAT Application Form" },
     { to: `/student_form_process`, label: "Admission Form Process" },
     { to: `/student_personal_data_form`, label: "Personal Data Form" },
     {
       to: `/student_office_of_the_registrar`,
-      label: `Application For ${shortTerm ? shortTerm.toUpperCase() : ""}  College Admission" `,
+      label: `Application For ${shortTerm ? shortTerm.toUpperCase() : ""}  College Admission`,
     },
     { to: `/student_admission_services`, label: "Admission Services" },
   ];
@@ -400,16 +459,14 @@ const StudentDashboard4 = () => {
   return (
     <Box sx={{ height: "calc(100vh - 150px)", overflowY: "auto", paddingRight: 1, backgroundColor: "transparent", mt: 1, padding: 2 }}>
 
-      {/* Top header: DOCUMENTS SUBMITTED + Search */}
+      {/* Top header */}
       <Box
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-
           mb: 2,
-
         }}
       >
         <Typography
@@ -422,15 +479,11 @@ const StudentDashboard4 = () => {
         >
           HEALTH MEDICAL RECORDS
         </Typography>
-
-
       </Box>
 
       <hr style={{ border: "1px solid #ccc", width: "100%" }} />
       <br />
       <br />
-
-
 
       <Box
         sx={{
@@ -474,7 +527,7 @@ const StudentDashboard4 = () => {
           <Typography
             sx={{
               fontSize: "20px",
-              fontFamily: "Arial",
+              fontFamily: "Poppins, sans-serif",
               color: "#3e3e3e",
               lineHeight: 1.3, // slightly tighter to fit in fewer rows
               whiteSpace: "normal",
@@ -482,12 +535,26 @@ const StudentDashboard4 = () => {
             }}
           >
             <strong style={{ color: "maroon" }}>Notice:</strong> &nbsp;
-            <strong></strong> <span style={{ fontSize: '1.2em', margin: '0 15px' }}>➔</span> Kindly type 'NA' in boxes where there are no possible answers to the information being requested. &nbsp;  &nbsp; <br />
-            <strong></strong> <span style={{ fontSize: '1.2em', margin: '0 15px', marginLeft: "100px", }}>➔</span> To make use of the letter 'Ñ', please press ALT while typing "165", while for 'ñ', please press ALT while typing "164"
-
+            <strong></strong>{" "}
+            <span style={{ fontSize: "1.2em", margin: "0 15px" }}>➔</span>{" "}
+            Kindly type 'NA' in boxes where there are no possible answers to the
+            information being requested. &nbsp; &nbsp; <br />
+            <strong></strong>{" "}
+            <span
+              style={{
+                fontSize: "1.2em",
+                margin: "0 15px",
+                marginLeft: "100px",
+              }}
+            >
+              ➔
+            </span>{" "}
+            To make use of the letter 'Ñ', please press ALT while typing "165",
+            while for 'ñ', please press ALT while typing "164"
           </Typography>
         </Box>
       </Box>
+
 
       <h1
         style={{
@@ -501,10 +568,6 @@ const StudentDashboard4 = () => {
         PRINTABLE DOCUMENTS
       </h1>
 
-
-
-
-
       {/* Cards Section */}
       <Box
         sx={{
@@ -513,7 +576,7 @@ const StudentDashboard4 = () => {
           gap: 2,
           mt: 2,
           pb: 1,
-          justifyContent: "center", // Centers all cards horizontally
+          justifyContent: "center",
         }}
       >
         {links.map((lnk, i) => (
@@ -529,8 +592,6 @@ const StudentDashboard4 = () => {
                 minHeight: 60,
                 borderRadius: 2,
                 border: `1px solid ${borderColor}`,
-
-
                 backgroundColor: "#fff",
                 display: "flex",
                 flexDirection: "row",
@@ -543,30 +604,22 @@ const StudentDashboard4 = () => {
                 "&:hover": {
                   transform: "scale(1.05)",
                   backgroundColor: settings?.header_color || "#1976d2",
-
-                  "& .card-text": {
-                    color: "#fff", // ✅ text becomes white
-                  },
-                  "& .card-icon": {
-                    color: "#fff", // ✅ icon becomes white
-                  },
+                  "& .card-text": { color: "#fff" },
+                  "& .card-icon": { color: "#fff" },
                 },
               }}
               onClick={() => {
                 if (lnk.onClick) {
-                  lnk.onClick(); // run handler
+                  lnk.onClick();
                 } else if (lnk.to) {
-                  navigate(lnk.to); // navigate if it has a `to`
+                  navigate(lnk.to);
                 }
               }}
             >
-              {/* Icon */}
               <PictureAsPdfIcon
                 className="card-icon"
                 sx={{ fontSize: 35, color: mainButtonColor, mr: 1.5 }}
               />
-
-              {/* Label */}
               <Typography
                 className="card-text"
                 sx={{
@@ -583,38 +636,15 @@ const StudentDashboard4 = () => {
         ))}
       </Box>
 
-
-
-
       <Container>
-
-
         <Container>
-          <h1
-            style={{
-              fontSize: "50px",
-              fontWeight: "bold",
-              textAlign: "center",
-              color: subtitleColor,
-              marginTop: "25px",
-            }}
-          >
-            APPLICANT FORM
+          <h1 style={{ fontSize: "50px", fontWeight: "bold", textAlign: "center", color: subtitleColor, marginTop: "25px" }}>
+            STUDENT FORM
           </h1>
           <div style={{ textAlign: "center" }}>
-            Complete the applicant form to secure your place for the upcoming academic year at{" "}
-            {shortTerm ? (
-              <>
-                <strong>{shortTerm.toUpperCase()}</strong> <br />
-                {companyName || ""}
-              </>
-            ) : (
-              companyName || ""
-            )}
-            .
+            Please update your personal information to keep your student records accurate and up to date for the upcoming academic year at{" "}
+            {shortTerm ? <><strong>{shortTerm.toUpperCase()}</strong> - {companyName || ""}</> : companyName || ""}.
           </div>
-
-
         </Container>
 
         <br />
@@ -622,7 +652,6 @@ const StudentDashboard4 = () => {
         <Box sx={{ display: "flex", justifyContent: "center", width: "100%", px: 4 }}>
           {steps.map((step, index) => (
             <React.Fragment key={index}>
-              {/* ❌ Remove the <Link> wrapper — handleStepClick handles navigation */}
               <Box
                 sx={{
                   display: "flex",
@@ -695,13 +724,18 @@ const StudentDashboard4 = () => {
           </Container>
 
           <Container maxWidth="100%" sx={{ backgroundColor: "#f1f1f1", border: `1px solid ${borderColor}`, padding: 4, borderRadius: 2, boxShadow: 3 }}>
-            <Typography style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}>Health and Mecidal Record:</Typography>
+            <Typography style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}>Health and Medical Record:</Typography>
             <hr style={{ border: "1px solid #ccc", width: "100%" }} />
             <br />
 
-
+            {/* ── I. Current Symptoms ── */}
             <Typography variant="subtitle1" mb={1}>
-              <div style={{ fontWeight: "bold" }}>I. Do you have any of the following symptoms today?</div>
+              <div style={{ fontWeight: "bold" }}>
+                I. Do you have any of the following symptoms today?
+                {!isFieldEditable("cough") && !isFieldEditable("colds") && !isFieldEditable("fever") && (
+                  <LockedBadge />
+                )}
+              </div>
             </Typography>
 
             <FormGroup row sx={{ ml: 2 }}>
@@ -712,7 +746,9 @@ const StudentDashboard4 = () => {
                     <Checkbox
                       name={symptom}
                       checked={person[symptom] === 1}
+                      disabled={!isFieldEditable(symptom)}
                       onChange={(e) => {
+                        if (!isFieldEditable(symptom)) return;
                         const { name, checked } = e.target;
                         const updatedPerson = {
                           ...person,
@@ -724,7 +760,12 @@ const StudentDashboard4 = () => {
                       onBlur={handleBlur}
                     />
                   }
-                  label={symptom.charAt(0).toUpperCase() + symptom.slice(1)}
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      {symptom.charAt(0).toUpperCase() + symptom.slice(1)}
+                      {!isFieldEditable(symptom) && <LockIcon sx={{ fontSize: 13, color: "#c62828" }} />}
+                    </Box>
+                  }
                   sx={{ ml: 5 }}
                 />
               ))}
@@ -732,10 +773,10 @@ const StudentDashboard4 = () => {
 
             <br />
 
+            {/* ── II. Medical History ── */}
             <Typography variant="subtitle1" mb={1}>
               <div style={{ fontWeight: "bold" }}>II. MEDICAL HISTORY: Have you suffered from, or been told you had, any of the following conditions:</div>
             </Typography>
-
 
             <table
               style={{
@@ -747,7 +788,6 @@ const StudentDashboard4 = () => {
               }}
             >
               <tbody>
-                {/* Headers */}
                 <tr>
                   <td colSpan={15} style={{ border: "1px solid black", height: "0.25in" }}></td>
                   <td colSpan={12} style={{ border: "1px solid black", textAlign: "center" }}>Yes or No</td>
@@ -780,76 +820,95 @@ const StudentDashboard4 = () => {
                   }, [])
                   .map((rowGroup, rowIndex) => (
                     <tr key={rowIndex}>
-                      {rowGroup.map(({ label, key }) => (
-                        <React.Fragment key={key}>
-                          <td colSpan={15} style={{ border: "1px solid black", padding: "4px" }}>{label}</td>
-                          <td colSpan={12} style={{ border: "1px solid black", padding: "4px" }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "2px", marginLeft: "10px" }}>
-                                {/* YES */}
-                                <div style={{ display: "flex", alignItems: "center", gap: "1px", }}>
-                                  <Checkbox
-                                    name={key}
-                                    checked={person[key] === 1}
-                                    onChange={() => {
-                                      const updatedPerson = {
-                                        ...person,
-                                        [key]: person[key] === 1 ? null : 1,
-                                      };
-                                      setPerson(updatedPerson);
-                                      handleUpdate(updatedPerson);
-                                    }}
-                                    onBlur={handleBlur}
-                                  />
-                                  <span style={{ fontSize: "15px", fontFamily: "Arial" }}>Yes</span>
-                                </div>
+                      {rowGroup.map(({ label, key }) => {
+                        const editable = isFieldEditable(key);
+                        return (
+                          <React.Fragment key={key}>
+                            <td
+                              colSpan={15}
+                              style={{
+                                border: "1px solid black",
+                                padding: "4px",
+                                backgroundColor: !editable ? "#fafafa" : undefined,
+                                color: !editable ? "#999" : undefined,
+                              }}
+                            >
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                {label}
+                                {!editable && <LockIcon sx={{ fontSize: 12, color: "#c62828" }} />}
+                              </Box>
+                            </td>
+                            <td colSpan={12} style={{ border: "1px solid black", padding: "4px", backgroundColor: !editable ? "#fafafa" : undefined }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "2px", marginLeft: "10px" }}>
+                                  {/* YES */}
+                                  <div style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+                                    <Checkbox
+                                      name={key}
+                                      checked={person[key] === 1}
+                                      disabled={!editable}
+                                      onChange={() => {
+                                        if (!editable) return;
+                                        const updatedPerson = {
+                                          ...person,
+                                          [key]: person[key] === 1 ? null : 1,
+                                        };
+                                        setPerson(updatedPerson);
+                                        handleUpdate(updatedPerson);
+                                      }}
+                                      onBlur={handleBlur}
+                                    />
+                                    <span style={{ fontSize: "15px", fontFamily: "Arial", color: !editable ? "#999" : undefined }}>Yes</span>
+                                  </div>
 
-                                {/* NO */}
-                                <div style={{ display: "flex", alignItems: "center", gap: "1px" }}>
-                                  <Checkbox
-                                    name={key}
-                                    checked={person[key] === 0}
-                                    onChange={() => {
-                                      const updatedPerson = {
-                                        ...person,
-                                        [key]: person[key] === 0 ? null : 0,
-                                      };
-                                      setPerson(updatedPerson);
-                                      handleUpdate(updatedPerson);
-                                    }}
-                                    onBlur={handleBlur}
-                                  />
-                                  <span style={{ fontSize: "15px", fontFamily: "Arial" }}>No</span>
+                                  {/* NO */}
+                                  <div style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+                                    <Checkbox
+                                      name={key}
+                                      checked={person[key] === 0}
+                                      disabled={!editable}
+                                      onChange={() => {
+                                        if (!editable) return;
+                                        const updatedPerson = {
+                                          ...person,
+                                          [key]: person[key] === 0 ? null : 0,
+                                        };
+                                        setPerson(updatedPerson);
+                                        handleUpdate(updatedPerson);
+                                      }}
+                                      onBlur={handleBlur}
+                                    />
+                                    <span style={{ fontSize: "15px", fontFamily: "Arial", color: !editable ? "#999" : undefined }}>No</span>
+                                  </div>
                                 </div>
                               </div>
-
-
-                            </div>
-                          </td>
-                        </React.Fragment>
-                      ))}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
                     </tr>
                   ))}
               </tbody>
             </table>
 
-
-
+            {/* ── Hospitalization ── */}
             <Box mt={1} flexDirection="column" display="flex" alignItems="flex-start">
               <Box mt={1} flexDirection="column" display="flex" alignItems="flex-start">
                 <Box display="flex" alignItems="center" flexWrap="wrap">
                   <Typography sx={{ marginRight: '16px' }}>
                     Do you have any previous history of hospitalization or operation?
+                    {!isFieldEditable("hospitalized") && <LockIcon sx={{ fontSize: 13, color: "#c62828", ml: 0.5, verticalAlign: "middle" }} />}
                   </Typography>
 
                   <Box display="flex" gap="16px" ml={4} alignItems="center">
-                    {/* YES */}
                     <FormControlLabel
                       control={
                         <Checkbox
                           name="hospitalized"
                           checked={person.hospitalized === 1}
+                          disabled={!isFieldEditable("hospitalized")}
                           onChange={() => {
+                            if (!isFieldEditable("hospitalized")) return;
                             const updatedPerson = {
                               ...person,
                               hospitalized: person.hospitalized === 1 ? null : 1,
@@ -863,13 +922,14 @@ const StudentDashboard4 = () => {
                       label="Yes"
                     />
 
-                    {/* NO */}
                     <FormControlLabel
                       control={
                         <Checkbox
                           name="hospitalized"
                           checked={person.hospitalized === 0}
+                          disabled={!isFieldEditable("hospitalized")}
                           onChange={() => {
+                            if (!isFieldEditable("hospitalized")) return;
                             const updatedPerson = {
                               ...person,
                               hospitalized: person.hospitalized === 0 ? null : 0,
@@ -882,19 +942,15 @@ const StudentDashboard4 = () => {
                       }
                       label="No"
                     />
-
-
                   </Box>
                 </Box>
               </Box>
             </Box>
 
-
-
-
             <Box width="100%" maxWidth={500} display="flex" alignItems="center">
               <Typography component="label" sx={{ mr: 1, whiteSpace: 'nowrap' }}>
                 IF YES, PLEASE SPECIFY:
+                {!isFieldEditable("hospitalizationDetails") && <LockIcon sx={{ fontSize: 13, color: "#c62828", ml: 0.5, verticalAlign: "middle" }} />}
               </Typography>
               <TextField
                 fullWidth
@@ -903,26 +959,28 @@ const StudentDashboard4 = () => {
                 variant="outlined"
                 size="small"
                 value={person.hospitalizationDetails || ""}
+                disabled={!isFieldEditable("hospitalizationDetails")}
                 onChange={(e) => {
+                  if (!isFieldEditable("hospitalizationDetails")) return;
                   const { name, value } = e.target;
-                  const updatedPerson = {
-                    ...person,
-                    [name]: value,
-                  };
+                  const updatedPerson = { ...person, [name]: value };
                   setPerson(updatedPerson);
                   handleUpdate(updatedPerson);
                 }}
                 onBlur={handleBlur}
+                sx={!isFieldEditable("hospitalizationDetails") ? { "& .MuiInputBase-input": { backgroundColor: "#f5f5f5", color: "#999" } } : {}}
               />
             </Box>
 
             <br />
 
+            {/* ── III. Medication ── */}
             <Typography variant="subtitle1" mb={1}>
-              <div style={{ fontWeight: "bold" }}>III. MEDICATION</div>
+              <div style={{ fontWeight: "bold" }}>
+                III. MEDICATION
+                {!isFieldEditable("medications") && <LockedBadge />}
+              </div>
             </Typography>
-
-
 
             <Box mb={2}>
               <TextField
@@ -933,24 +991,23 @@ const StudentDashboard4 = () => {
                 variant="outlined"
                 size="small"
                 value={person.medications || ""}
+                disabled={!isFieldEditable("medications")}
                 onChange={(e) => {
+                  if (!isFieldEditable("medications")) return;
                   const { name, value } = e.target;
-                  const updatedPerson = {
-                    ...person,
-                    [name]: value,
-                  };
+                  const updatedPerson = { ...person, [name]: value };
                   setPerson(updatedPerson);
                   handleUpdate(updatedPerson);
                 }}
                 onBlur={handleBlur}
+                sx={!isFieldEditable("medications") ? { "& .MuiInputBase-root": { backgroundColor: "#f5f5f5" }, "& .MuiInputBase-input": { color: "#999" } } : {}}
               />
             </Box>
 
-            {/* IV. COVID PROFILE */}
+            {/* ── IV. COVID Profile ── */}
             <Typography variant="subtitle1" mb={1}>
               <div style={{ fontWeight: "bold" }}>IV. COVID PROFILE: </div>
             </Typography>
-
 
             <table
               style={{
@@ -969,64 +1026,61 @@ const StudentDashboard4 = () => {
                       fontSize: "100%",
                       border: "1px solid black",
                       padding: "8px",
+                      backgroundColor: (!isFieldEditable("hadCovid") && !isFieldEditable("covidDate")) ? "#fafafa" : undefined,
                     }}
                   >
-
                     <Box display="flex" alignItems="center" gap={2} flexWrap="nowrap">
-                      <Typography>A. Do you have history of COVID-19?</Typography>
+                      <Typography>
+                        A. Do you have history of COVID-19?
+                        {!isFieldEditable("hadCovid") && <LockIcon sx={{ fontSize: 13, color: "#c62828", ml: 0.5, verticalAlign: "middle" }} />}
+                      </Typography>
 
-                      {/* YES/NO Checkboxes */}
                       <Box display="flex" alignItems="center" gap="10px" ml={1}>
-                        {/* YES */}
                         <Box display="flex" alignItems="center" gap="1px">
                           <Checkbox
                             name="hadCovid"
                             checked={person.hadCovid === 1}
+                            disabled={!isFieldEditable("hadCovid")}
                             onChange={() => {
-                              const updatedPerson = {
-                                ...person,
-                                hadCovid: person.hadCovid === 1 ? null : 1,
-                              };
+                              if (!isFieldEditable("hadCovid")) return;
+                              const updatedPerson = { ...person, hadCovid: person.hadCovid === 1 ? null : 1 };
                               setPerson(updatedPerson);
                               handleUpdate(updatedPerson);
                             }}
                             onBlur={handleBlur}
                           />
-                          <span style={{ fontSize: "15px", fontFamily: "Arial" }}>YES</span>
+                          <span style={{ fontSize: "15px", fontFamily: "Arial", color: !isFieldEditable("hadCovid") ? "#999" : undefined }}>YES</span>
                         </Box>
 
-                        {/* NO */}
                         <Box display="flex" alignItems="center" gap="1px">
                           <Checkbox
                             name="hadCovid"
                             checked={person.hadCovid === 0}
+                            disabled={!isFieldEditable("hadCovid")}
                             onChange={() => {
-                              const updatedPerson = {
-                                ...person,
-                                hadCovid: person.hadCovid === 0 ? null : 0,
-                              };
+                              if (!isFieldEditable("hadCovid")) return;
+                              const updatedPerson = { ...person, hadCovid: person.hadCovid === 0 ? null : 0 };
                               setPerson(updatedPerson);
                               handleUpdate(updatedPerson);
                             }}
                             onBlur={handleBlur}
                           />
-                          <span style={{ fontSize: "15px", fontFamily: "Arial" }}>NO</span>
-
-
+                          <span style={{ fontSize: "15px", fontFamily: "Arial", color: !isFieldEditable("hadCovid") ? "#999" : undefined }}>NO</span>
                         </Box>
                       </Box>
 
-                      {/* IF YES, WHEN */}
-                      <span>IF YES, WHEN:</span>
+                      <span style={{ color: !isFieldEditable("covidDate") ? "#999" : undefined }}>
+                        IF YES, WHEN:
+                        {!isFieldEditable("covidDate") && <LockIcon sx={{ fontSize: 13, color: "#c62828", ml: 0.5, verticalAlign: "middle" }} />}
+                      </span>
                       <input
                         type="date"
                         name="covidDate"
                         value={person.covidDate || ""}
+                        disabled={!isFieldEditable("covidDate")}
                         onChange={(e) => {
-                          const updatedPerson = {
-                            ...person,
-                            covidDate: e.target.value,
-                          };
+                          if (!isFieldEditable("covidDate")) return;
+                          const updatedPerson = { ...person, covidDate: e.target.value };
                           setPerson(updatedPerson);
                           handleUpdate(updatedPerson);
                         }}
@@ -1038,6 +1092,7 @@ const StudentDashboard4 = () => {
                           padding: "10px",
                           border: "1px solid #ccc",
                           borderRadius: "4px",
+                          ...(!isFieldEditable("covidDate") ? { backgroundColor: "#f5f5f5", color: "#999", cursor: "not-allowed" } : {}),
                         }}
                       />
                     </Box>
@@ -1052,9 +1107,7 @@ const StudentDashboard4 = () => {
                       padding: "8px",
                     }}
                   >
-                    <div style={{ marginBottom: "8px" }}>
-                      B. COVID Vaccinations:
-                    </div>
+                    <div style={{ marginBottom: "8px" }}>B. COVID Vaccinations:</div>
                     <table
                       style={{
                         borderCollapse: "collapse",
@@ -1077,23 +1130,21 @@ const StudentDashboard4 = () => {
                         {/* Brand Row */}
                         <tr>
                           <td style={{ padding: "4px 0" }}>Brand</td>
-
                           {["vaccine1Brand", "vaccine2Brand", "booster1Brand", "booster2Brand"].map((field) => (
                             <td key={field} style={{ padding: "4px" }}>
                               <input
                                 type="text"
                                 name={field}
                                 value={person[field] || ""}
+                                disabled={!isFieldEditable(field)}
                                 onChange={(e) => {
-                                  const updatedPerson = {
-                                    ...person,
-                                    [field]: e.target.value,
-                                  };
+                                  if (!isFieldEditable(field)) return;
+                                  const updatedPerson = { ...person, [field]: e.target.value };
                                   setPerson(updatedPerson);
                                   handleUpdate(updatedPerson);
                                 }}
                                 onBlur={handleBlur}
-                                style={inputStyle}
+                                style={getInputStyle(field)}
                               />
                             </td>
                           ))}
@@ -1102,132 +1153,84 @@ const StudentDashboard4 = () => {
                         {/* Date Row */}
                         <tr>
                           <td style={{ padding: "4px 0" }}>Date</td>
-
                           {["vaccine1Date", "vaccine2Date", "booster1Date", "booster2Date"].map((field) => (
                             <td key={field} style={{ padding: "4px" }}>
                               <input
                                 type="date"
                                 name={field}
                                 value={person[field] || ""}
+                                disabled={!isFieldEditable(field)}
                                 onChange={(e) => {
-                                  const updatedPerson = {
-                                    ...person,
-                                    [field]: e.target.value,
-                                  };
+                                  if (!isFieldEditable(field)) return;
+                                  const updatedPerson = { ...person, [field]: e.target.value };
                                   setPerson(updatedPerson);
                                   handleUpdate(updatedPerson);
                                 }}
                                 onBlur={handleBlur}
-                                style={inputStyle}
+                                style={getInputStyle(field)}
                               />
                             </td>
                           ))}
                         </tr>
                       </tbody>
                     </table>
-
                   </td>
                 </tr>
-
               </tbody>
             </table>
 
             <br />
-            {/* V. Please Indicate Result of the Following (Form Style, Table Layout) */}
+
+            {/* ── V. Lab Results ── */}
             <Typography variant="subtitle1" mb={1}>
               <div style={{ fontWeight: "bold" }}>V. Please Indicate Result of the Following:</div>
             </Typography>
 
-
             <table className="w-full border border-black border-collapse table-fixed">
               <tbody>
-                {/* Chest X-ray */}
-                <tr>
-                  <td className="border border-black p-2 w-1/3 font-medium">Chest X-ray:</td>
-                  <td className="border border-black p-2 w-2/3">
-                    <input
-                      type="text"
-                      name="chestXray"
-                      value={person.chestXray || ""}
-                      onChange={(e) => {
-                        const { name, value } = e.target;
-                        const updatedPerson = { ...person, [name]: value };
-                        setPerson(updatedPerson);
-                        handleUpdate(updatedPerson);
-                      }}
-                      onBlur={handleBlur}
-                      className="w-full border px-3 py-2 rounded"
-                    />
-                  </td>
-                </tr>
-
-                {/* CBC */}
-                <tr>
-                  <td className="border border-black p-2 font-medium">CBC:</td>
-                  <td className="border border-black p-2">
-                    <input
-                      type="text"
-                      name="cbc"
-                      value={person.cbc || ""}
-                      onChange={(e) => {
-                        const { name, value } = e.target;
-                        const updatedPerson = { ...person, [name]: value };
-                        setPerson(updatedPerson);
-                        handleUpdate(updatedPerson);
-                      }}
-                      onBlur={handleBlur}
-                      className="w-full border px-3 py-2 rounded"
-                    />
-                  </td>
-                </tr>
-
-                {/* Urinalysis */}
-                <tr>
-                  <td className="border border-black p-2 font-medium">Urinalysis:</td>
-                  <td className="border border-black p-2">
-                    <input
-                      type="text"
-                      name="urinalysis"
-                      value={person.urinalysis || ""}
-                      onChange={(e) => {
-                        const { name, value } = e.target;
-                        const updatedPerson = { ...person, [name]: value };
-                        setPerson(updatedPerson);
-                        handleUpdate(updatedPerson);
-                      }}
-                      onBlur={handleBlur}
-                      className="w-full border px-3 py-2 rounded"
-                    />
-                  </td>
-                </tr>
-
-                {/* Other Workups */}
-                <tr>
-                  <td className="border border-black p-2 font-medium">Other Workups:</td>
-                  <td className="border border-black p-2">
-                    <input
-                      type="text"
-                      name="otherworkups"
-                      value={person.otherworkups || ""}
-                      onChange={(e) => {
-                        const { name, value } = e.target;
-                        const updatedPerson = { ...person, [name]: value };
-                        setPerson(updatedPerson);
-                        handleUpdate(updatedPerson);
-                      }}
-                      onBlur={handleBlur}
-                      className="w-full border px-3 py-2 rounded"
-                    />
-                  </td>
-                </tr>
+                {[
+                  { label: "Chest X-ray:", field: "chestXray" },
+                  { label: "CBC:", field: "cbc" },
+                  { label: "Urinalysis:", field: "urinalysis" },
+                  { label: "Other Workups:", field: "otherworkups" },
+                ].map(({ label, field }) => (
+                  <tr key={field}>
+                    <td className="border border-black p-2 w-1/3 font-medium">
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        {label}
+                        {!isFieldEditable(field) && <LockIcon sx={{ fontSize: 13, color: "#c62828" }} />}
+                      </Box>
+                    </td>
+                    <td className="border border-black p-2 w-2/3" style={{ backgroundColor: !isFieldEditable(field) ? "#fafafa" : undefined }}>
+                      <input
+                        type="text"
+                        name={field}
+                        value={person[field] || ""}
+                        disabled={!isFieldEditable(field)}
+                        onChange={(e) => {
+                          if (!isFieldEditable(field)) return;
+                          const { name, value } = e.target;
+                          const updatedPerson = { ...person, [name]: value };
+                          setPerson(updatedPerson);
+                          handleUpdate(updatedPerson);
+                        }}
+                        onBlur={handleBlur}
+                        className="w-full border px-3 py-2 rounded"
+                        style={!isFieldEditable(field) ? { backgroundColor: "#f5f5f5", color: "#999", cursor: "not-allowed" } : {}}
+                      />
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
 
-
-
+            {/* ── VI. Diagnosis — always system-locked for students ── */}
             <div style={{ marginTop: "16px" }}>
               <Typography variant="subtitle1" mb={1}>
-                <div style={{ fontWeight: "bold" }}>VI. Diagnosis :</div>
+                <div style={{ fontWeight: "bold" }}>
+                  VI. Diagnosis :
+                  {userRole === "student" && <LockedBadge />}
+                </div>
               </Typography>
 
               <table
@@ -1247,21 +1250,23 @@ const StudentDashboard4 = () => {
                         fontSize: "100%",
                         border: "1px solid black",
                         padding: "8px",
+                        backgroundColor: userRole === "student" ? "#fafafa" : undefined,
                       }}
                     >
-                      {/* Question */}
-                      <Typography sx={{ fontSize: "15px", fontFamily: "Arial", marginBottom: "4px" }}>
-                        Do you have any of the following symptoms today?
+                      <Typography sx={{ fontSize: "15px", fontFamily: "Arial", marginBottom: "4px", color: userRole === "student" ? "#999" : undefined }}>
+                        Diagnosis Result:
                       </Typography>
 
-                      {/* Answer checkboxes below (YES/NO) */}
                       <div style={{ display: "flex", alignItems: "center", gap: "20px", marginTop: "8px" }}>
-                        {/* Physically Fit (0) */}
+                        {/* Physically Fit */}
                         <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                           <Checkbox
                             name="symptomsToday"
                             checked={person.symptomsToday === 0}
+                            // System-locked for students — diagnosis is admin/medical-staff only
+                            disabled={userRole === "student"}
                             onChange={() => {
+                              if (userRole === "student") return;
                               const updatedPerson = {
                                 ...person,
                                 symptomsToday: person.symptomsToday === 0 ? null : 0,
@@ -1271,15 +1276,17 @@ const StudentDashboard4 = () => {
                             }}
                             onBlur={handleBlur}
                           />
-                          <span style={{ fontSize: "15px", fontFamily: "Arial" }}>Physically Fit</span>
+                          <span style={{ fontSize: "15px", fontFamily: "Arial", color: userRole === "student" ? "#999" : undefined }}>Physically Fit</span>
                         </div>
 
-                        {/* For Compliance (1) */}
+                        {/* For Compliance */}
                         <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                           <Checkbox
                             name="symptomsToday"
                             checked={person.symptomsToday === 1}
+                            disabled={userRole === "student"}
                             onChange={() => {
+                              if (userRole === "student") return;
                               const updatedPerson = {
                                 ...person,
                                 symptomsToday: person.symptomsToday === 1 ? null : 1,
@@ -1289,7 +1296,7 @@ const StudentDashboard4 = () => {
                             }}
                             onBlur={handleBlur}
                           />
-                          <span style={{ fontSize: "15px", fontFamily: "Arial" }}>For Compliance</span>
+                          <span style={{ fontSize: "15px", fontFamily: "Arial", color: userRole === "student" ? "#999" : undefined }}>For Compliance</span>
                         </div>
                       </div>
                     </td>
@@ -1298,11 +1305,11 @@ const StudentDashboard4 = () => {
               </table>
             </div>
 
-
-            {/* VII. Remarks Section */}
+            {/* ── VII. Remarks — always system-locked for students ── */}
             <div style={{ marginTop: "16px" }}>
               <Typography variant="subtitle1" fontWeight="bold" mb={1}>
                 VII. Remarks:
+                {userRole === "student" && <LockedBadge />}
               </Typography>
               <Table
                 sx={{
@@ -1314,7 +1321,7 @@ const StudentDashboard4 = () => {
               >
                 <TableBody>
                   <TableRow>
-                    <TableCell sx={{ border: "1px solid black", p: 1 }}>
+                    <TableCell sx={{ border: "1px solid black", p: 1, backgroundColor: userRole === "student" ? "#fafafa" : undefined }}>
                       <TextField
                         name="remarks"
                         multiline
@@ -1322,11 +1329,11 @@ const StudentDashboard4 = () => {
                         fullWidth
                         size="small"
                         value={person.remarks || ""}
+                        // System-locked for students — remarks filled by medical staff only
+                        disabled={userRole === "student"}
                         onChange={(e) => {
-                          const updatedPerson = {
-                            ...person,
-                            remarks: e.target.value,
-                          };
+                          if (userRole === "student") return;
+                          const updatedPerson = { ...person, remarks: e.target.value };
                           setPerson(updatedPerson);
                           handleUpdate(updatedPerson);
                         }}
@@ -1334,12 +1341,9 @@ const StudentDashboard4 = () => {
                         sx={{
                           backgroundColor: "white",
                           borderRadius: "8px",
-                          '& .MuiOutlinedInput-root': {
-                            padding: '4px 8px',
-                          },
-                          '& .MuiInputBase-multiline': {
-                            padding: 0,
-                          },
+                          '& .MuiOutlinedInput-root': { padding: '4px 8px' },
+                          '& .MuiInputBase-multiline': { padding: 0 },
+                          ...(userRole === "student" ? { "& .MuiInputBase-root": { backgroundColor: "#f5f5f5" }, "& .MuiInputBase-input": { color: "#999" } } : {}),
                         }}
                       />
                     </TableCell>
@@ -1347,14 +1351,6 @@ const StudentDashboard4 = () => {
                 </TableBody>
               </Table>
             </div>
-
-
-
-
-
-
-
-
 
             <Box display="flex" justifyContent="space-between" mt={4}>
               {/* Previous Step */}
@@ -1446,7 +1442,6 @@ const StudentDashboard4 = () => {
                 {snackbar.message}
               </Alert>
             </Snackbar>
-
           </Container>
         </form>
       </Container>

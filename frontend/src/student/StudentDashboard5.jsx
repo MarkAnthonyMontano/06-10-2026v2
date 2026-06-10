@@ -32,6 +32,7 @@ import InfoIcon from "@mui/icons-material/Info";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import FolderIcon from "@mui/icons-material/Folder";
 import ErrorIcon from "@mui/icons-material/Error";
+import LockIcon from "@mui/icons-material/Lock";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -43,6 +44,19 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import API_BASE_URL from "../apiConfig";
 import { Snackbar, Alert } from "@mui/material";
+import useStudentEditPermissions from "../account_management/useStudentEditPermissions";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: returns true when the current user may edit the given field.
+//   • Non-student roles (registrar, superadmin) → always editable
+//   • Student → follow the stored permission value; default editable if missing
+// ─────────────────────────────────────────────────────────────────────────────
+const canStudentEdit = (permissions, fieldId, userRole) => {
+  if (userRole !== "student") return true;
+  if (permissions === null) return true;   // still loading — optimistic
+  return permissions[fieldId] !== false;     // false = locked by admin
+};
+
 const StudentDashboard5 = () => {
   const settings = useContext(SettingsContext);
 
@@ -50,38 +64,53 @@ const StudentDashboard5 = () => {
   const [subtitleColor, setSubtitleColor] = useState("#555555");
   const [borderColor, setBorderColor] = useState("#000000");
   const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
-  const [subButtonColor, setSubButtonColor] = useState("#ffffff"); // ✅ NEW
-  const [stepperColor, setStepperColor] = useState("#000000"); // ✅ NEW
+  const [subButtonColor, setSubButtonColor] = useState("#ffffff");
+  const [stepperColor, setStepperColor] = useState("#000000");
 
   const [fetchedLogo, setFetchedLogo] = useState(null);
   const [companyName, setCompanyName] = useState("");
   const [shortTerm, setShortTerm] = useState("");
   const [campusAddress, setCampusAddress] = useState("");
 
+  // ── Field-level edit permissions fetched from the shared store ──────────
+  const [fieldPermissions, setFieldPermissions] = useState(null);
+
   useEffect(() => {
     if (!settings) return;
 
-    // 🎨 Colors
     if (settings.title_color) setTitleColor(settings.title_color);
     if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
     if (settings.border_color) setBorderColor(settings.border_color);
-    if (settings.main_button_color)
-      setMainButtonColor(settings.main_button_color);
-    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color); // ✅ NEW
-    if (settings.stepper_color) setStepperColor(settings.stepper_color); // ✅ NEW
+    if (settings.main_button_color) setMainButtonColor(settings.main_button_color);
+    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color);
+    if (settings.stepper_color) setStepperColor(settings.stepper_color);
 
-    // 🏫 Logo
     if (settings.logo_url) {
       setFetchedLogo(`${API_BASE_URL}${settings.logo_url}`);
-    } else {
-      setFetchedLogo(EaristLogo);
     }
 
-    // 🏷️ School Information
     if (settings.company_name) setCompanyName(settings.company_name);
     if (settings.short_term) setShortTerm(settings.short_term);
     if (settings.campus_address) setCampusAddress(settings.campus_address);
   }, [settings]);
+
+  // ── Fetch field permissions ──────────────────────────────────────────────
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/student_edit_permissions`);
+        if (res.data && typeof res.data === "object") {
+          setFieldPermissions(res.data);
+        } else {
+          setFieldPermissions({});
+        }
+      } catch (err) {
+        console.warn("Could not load field permissions, defaulting to all editable:", err.message);
+        setFieldPermissions({});
+      }
+    };
+    loadPermissions();
+  }, []);
 
   const location = useLocation();
 
@@ -91,6 +120,9 @@ const StudentDashboard5 = () => {
   const [userID, setUserID] = useState("");
   const [user, setUser] = useState("");
   const [userRole, setUserRole] = useState("");
+
+  // Convenience: returns whether a given field is editable for the current user
+  const isFieldEditable = (fieldId) => canStudentEdit(fieldPermissions, fieldId, userRole);
 
   const [selectedPerson, setSelectedPerson] = useState(null);
 
@@ -102,7 +134,6 @@ const StudentDashboard5 = () => {
   const queryParams = new URLSearchParams(location.search);
   const queryPersonId = queryParams.get("person_id");
 
-  // Always pull student_number from sessionStorage
   const queryStudentNumber = sessionStorage.getItem("student_number");
 
   useEffect(() => {
@@ -137,13 +168,10 @@ const StudentDashboard5 = () => {
     setUser(storedUser);
     setUserRole(storedRole);
 
-    // Roles that can access
     const allowedRoles = ["student", "registrar"];
     if (allowedRoles.includes(storedRole)) {
-      // ✅ Prefer URL param if admin is editing, otherwise logged-in student
       const targetId = queryPersonId || searchedPersonId || loggedInPersonId;
 
-      // Make sure student_number is in sessionStorage for later steps
       if (studentNumber) {
         sessionStorage.setItem("student_number", studentNumber);
       }
@@ -166,7 +194,6 @@ const StudentDashboard5 = () => {
         return;
       }
 
-      // fallback only if it's a fresh selection from Applicant List
       const source = sessionStorage.getItem("student_edit_person_id_source");
       const tsStr = sessionStorage.getItem("student_edit_person_id_ts");
       const id = sessionStorage.getItem("student_edit_person_id");
@@ -188,6 +215,20 @@ const StudentDashboard5 = () => {
       }
     });
   }, [queryPersonId]);
+
+  const fetchByPersonId = async (id) => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/student_data_as_applicant/${id}`,
+      );
+      if (res.data) {
+        setPerson(res.data);
+        setSelectedPerson(res.data);
+      }
+    } catch (err) {
+      console.error("❌ Failed to fetch person by ID:", err);
+    }
+  };
 
   // Fetch person by ID (when navigating with ?person_id=... or sessionStorage)
   useEffect(() => {
@@ -223,9 +264,9 @@ const StudentDashboard5 = () => {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
-
-  // Real-time save on every character typed
   const handleChange = (e) => {
+    // Respect permission lock — students cannot change a locked field
+    if (!isFieldEditable(e.target.name)) return;
 
     const { name, type, checked, value } = e.target;
     const updatedPerson = {
@@ -233,7 +274,7 @@ const StudentDashboard5 = () => {
       [name]: type === "checkbox" ? (checked ? 1 : 0) : value,
     };
     setPerson(updatedPerson);
-    handleUpdate(updatedPerson); // No delay, real-time save
+    handleUpdate(updatedPerson);
   };
 
   const handleUpdate = async (updatedData) => {
@@ -259,19 +300,6 @@ const StudentDashboard5 = () => {
       console.log("✅ Auto-saved on blur");
     } catch (err) {
       console.error("❌ Auto-save failed on blur:", err);
-    }
-  };
-
-  const autoSave = async () => {
-    try {
-      const { person_id, created_at, current_step, ...personToSave } = person;
-      await axios.put(
-        `${API_BASE_URL}/api/enrollment/person/${userID}`,
-        personToSave,
-      );
-      console.log("✅ Auto-saved (manual trigger)");
-    } catch (err) {
-      console.error("❌ Auto-save failed:", err);
     }
   };
 
@@ -318,52 +346,66 @@ const StudentDashboard5 = () => {
   ];
 
   const [activeStep, setActiveStep] = useState(4);
-  const [clickedSteps, setClickedSteps] = useState(
-    Array(steps.length).fill(false),
-  );
+  const [clickedSteps, setClickedSteps] = useState(Array(steps.length).fill(false));
   const [currentStep, setCurrentStep] = useState(0);
 
- const handleStepClick = async (index) => {
-    if (isFormValid()) {
-      await handleUpdate(person);
-
-      setSnackbar({
-        open: true,
-        message: "Your record has been saved successfully!",
-        severity: "success",
-      });
-
-      setActiveStep(index);
-      const newClickedSteps = [...clickedSteps];
-      newClickedSteps[index] = true;
-      setClickedSteps(newClickedSteps);
-
-      // Delay navigation so snackbar can be seen
-      setTimeout(() => {
-        navigate(steps[index].path);
-      }, 1000);
-    } else {
+  const handleStepClick = async (index) => {
+    const valid = isFormValid();
+    if (!valid) {
       setSnackbar({
         open: true,
         message: "Please fill all required fields before proceeding.",
         severity: "error",
       });
+      return; // hard stop — no navigation
     }
+    await handleUpdate(person);
+    setSnackbar({
+      open: true,
+      message: "Your record has been saved successfully!",
+      severity: "success",
+    });
+    setActiveStep(index);
+    const newClickedSteps = [...clickedSteps];
+    newClickedSteps[index] = true;
+    setClickedSteps(newClickedSteps);
+    setTimeout(() => { navigate(steps[index].path); }, 1000);
   };
-
-
   const links = [
     { to: `/student_ecat_application_form`, label: "ECAT Application Form" },
     { to: `/student_form_process`, label: "Admission Form Process" },
     { to: `/student_personal_data_form`, label: "Personal Data Form" },
     {
       to: `/student_office_of_the_registrar`,
-      label: `Application For ${shortTerm ? shortTerm.toUpperCase() : ""}  College Admission" `,
+      label: `Application For ${shortTerm ? shortTerm.toUpperCase() : ""} College Admission`,
     },
     { to: `/student_admission_services`, label: "Admission Services" },
   ];
 
-  // dot not alter
+  // Locked badge shown inline when a field is read-only for the student
+  const LockedBadge = () => (
+    <Box
+      component="span"
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.4,
+        ml: 1,
+        px: 0.8,
+        py: 0.2,
+        borderRadius: "4px",
+        backgroundColor: "#fce4ec",
+        color: "#c62828",
+        fontSize: "11px",
+        fontWeight: "bold",
+        verticalAlign: "middle",
+      }}
+    >
+      <LockIcon sx={{ fontSize: 12 }} />
+      Locked by Admin
+    </Box>
+  );
+
   return (
     <Box
       sx={{
@@ -381,7 +423,6 @@ const StudentDashboard5 = () => {
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-
           mb: 2,
         }}
       >
@@ -399,7 +440,6 @@ const StudentDashboard5 = () => {
       <hr style={{ border: "1px solid #ccc", width: "100%" }} />
       <br />
       <br />
-
       <Box
         sx={{
           display: "flex",
@@ -489,7 +529,7 @@ const StudentDashboard5 = () => {
           gap: 2,
           mt: 2,
           pb: 1,
-          justifyContent: "center", // Centers all cards horizontally
+          justifyContent: "center",
         }}
       >
         {links.map((lnk, i) => (
@@ -517,30 +557,22 @@ const StudentDashboard5 = () => {
                 "&:hover": {
                   transform: "scale(1.05)",
                   backgroundColor: settings?.header_color || "#1976d2",
-
-                  "& .card-text": {
-                    color: "#fff", // ✅ text becomes white
-                  },
-                  "& .card-icon": {
-                    color: "#fff", // ✅ icon becomes white
-                  },
+                  "& .card-text": { color: "#fff" },
+                  "& .card-icon": { color: "#fff" },
                 },
               }}
               onClick={() => {
                 if (lnk.onClick) {
-                  lnk.onClick(); // run handler
+                  lnk.onClick();
                 } else if (lnk.to) {
-                  navigate(lnk.to); // navigate if it has a `to`
+                  navigate(lnk.to);
                 }
               }}
             >
-              {/* Icon */}
               <PictureAsPdfIcon
                 className="card-icon"
                 sx={{ fontSize: 35, color: mainButtonColor, mr: 1.5 }}
               />
-
-              {/* Label */}
               <Typography
                 className="card-text"
                 sx={{
@@ -559,103 +591,51 @@ const StudentDashboard5 = () => {
 
       <Container maxWidth="lg">
         <Container>
-          <h1
-            style={{
-              fontSize: "50px",
-              fontWeight: "bold",
-              textAlign: "center",
-              color: subtitleColor,
-              marginTop: "25px",
-            }}
-          >
-            APPLICANT FORM
+            <h1 style={{ fontSize: "50px", fontWeight: "bold", textAlign: "center", color: subtitleColor, marginTop: "25px" }}>
+            STUDENT FORM
           </h1>
           <div style={{ textAlign: "center" }}>
-            Complete the applicant form to secure your place for the upcoming
-            academic year at{" "}
-            {shortTerm ? (
-              <>
-                <strong>{shortTerm.toUpperCase()}</strong> <br />
-                {companyName || ""}
-              </>
-            ) : (
-              companyName || ""
-            )}
-            .
+            Please update your personal information to keep your student records accurate and up to date for the upcoming academic year at{" "}
+            {shortTerm ? <><strong>{shortTerm.toUpperCase()}</strong> - {companyName || ""}</> : companyName || ""}.
           </div>
         </Container>
         <br />
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            width: "100%",
-            px: 4,
-          }}
-        >
+
+        <Box sx={{ display: "flex", justifyContent: "center", width: "100%", px: 4 }}>
           {steps.map((step, index) => (
             <React.Fragment key={index}>
-              {/* Wrap the step with Link for routing */}
-              <Link to={step.path} style={{ textDecoration: "none" }}>
+              <Box
+                sx={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer" }}
+                onClick={() => handleStepClick(index)}
+              >
                 <Box
                   sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    cursor: "pointer",
+                    width: 50, height: 50, borderRadius: "50%",
+                    border: `1px solid ${borderColor}`,
+                    backgroundColor: activeStep === index ? settings?.header_color || "#1976d2" : "#E8C999",
+                    color: activeStep === index ? "#fff" : "#000",
+                    display: "flex", alignItems: "center", justifyContent: "center",
                   }}
-                  onClick={() => handleStepClick(index)}
                 >
-                  {/* Step Icon */}
-                  <Box
-                    sx={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: "50%",
-                      border: `1px solid ${borderColor}`,
-                      backgroundColor:
-                        activeStep === index
-                          ? settings?.header_color || "#1976d2"
-                          : "#E8C999",
-                      color: activeStep === index ? "#fff" : "#000",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {step.icon}
-                  </Box>
-
-                  {/* Step Label */}
-                  <Typography
-                    sx={{
-                      mt: 1,
-                      color: activeStep === index ? "#6D2323" : "#000",
-                      fontWeight: activeStep === index ? "bold" : "normal",
-                      fontSize: 14,
-                    }}
-                  >
-                    {step.label}
-                  </Typography>
+                  {step.icon}
                 </Box>
-              </Link>
-
-              {/* Connector Line */}
-              {index < steps.length - 1 && (
-                <Box
+                <Typography
                   sx={{
-                    height: "2px",
-                    backgroundColor: mainButtonColor,
-                    flex: 1,
-                    alignSelf: "center",
-                    mx: 2,
+                    mt: 1,
+                    color: activeStep === index ? "#6D2323" : "#000",
+                    fontWeight: activeStep === index ? "bold" : "normal",
+                    fontSize: 14,
                   }}
-                />
+                >
+                  {step.label}
+                </Typography>
+              </Box>
+              {index < steps.length - 1 && (
+                <Box sx={{ height: "2px", backgroundColor: mainButtonColor, flex: 1, alignSelf: "center", mx: 2 }} />
               )}
             </React.Fragment>
           ))}
         </Box>
-
         <br />
         <form>
           <Container
@@ -683,6 +663,7 @@ const StudentDashboard5 = () => {
               </Typography>
             </Box>
           </Container>
+
           <Container
             maxWidth="100%"
             sx={{
@@ -691,7 +672,6 @@ const StudentDashboard5 = () => {
               padding: 4,
               borderRadius: 2,
               boxShadow: 3,
-
             }}
           >
             <Typography
@@ -704,10 +684,13 @@ const StudentDashboard5 = () => {
               Other Information:
             </Typography>
             <hr style={{ border: "1px solid #ccc", width: "100%" }} />
+
             <Typography style={{ fontWeight: "bold", textAlign: "Center" }}>
               Data Subject Consent Form
             </Typography>
             <br />
+
+            {/* ── Static legal text — institution-managed, never editable by students ── */}
             <Typography
               style={{
                 fontSize: "12px",
@@ -769,7 +752,7 @@ const StudentDashboard5 = () => {
                 textAlign: "Left",
               }}
             >
-              4. In order to promote efficient management of the organization’s
+              4. In order to promote efficient management of the organization's
               records, I authorize the University to manage my data for data
               sharing with industry partners, government agencies/embassies,
               other educational institutions, and other offices for the
@@ -800,13 +783,14 @@ const StudentDashboard5 = () => {
             >
               I certify that the information given above are true, complete, and
               accurate to the best of my knowledge and belief. I promise to
-              abide by the rules and regulations of Eulogio "Amang" Rodriguez
-              Institute of Science and Technology regarding the ECAT and my
+              abide by the rules and regulations of{" "}
+              {companyName || "the institution"} regarding the ECAT and my
               possible admission. I am aware that any false or misleading
               information and/or statement may result in the refusal or
               disqualification of my admission to the institution.
             </Typography>
 
+            {/* ── Terms of Agreement checkbox — permission-controlled ── */}
             <FormControl
               required
               error={!!errors.termsOfAgreement}
@@ -817,13 +801,19 @@ const StudentDashboard5 = () => {
                 control={
                   <Checkbox
                     name="termsOfAgreement"
-
                     checked={person.termsOfAgreement === 1}
+                    // Disabled when admin has locked this field for students
+                    disabled={!isFieldEditable("termsOfAgreement")}
                     onChange={handleChange}
                     onBlur={handleBlur}
                   />
                 }
-                label="I agree Terms of Agreement"
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    I agree Terms of Agreement
+                    {!isFieldEditable("termsOfAgreement") && <LockedBadge />}
+                  </Box>
+                }
               />
               {errors.termsOfAgreement && (
                 <FormHelperText>This field is required.</FormHelperText>
@@ -862,37 +852,37 @@ const StudentDashboard5 = () => {
                   "&:hover": {
                     backgroundColor: "#000000",
                     color: "#fff",
-                    "& .MuiSvgIcon-root": {
-                      color: "#fff",
-                    },
+                    "& .MuiSvgIcon-root": { color: "#fff" },
                   },
                 }}
               >
                 Previous Step
               </Button>
 
-              {/* Next Step (Submit) Button */}
               <Button
-
                 variant="contained"
-                onClick={(e) => {
-                  handleUpdate(person);
-
-                  if (isFormValid()) {
-                    navigate("/student_online_requirements"); // Proceed only if valid
-                  } else {
-                    alert(
-                      "Please complete all required fields before submitting.",
-                    );
+                onClick={async () => {
+                  const valid = isFormValid();
+                  if (!valid) {
+                    setSnackbar({
+                      open: true,
+                      message: "Please agree to the Terms of Agreement before submitting.",
+                      severity: "error",
+                    });
+                    return;
                   }
+                  await handleUpdate(person);
+                  setSnackbar({
+                    open: true,
+                    message: "Your record has been saved successfully!",
+                    severity: "success",
+                  });
+                  setTimeout(() => {
+                    navigate("/student_online_requirements");
+                  }, 1200);
                 }}
                 endIcon={
-                  <FolderIcon
-                    sx={{
-                      color: "#fff",
-                      transition: "color 0.3s",
-                    }}
-                  />
+                  <FolderIcon sx={{ color: "#fff", transition: "color 0.3s" }} />
                 }
                 sx={{
                   backgroundColor: mainButtonColor,
@@ -901,9 +891,7 @@ const StudentDashboard5 = () => {
                   "&:hover": {
                     backgroundColor: "#E8C999",
                     color: "#000",
-                    "& .MuiSvgIcon-root": {
-                      color: "#000",
-                    },
+                    "& .MuiSvgIcon-root": { color: "#000" },
                   },
                 }}
               >
@@ -911,10 +899,9 @@ const StudentDashboard5 = () => {
               </Button>
             </Box>
 
-
             <Snackbar
               open={snackbar.open}
-              autoHideDuration={1000}
+              autoHideDuration={snackbar.severity === "error" ? 5000 : 1500}
               onClose={handleCloseSnackbar}
               anchorOrigin={{ vertical: "top", horizontal: "center" }}
             >

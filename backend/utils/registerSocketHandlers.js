@@ -3475,7 +3475,7 @@ WHERE proctor LIKE ?
 
   ///////---------------------------- DUPLICATE ----------------------------//////////
   app.get("/api/departments", async (req, res) => {
-    const sql = "SELECT dprtmnt_id, dprtmnt_code FROM dprtmnt_table";
+    const sql = "SELECT dprtmnt_id, dprtmnt_code, dprtmnt_name FROM dprtmnt_table";
 
     try {
       const [result] = await db3.query(sql);
@@ -7283,8 +7283,6 @@ WHERE proctor LIKE ?
         actorEmail = latest.evaluator_email;
         actorName = `${role} ${empId} - ${lname}, ${fname} ${mname}`.trim();
         latest.evaluator_display = `BY: ${actorName} (${actorEmail})`;
-      } else {
-        latest.evaluator_display = `BY: Unknown - System`;
       }
 
       return res.json({

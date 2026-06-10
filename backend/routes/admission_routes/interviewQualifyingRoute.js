@@ -594,13 +594,13 @@ router.post(
 
       await db.query(
         `INSERT INTO person_status_table
-         (person_id, qualifying_result, interview_result, exam_result)
-         VALUES (?, ?, ?, ?)
+         (person_id, applicant_id, qualifying_result, interview_result, exam_result)
+         VALUES (?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
            qualifying_result = COALESCE(VALUES(qualifying_result), qualifying_result),
            interview_result  = COALESCE(VALUES(interview_result),  interview_result),
            exam_result       = COALESCE(VALUES(exam_result),       exam_result)`,
-        [personId, qExam, qInterview, finalAve]
+        [personId, applicant_number, qExam, qInterview, finalAve]
       );
 
       // -------------------------------------------------

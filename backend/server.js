@@ -37,6 +37,7 @@ const allowedOrigins = [
   "http://136.239.248.62:5173",
   "http://192.168.1.12:5173",
   "http://192.168.1.9:5173",
+  "http://192.168.50.56:5173",
 ];
 
 app.use(
@@ -3085,6 +3086,41 @@ app.put("/api/enrollment/person/:person_id", async (req, res) => {
   } catch (err) {
     console.error(" Error updating person in ENROLLMENT DB:", err);
     res.status(500).json({ error: "Failed to update person in ENROLLMENT DB" });
+  }
+});
+
+app.get("/api/student_edit_permissions", async (req, res) => {
+  try {
+    const [rows] = await db3.query("SELECT field_id, is_editable FROM student_edit_permissions");
+    const result = {};
+    rows.forEach((r) => { result[r.field_id] = r.is_editable === 1; });
+    res.json(result);
+  } catch (err) {
+    console.error("GET student_edit_permissions:", err);
+    res.status(500).json({ error: "Failed to fetch permissions" });
+  }
+});
+ 
+// POST /api/student_edit_permissions
+// Body: { fieldId: true/false, ... }  — upserts all entries
+app.post("/api/student_edit_permissions", async (req, res) => {
+  try {
+    const permissions = req.body; // { classifiedAs: true, height: false, ... }
+    const entries = Object.entries(permissions);
+    if (entries.length === 0) return res.json({ success: true });
+ 
+    // Build bulk upsert
+    const values = entries.map(([fieldId, val]) => [fieldId, val ? 1 : 0]);
+    await db3.query(
+      `INSERT INTO student_edit_permissions (field_id, is_editable)
+       VALUES ?
+       ON DUPLICATE KEY UPDATE is_editable = VALUES(is_editable)`,
+      [values]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("POST student_edit_permissions:", err);
+    res.status(500).json({ error: "Failed to save permissions" });
   }
 });
 

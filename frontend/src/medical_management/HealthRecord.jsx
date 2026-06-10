@@ -241,6 +241,8 @@ const HealthRecord = () => {
 
             if (res.data?.student_number) {
                 fetchDentalData(res.data.student_number);
+                fetchNeuroData(res.data.student_number);  // ← add this
+                fetchMedicalData(res.data.student_number);
             }
 
 
@@ -271,6 +273,9 @@ const HealthRecord = () => {
 
                 if (res.data?.student_number) {
                     fetchDentalData(res.data.student_number);
+                    fetchNeuroData(res.data.student_number);  // ← add this
+                    fetchMedicalData(res.data.student_number);  // ← ADD THIS
+
                 }
 
 
@@ -320,6 +325,29 @@ const HealthRecord = () => {
         }
     };
 
+
+    const [neuroData, setNeuroData] = useState(null);
+
+    const fetchNeuroData = async (studentNumber) => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/api/physical-neuro/${studentNumber}`);
+            setNeuroData(res.data);
+        } catch (err) {
+            console.warn("No neuro record found");
+            setNeuroData(null);
+        }
+    };
+
+
+    const fetchMedicalData = async (studentNumber) => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/api/medical-requirements/${studentNumber}`);
+            setMedicalData(res.data);
+        } catch (err) {
+            console.warn("No medical record found");
+            setMedicalData(null);
+        }
+    };
 
     const isChecked = (key) => {
         return Number(dental?.[key]) === 1;
@@ -561,7 +589,7 @@ const HealthRecord = () => {
                                             >
                                                 {person?.profile_img ? (
                                                     <img
-                                                        src={`${API_BASE_URL}/uploads/${person.profile_img}`}
+                                                        src={`${API_BASE_URL}/uploads/Student1by1/${person.profile_img}`}
                                                         alt="Profile"
                                                         style={{
                                                             width: "100%",
@@ -1371,19 +1399,19 @@ const HealthRecord = () => {
                     <tbody>
 
                         <tr>
-                            <td colSpan={40} style={{ borderTop: "1px solid black", height: "5px" }}></td>
+                            <td colSpan={40} style={{ borderTop: "1px solid black" }} />
                         </tr>
-
                         <tr>
-                            <td
-                                colSpan={40}
-                                style={{
-                                    textAlign: "left",
-                                    fontSize: "12px",
-                                    fontFamily: "Arial",
-                                    fontWeight: "bold",
+                            <td colSpan={40} style={{ height: "10px" }} />
+                        </tr>
+                        <tr>
+                            <td colSpan={40} style={{
+                                textAlign: "left",
+                                fontSize: "12px",
+                                fontFamily: "Arial",
+                                fontWeight: "bold",
 
-                                }}
+                            }}
                             >
                                 PAST MEDICAL HISTORY:
                             </td>
@@ -1448,9 +1476,7 @@ const HealthRecord = () => {
                                                 <td style={{ padding: "2px 10px", fontSize: "12px", fontFamily: "Arial", }}>____ Asthma (Hika)</td>
                                             </tr>
                                             <tr>
-                                                <td colSpan={2} style={{ padding: "2px 10px" }}>
-                                                    ____ Heart Problem / Fainting Attack (Sakit sa Puso)
-                                                </td>
+                                                <td style={{ padding: "2px 10px", fontSize: "12px", fontFamily: "Arial", }}>____ Heart Problem / Fainting Attack (Sakit sa Puso)</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1659,22 +1685,26 @@ const HealthRecord = () => {
                             </td>
                         </tr>
                         <tr>
-                            <td colSpan={40} style={{ borderBottom: "1px solid black", height: "1px" }}></td>
+                            <td colSpan={40} style={{ height: "10px" }} />
                         </tr>
                     </tbody>
 
                     {/* PUBERTAL HISTORY */}
                     <tr>
-                        <td
-                            colSpan={40}
-                            style={{
-                                textAlign: "left",
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                                fontFamily: "Arial",
+                        <td colSpan={40} style={{ borderBottom: "1px solid black" }} />
+                    </tr>
+                    <tr>
+                        <td colSpan={40} style={{ height: "10px" }} />
+                    </tr>
+                    <tr>
+                        <td colSpan={40} style={{
+                            textAlign: "left",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            fontFamily: "Arial",
 
-                                paddingBottom: "2px",
-                            }}
+                            paddingBottom: "2px",
+                        }}
                         >
                             PUBERTAL HISTORY:
                         </td>
@@ -1791,26 +1821,29 @@ const HealthRecord = () => {
                                             ></span>
                                         </td>
                                     </tr>
+                                    <tr>
+                                        <td colSpan={40} style={{ height: "10px" }} />
+                                    </tr>
                                 </tbody>
                             </table>
                         </td>
                     </tr>
 
                     <tr>
-                        <td colSpan={40} style={{ borderBottom: "1px solid black", height: "1px" }}></td>
+                        <td colSpan={40} style={{ borderBottom: "1px solid black" }} />
                     </tr>
-                    {/* FAMILY HISTORY */}
                     <tr>
-                        <td
-                            colSpan={40}
-                            style={{
-                                textAlign: "left",
-                                fontSize: "12px",
-                                fontFamily: "Arial",
-                                fontWeight: "bold",
+                        <td colSpan={40} style={{ height: "10px" }} />
+                    </tr>
+                    <tr>
+                        <td colSpan={40} style={{
+                            textAlign: "left",
+                            fontSize: "12px",
+                            fontFamily: "Arial",
+                            fontWeight: "bold",
 
-                                paddingBottom: "2px",
-                            }}
+                            paddingBottom: "2px",
+                        }}
                         >
                             FAMILY HISTORY:{" "}
                             <span style={{ fontWeight: "normal" }}>
@@ -1916,56 +1949,37 @@ const HealthRecord = () => {
                                             {person.mother_occupation}
                                         </td>
                                     </tr>
+                                    <tr>
+                                        <td colSpan={40} style={{ height: "10px" }} />
+                                    </tr>
                                 </tbody>
                             </table>
                         </td>
                     </tr>
 
-                    {/* MEANS OF SUPPORT */}
+
                     <tr>
-                        <td
-                            colSpan={40}
-                            style={{
-                                textAlign: "left",
-                                fontFamily: "Arial",
-                                fontSize: "12px",
-                                paddingLeft: "40px",
-                                paddingTop: "3px",
-                                paddingBottom: "5px"
-                            }}
-                        >
-                            Means of support if parents are deceased or unemployed{" "}
-                            <span
-                                style={{
-                                    display: "inline-block",
-                                    borderBottom: "1px solid #000",
-                                    width: "60%",
-                                    marginLeft: "5px",
-                                }}
-                            ></span>
-                        </td>
+                        <td colSpan={40} />
                     </tr>
 
-
-
                     <tr>
-                        <td colSpan={40} style={{ borderBottom: "1px solid black", height: "1px" }}></td>
+                        <td colSpan={40} style={{ borderBottom: "1px solid black" }} />
                     </tr>
                     <tr>
-                        <td
-                            colSpan={40}
+                        <td colSpan={40} style={{ height: "10px" }} />
+                    </tr>
+                    <tr>
+                        <td colSpan={40}
                             style={{
                                 fontFamily: "Arial",
                                 fontSize: "12px",
                                 fontWeight: "bold",
                                 textAlign: "left",
-                                paddingBottom: "3px",
-                            }}
-                        >
+                                paddingBottom: "5px",
+                            }}>
                             PHYSICAL EXAMINATION:
                         </td>
                     </tr>
-
                     <tr>
                         <td colSpan={40} style={{ paddingTop: "3px", verticalAlign: "top" }}>
                             <table
@@ -1989,27 +2003,38 @@ const HealthRecord = () => {
                                                 }}
                                             >
                                                 <tbody>
+                                                    {/* Weight */}
                                                     <tr>
                                                         <td style={{ width: "45%", fontSize: "12px" }}>Weight (Timbang):</td>
-                                                        <td style={{ borderBottom: "1px solid #000", width: "35%" }}></td>
+                                                        <td style={{ borderBottom: "1px solid #000", width: "35%", textAlign: "center" }}>
+                                                            {medicalData?.weight || ""}
+                                                        </td>
                                                         <td style={{ width: "45%", fontSize: "12px" }}>kg</td>
                                                     </tr>
                                                     <tr>
                                                         <td style={{ width: "45%", fontSize: "12px" }}>Height (Tangkad):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
+                                                        <td style={{ borderBottom: "1px solid #000", textAlign: "center" }}>
+                                                            {medicalData?.height || ""}
+                                                        </td>
                                                         <td style={{ width: "45%", fontSize: "12px" }}>m</td>
                                                     </tr>
                                                     <tr>
                                                         <td style={{ width: "45%", fontSize: "12px" }}>Body Mass Index (BMI):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
+                                                        <td style={{ borderBottom: "1px solid #000", textAlign: "center" }}>
+                                                            {medicalData?.bmi || ""}
+                                                        </td>
                                                     </tr>
                                                     <tr>
                                                         <td style={{ width: "45%", fontSize: "12px" }}>Interpretation:</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
+                                                        <td style={{ borderBottom: "1px solid #000", textAlign: "center" }}>
+                                                            {medicalData?.interpretation || ""}
+                                                        </td>
                                                     </tr>
                                                     <tr>
                                                         <td style={{ width: "45%", fontSize: "12px" }}>Heart Rate:</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
+                                                        <td style={{ borderBottom: "1px solid #000", textAlign: "center" }}>
+                                                            {medicalData?.heart_rate || ""}
+                                                        </td>
                                                         <td>bpm</td>
                                                     </tr>
                                                     <tr>
@@ -2054,70 +2079,52 @@ const HealthRecord = () => {
                                             </div>
 
                                             {/* Right Column Table */}
-                                            <table
-                                                style={{
-                                                    width: "100%",
-                                                    borderCollapse: "collapse",
-                                                    textAlign: "left",
-                                                }}
-                                            >
-                                                <tbody>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ General Survey (Pangkalahatang anyo):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ Skin (Balat):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ Eyes (Mata):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ EENT (Mata, Taenga, Ilong, Lalamunan):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ Neck (Leeg):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ Heart (Puso):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ Chest/Lungs (Dibdib/Baga):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ Abdomen (Tiyan):</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ Musculoskeletal:</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style={{ width: "65%", fontSize: "12px" }}>___ Breast Examination:</td>
-                                                        <td style={{ borderBottom: "1px solid #000" }}></td>
-                                                    </tr>
 
-                                                    {/* ✅ GENITALIA - 3 ROWS ONLY */}
+                                            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                                                <tbody>
+                                                    {[
+                                                        { label: "General Survey (Pangkalahatang anyo)", key: "general_survey" },
+                                                        { label: "Skin (Balat)", key: "skin" },
+                                                        { label: "Eyes (Mata)", key: "eyes" },
+                                                        { label: "EENT (Mata, Taenga, Ilong, Lalamunan)", key: "ent" },
+                                                        { label: "Neck (Leeg)", key: "neck" },
+                                                        { label: "Heart (Puso)", key: "heart" },
+                                                        { label: "Chest/Lungs (Dibdib/Baga)", key: "chest_lungs" },
+                                                        { label: "Abdomen (Tiyan)", key: "abdomen" },
+                                                        { label: "Musculoskeletal", key: "musculoskeletal" },
+                                                        { label: "Breast Examination", key: "breast_exam" },
+                                                    ].map(({ label, key }) => (
+                                                        <tr key={key}>
+                                                            <td style={{ width: "65%", fontSize: "12px" }}>
+                                                                {medicalData?.[key] ? "✓" : "___"} {label}:
+                                                            </td>
+                                                            <td style={{ borderBottom: "1px solid #000", fontSize: "12px", paddingLeft: "4px" }}>
+                                                                {medicalData?.[key] && medicalData[key] !== "Normal" ? medicalData[key] : ""}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+
+                                                    {/* Genitalia rows */}
                                                     <tr>
                                                         <td colSpan={2}>
                                                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                                                                 <tbody>
                                                                     <tr>
-                                                                        <td style={{ width: "25%", fontSize: "12px", fontFamily: "Arial" }}>___ Genitalia:</td>
-                                                                        <td style={{ width: "25%", fontSize: "12px", fontFamily: "Arial" }}>Male SMR:</td>
-                                                                        <td style={{ borderBottom: "1px solid #000", width: "25%" }}></td>
-                                                                        <td style={{ width: "10%", fontSize: "12px", fontFamily: "Arial" }}>Penis:</td>
-                                                                        <td style={{ borderBottom: "1px solid #000", width: "25%" }}></td>
+                                                                        <td style={{ width: "25%", fontSize: "12px" }}>
+                                                                            {medicalData?.genitalia_smr ? "✓" : "___"} Genitalia:
+                                                                        </td>
+                                                                        <td style={{ width: "25%", fontSize: "12px" }}>Male SMR:</td>
+                                                                        <td style={{ borderBottom: "1px solid #000", width: "25%", fontSize: "12px", paddingLeft: "4px" }}>
+                                                                            {medicalData?.genitalia_smr || ""}
+                                                                        </td>
+                                                                        <td style={{ width: "10%", fontSize: "12px" }}>Penis:</td>
+                                                                        <td style={{ borderBottom: "1px solid #000", width: "25%", fontSize: "12px", paddingLeft: "4px" }}>
+                                                                            {medicalData?.penis || ""}
+                                                                        </td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td></td>
-                                                                        <td style={{ fontSize: "12px" }}> Female SMR:</td>
+                                                                        <td style={{ fontSize: "12px" }}>Female SMR:</td>
                                                                         <td style={{ borderBottom: "1px solid #000" }}></td>
                                                                         <td style={{ fontSize: "12px" }}>Breast:</td>
                                                                         <td style={{ borderBottom: "1px solid #000" }}></td>
@@ -2128,6 +2135,9 @@ const HealthRecord = () => {
                                                                         <td></td>
                                                                         <td style={{ fontSize: "12px" }}>Vagina:</td>
                                                                         <td style={{ borderBottom: "1px solid #000" }}></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td colSpan={40} style={{ height: "10px" }} />
                                                                     </tr>
                                                                 </tbody>
                                                             </table>
@@ -2142,12 +2152,16 @@ const HealthRecord = () => {
                         </td>
                     </tr>
 
+                    {/* NEUROLOGICAL EXAMINATION */}
                     <tr>
                         <td colSpan={40} style={{ borderBottom: "1px solid black", height: "1px" }}></td>
                     </tr>
                     <tr>
+                        <td colSpan={40} style={{ height: "10px" }} />
+                    </tr>
+                    <tr>
                         <td colSpan={40} style={{ fontFamily: "Arial", fontSize: "12px", fontWeight: "bold", paddingTop: "5px", textAlign: "left" }}>
-                            NEUROLOGICAL EXAMINATION
+                            NEUROLOGICAL EXAMINATION:
                         </td>
                     </tr>
                     <tr>
@@ -2157,70 +2171,73 @@ const HealthRecord = () => {
                     </tr>
 
                     <tr>
-                        <td
-                            colSpan={40}
-                            style={{
-                                fontFamily: "Arial",
-                                fontSize: "12px",
-                                padding: "4px 0",
-                            }}
-                        >
-                            <table
-                                style={{
-                                    width: "100%",
-                                    borderCollapse: "collapse",
-                                    textAlign: "left",
-                                    fontFamily: "Arial",
-                                    fontSize: "12px",
-                                }}
-                            >
+                        <td colSpan={40} style={{ fontFamily: "Arial", fontSize: "12px", padding: "4px 0" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontFamily: "Arial", fontSize: "12px" }}>
                                 <tbody>
                                     <tr>
-                                        <td style={{ width: "20%", padding: "2px 4px", fontSize: "12px" }}>___ Mental Status:</td>
-                                        <td style={{ width: "30%", borderBottom: "1px solid black" }}></td>
+                                        <td style={{ width: "20%", padding: "2px 4px", fontSize: "12px" }}>
+                                            {neuroData?.pne_mental_status_check ? "✓" : "___"} Mental Status:
+                                        </td>
+                                        <td style={{ width: "30%", borderBottom: "1px solid black", paddingLeft: "4px" }}>
+                                            {neuroData?.pne_mental_status_text || ""}
+                                        </td>
                                         <td style={{ width: "4%" }}></td>
-                                        <td style={{ width: "16%", padding: "2px 4px", fontSize: "12px" }}>___ Sensory:</td>
-                                        <td style={{ width: "30%", borderBottom: "1px solid black" }}></td>
+                                        <td style={{ width: "16%", padding: "2px 4px", fontSize: "12px" }}>
+                                            {neuroData?.pne_sensory_check ? "✓" : "___"} Sensory:
+                                        </td>
+                                        <td style={{ width: "30%", borderBottom: "1px solid black", paddingLeft: "4px" }}>
+                                            {neuroData?.pne_sensory_text || ""}
+                                        </td>
                                     </tr>
                                     <tr>
-                                        <td style={{ padding: "2px 4px", fontSize: "12px" }}>___ Cranial Nerve:</td>
-                                        <td style={{ borderBottom: "1px solid black" }}></td>
+                                        <td style={{ padding: "2px 4px", fontSize: "12px" }}>
+                                            {neuroData?.pne_cranial_nerve_check ? "✓" : "___"} Cranial Nerve:
+                                        </td>
+                                        <td style={{ borderBottom: "1px solid black", paddingLeft: "4px" }}>
+                                            {neuroData?.pne_cranial_nerve_text || ""}
+                                        </td>
                                         <td></td>
-                                        <td style={{ padding: "2px 4px", fontSize: "12px" }}>___ Cerebellar:</td>
-                                        <td style={{ borderBottom: "1px solid black" }}></td>
+                                        <td style={{ padding: "2px 4px", fontSize: "12px" }}>
+                                            {neuroData?.pne_cerebellar_check ? "✓" : "___"} Cerebellar:
+                                        </td>
+                                        <td style={{ borderBottom: "1px solid black", paddingLeft: "4px" }}>
+                                            {neuroData?.pne_cerebellar_text || ""}
+                                        </td>
                                     </tr>
                                     <tr>
-                                        <td style={{ padding: "2px 4px", fontSize: "12px" }}>___ Motor:</td>
-                                        <td style={{ borderBottom: "1px solid black" }}></td>
+                                        <td style={{ padding: "2px 4px", fontSize: "12px" }}>
+                                            {neuroData?.pne_motor_check ? "✓" : "___"} Motor:
+                                        </td>
+                                        <td style={{ borderBottom: "1px solid black", paddingLeft: "4px" }}>
+                                            {neuroData?.pne_motor_text || ""}
+                                        </td>
                                         <td></td>
-                                        <td style={{ padding: "2px 4px", fontSize: "12px" }}>___ Reflexes:</td>
-                                        <td style={{ borderBottom: "1px solid black" }}></td>
+                                        <td style={{ padding: "2px 4px", fontSize: "12px" }}>
+                                            {neuroData?.pne_reflexes_check ? "✓" : "___"} Reflexes:
+                                        </td>
+                                        <td style={{ borderBottom: "1px solid black", paddingLeft: "4px" }}>
+                                            {neuroData?.pne_reflexes_text || ""}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan={40} style={{ height: "10px" }} />
                                     </tr>
                                 </tbody>
                             </table>
                         </td>
                     </tr>
 
-
                     {/* Findings Section */}
                     <tr>
-                        <td
-                            colSpan={40}
-                            style={{
-                                fontFamily: "Arial",
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                                paddingTop: "6px",
-                                borderTop: "1px solid black",
-                                textAlign: "left"
-                            }}
-                        >
+                        <td colSpan={40} style={{ fontFamily: "Arial", fontSize: "12px", fontWeight: "bold", paddingTop: "6px", borderTop: "1px solid black", textAlign: "left" }}>
                             FINDINGS / ASSESSMENT / PSYCHOLOGICAL:
                             <span style={{ fontWeight: "normal" }}> (Problems Identified)</span>
                         </td>
                     </tr>
                     <tr>
-                        <td colSpan={40} style={{ borderBottom: "1px solid black", height: "14px" }}></td>
+                        <td colSpan={40} style={{ borderBottom: "1px solid black", height: "14px", paddingLeft: "4px", fontSize: "12px", fontFamily: "Arial" }}>
+                            {neuroData?.pne_findings_psychological || ""}
+                        </td>
                     </tr>
                     <tr>
                         <td colSpan={40} style={{ borderBottom: "1px solid black", height: "14px" }}></td>
@@ -2228,29 +2245,21 @@ const HealthRecord = () => {
 
                     {/* Recommendations Section */}
                     <tr>
-                        <td
-                            colSpan={40}
-                            style={{
-                                fontFamily: "Arial",
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                                paddingTop: "6px",
-                                borderTop: "1px solid black",
-                                textAlign: "left"
-                            }}
-                        >
+                        <td colSpan={40} style={{ fontFamily: "Arial", fontSize: "12px", fontWeight: "bold", paddingTop: "6px", borderTop: "1px solid black", textAlign: "left" }}>
                             RECOMMENDATIONS:
-                            <span style={{ fontWeight: "normal" }}>
-                                {" "}
-                                (Plan of management / Diagnostic / Therapeutic / Referral)
-                            </span>
+                            <span style={{ fontWeight: "normal" }}> (Plan of management / Diagnostic / Therapeutic / Referral)</span>
                         </td>
                     </tr>
                     <tr>
-                        <td colSpan={40} style={{ borderBottom: "1px solid black", height: "14px" }}></td>
+                        <td colSpan={40} style={{ borderBottom: "1px solid black", height: "14px", paddingLeft: "4px", fontSize: "12px", fontFamily: "Arial" }}>
+                            {neuroData?.pne_recommendations || ""}
+                        </td>
                     </tr>
+
                     <tr>
-                        <td colSpan={40} style={{ borderBottom: "1px solid black", height: "14px" }}></td>
+                        <td colSpan={40} style={{ padding: 0 }}>
+                            <div style={{ borderBottom: "1px solid black", minHeight: "20px" }} />
+                        </td>
                     </tr>
 
                     <tr>

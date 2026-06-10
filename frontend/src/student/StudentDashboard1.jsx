@@ -1,29 +1,11 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { SettingsContext } from "../App";
-
 import axios from "axios";
 import {
-  Button,
-  Box,
-  TextField,
-  Container,
-  Typography,
-  Card,
-  TableContainer,
-  Paper,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  FormHelperText,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Modal,
-  FormControlLabel,
-  Checkbox,
-  IconButton,
+  Button, Box, TextField, Container, Typography, Card,
+  TableContainer, Paper, Table, TableHead, TableRow, TableCell,
+  FormHelperText, FormControl, InputLabel, Select, MenuItem,
+  Modal, FormControlLabel, Checkbox, IconButton,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
@@ -33,6 +15,7 @@ import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import ErrorIcon from "@mui/icons-material/Error";
+import LockIcon from "@mui/icons-material/Lock";
 import Search from "@mui/icons-material/Search";
 import regions from "../data/region.json";
 import provinces from "../data/province.json";
@@ -42,285 +25,230 @@ import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import API_BASE_URL from "../apiConfig";
 import PersonIcon from "@mui/icons-material/Person";
-import DescriptionIcon from "@mui/icons-material/Description";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import SchoolIcon from "@mui/icons-material/School";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
-import HowToRegIcon from "@mui/icons-material/HowToReg";
-import ListAltIcon from "@mui/icons-material/ListAlt";
-import FactCheckIcon from "@mui/icons-material/FactCheck";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import DateField from "../components/DateField";
 import { Snackbar, Alert } from "@mui/material";
+import useStudentEditPermissions from "../account_management/useStudentEditPermissions";
+import API_BASE_URL from "../apiConfig";
+
 const StudentDashboard1 = () => {
   const settings = useContext(SettingsContext);
+
+  // ── Hook at the very top ──────────────────────────────────────────────────
+  const { canEdit: canEditField, permissionsLoaded } = useStudentEditPermissions();
 
   const [titleColor, setTitleColor] = useState("#000000");
   const [subtitleColor, setSubtitleColor] = useState("#555555");
   const [borderColor, setBorderColor] = useState("#000000");
   const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
-  const [subButtonColor, setSubButtonColor] = useState("#ffffff");   // ✅ NEW
-  const [stepperColor, setStepperColor] = useState("#000000");       // ✅ NEW
-
+  const [subButtonColor, setSubButtonColor] = useState("#ffffff");
+  const [stepperColor, setStepperColor] = useState("#000000");
   const [fetchedLogo, setFetchedLogo] = useState(null);
   const [companyName, setCompanyName] = useState("");
   const [shortTerm, setShortTerm] = useState("");
   const [campusAddress, setCampusAddress] = useState("");
   const [branches, setBranches] = useState([]);
+  const [explicitSelection, setExplicitSelection] = useState(false);
+  const [userID, setUserID] = useState("");
+  const [user, setUser] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [selectedPerson, setSelectedPerson] = useState(null);
+  const [persons, setPersons] = useState([]);
+  const [isLrnNA, setIsLrnNA] = useState(false);
+  const [studentNumber, setStudentNumber] = useState("");
+  const [errors, setErrors] = useState({});
+  const [activeStep, setActiveStep] = useState(0);
+  const [clickedSteps, setClickedSteps] = useState(Array(5).fill(false));
+  const [open, setOpen] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [yearLevelOptions, setYearLevelOptions] = useState([]);
+  const [programAvailability, setProgramAvailability] = useState([]);
+  const [activeYearId, setActiveYearId] = useState(null);
+  const [activeSemesterId, setActiveSemesterId] = useState(null);
+  const [curriculumOptions, setCurriculumOptions] = useState([]);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "warning" });
 
+  const [person, setPerson] = useState({
+    profile_img: "", campus: "", academicProgram: "", classifiedAs: "",
+    applyingAs: "", program: "", program2: "", program3: "", yearLevel: "",
+    last_name: "", first_name: "", middle_name: "", extension: "", nickname: "",
+    height: "", weight: "", lrnNumber: "", nolrnNumber: "", gender: "",
+    pwdType: "", pwdId: "", birthOfDate: "", age: "", birthPlace: "",
+    languageDialectSpoken: "", citizenship: "", religion: "", civilStatus: "",
+    tribeEthnicGroup: "", cellphoneNumber: "", emailAddress: "",
+    presentStreet: "", presentBarangay: "", presentZipCode: "",
+    presentRegion: "", presentProvince: "", presentMunicipality: "",
+    presentDswdHouseholdNumber: "", sameAsPresentAddress: "",
+    permanentStreet: "", permanentBarangay: "", permanentZipCode: "",
+    permanentRegion: "", permanentProvince: "", permanentMunicipality: "",
+    permanentDswdHouseholdNumber: "",
+  });
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const queryPersonId = queryParams.get("person_id");
+  const queryStudentNumber = sessionStorage.getItem("student_number");
+
+  // ── canEdit wrapper — reads userRole from state ───────────────────────────
+  const canEdit = (fieldId) => canEditField(fieldId, userRole);
+
+  // ── LockedBadge component ─────────────────────────────────────────────────
+  const LockedBadge = () => (
+    <Box
+      component="span"
+      sx={{
+        display: "inline-flex", alignItems: "center", gap: 0.4,
+        ml: 1, px: 0.8, py: 0.2, borderRadius: "4px",
+        backgroundColor: "#fce4ec", color: "#c62828",
+        fontSize: "11px", fontWeight: "bold", verticalAlign: "middle",
+      }}
+    >
+      <LockIcon sx={{ fontSize: 12 }} />
+      Locked by Admin
+    </Box>
+  );
+
+  // ── ADDRESS STATE ─────────────────────────────────────────────────────────
+  const [regionList, setRegionList] = useState([]);
+  const [provinceList, setProvinceList] = useState([]);
+  const [cityList, setCityList] = useState([]);
+  const [barangayList, setBarangayList] = useState([]);
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedBarangay, setSelectedBarangay] = useState("");
+  const [permanentRegionList, setPermanentRegionList] = useState([]);
+  const [permanentProvinceList, setPermanentProvinceList] = useState([]);
+  const [permanentCityList, setPermanentCityList] = useState([]);
+  const [permanentBarangayList, setPermanentBarangayList] = useState([]);
+  const [permanentRegion, setPermanentRegion] = useState("");
+  const [permanentProvince, setPermanentProvince] = useState("");
+  const [permanentCity, setPermanentCity] = useState("");
+  const [permanentBarangay, setPermanentBarangay] = useState("");
+
+  const isReadOnly = userRole === "student";
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const getBranchLabel = (branchId) => {
+    const branch = branches.find((item) => String(item.id) === String(branchId));
+    return branch?.branch || "—";
+  };
+
+  const getYearLevelSelectValue = () => {
+    const current = person?.yearLevel;
+    if (current === null || current === undefined || current === "") return "";
+    const currentText = String(current).trim();
+    const byId = yearLevelOptions.find((yl) => String(yl.year_level_id) === currentText);
+    if (byId) return String(byId.year_level_id);
+    const byDesc = yearLevelOptions.find((yl) => String(yl.year_level_description || "").trim().toLowerCase() === currentText.toLowerCase());
+    if (byDesc) return String(byDesc.year_level_id);
+    return currentText;
+  };
+
+  const filteredYearLevels = yearLevelOptions.filter((yl) => {
+    if (Number(person.academicProgram) === 1) return yl.level_type === "graduate";
+    return yl.level_type === "year";
+  });
+
+  const availabilityMap = React.useMemo(() => {
+    const map = {};
+    programAvailability.forEach((p) => {
+      map[p.curriculum_id] = { remaining: Number(p.remaining), isFull: Number(p.remaining) <= 0 };
+    });
+    return map;
+  }, [programAvailability]);
+
+  const filteredCurriculum = curriculumOptions.filter((item) => {
+    if (person.academicProgram !== "" && person.academicProgram !== null) {
+      if (Number(item.academic_program) !== Number(person.academicProgram)) return false;
+    }
+    return true;
+  });
+
+  const parseISODate = (dateString) => {
+    if (!dateString) return null;
+    const [y, m, d] = dateString.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  };
+
+  const getManilaDate = () => {
+    const now = new Date();
+    const manilaString = now.toLocaleString("en-PH", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" });
+    const [month, day, year] = manilaString.split("/");
+    return new Date(`${year}-${month}-${day}`);
+  };
+
+  const calculateAge = (birthDateString) => {
+    const birthDate = parseISODate(birthDateString);
+    if (!birthDate) return "";
+    const today = getManilaDate();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    const dayDiff = today.getDate() - birthDate.getDate();
+    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) age--;
+    return age < 0 ? "" : age;
+  };
+
+  const MAX_SIZE = 2 * 1024 * 1024;
+
+  // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!settings) return;
-
-    // 🎨 Colors
     if (settings.title_color) setTitleColor(settings.title_color);
     if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
     if (settings.border_color) setBorderColor(settings.border_color);
     if (settings.main_button_color) setMainButtonColor(settings.main_button_color);
     if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color);
     if (settings.stepper_color) setStepperColor(settings.stepper_color);
-
-    // 🏫 Logo
-    if (settings.logo_url) {
-      setFetchedLogo(`${API_BASE_URL}${settings.logo_url}`);
-    } else {
-      setFetchedLogo(EaristLogo);
-    }
-
-    // 🏷️ School Info
+    if (settings.logo_url) setFetchedLogo(`${API_BASE_URL}${settings.logo_url}`);
     if (settings.company_name) setCompanyName(settings.company_name);
     if (settings.short_term) setShortTerm(settings.short_term);
     if (settings.campus_address) setCampusAddress(settings.campus_address);
-
-    // ✅ Branches (JSON stored in DB)
-    if (settings.branches) {
-      setBranches(
-        typeof settings.branches === "string"
-          ? JSON.parse(settings.branches)
-          : settings.branches
-      );
-    }
-
+    if (settings.branches) setBranches(typeof settings.branches === "string" ? JSON.parse(settings.branches) : settings.branches);
   }, [settings]);
-
-  const getBranchLabel = (branchId) => {
-    const branch = branches.find((item) => String(item.id) === String(branchId));
-    return branch?.branch || "—";
-  };
-
-
-
-
-  const navigate = useNavigate();
-
-  const fetchByPersonId = async (personID) => {
-    try {
-      const res = await axios.get(
-        `${API_BASE_URL}/api/enrollment_person/${personID}`,
-      );
-      setPerson(res.data);
-      setSelectedPerson(res.data);
-      if (res.data?.applicant_number) {
-      }
-    } catch (err) {
-      console.error("❌ person_with_applicant failed:", err);
-    }
-  };
-
-  const [userID, setUserID] = useState("");
-  const [user, setUser] = useState("");
-  const location = useLocation();
-  const [selectedPerson, setSelectedPerson] = useState(null);
-  const [persons, setPersons] = useState([]);
-  const [userRole, setUserRole] = useState("");
-  const [person, setPerson] = useState({
-    profile_img: "",
-    campus: "",
-    academicProgram: "",
-    classifiedAs: "",
-    applyingAs: "",
-    program: "",
-    program2: "",
-    program3: "",
-    yearLevel: "",
-    last_name: "",
-    first_name: "",
-    middle_name: "",
-    extension: "",
-    nickname: "",
-    height: "",
-    weight: "",
-    lrnNumber: "",
-    nolrnNumber: "",
-    gender: "",
-    pwdType: "",
-    pwdId: "",
-    birthOfDate: "",
-    age: "",
-    birthPlace: "",
-    languageDialectSpoken: "",
-    citizenship: "",
-    religion: "",
-    civilStatus: "",
-    tribeEthnicGroup: "",
-    cellphoneNumber: "",
-    emailAddress: "",
-    presentStreet: "",
-    presentBarangay: "",
-    presentZipCode: "",
-    presentRegion: "",
-    presentProvince: "",
-    presentMunicipality: "",
-    presentDswdHouseholdNumber: "",
-    sameAsPresentAddress: "",
-    permanentStreet: "",
-    permanentBarangay: "",
-    permanentZipCode: "",
-    permanentRegion: "",
-    permanentProvince: "",
-    permanentMunicipality: "",
-    permanentDswdHouseholdNumber: "",
-  });
-
-  // Add this state at the top if not already:
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "warning",
-  });
-
-  // Snackbar close handler
-  const handleCloseSnackbar = (event, reason) => {
-    if (reason === "clickaway") return;
-    setSnackbar((prev) => ({ ...prev, open: false }));
-  };
-
-  // Example: replace previous calls with this:
-  const showSnackbar = (message) => {
-    setSnackbar({ open: true, message, severity: "warning" });
-  };
-
-
-  const [yearLevelOptions, setYearLevelOptions] = useState([]);
 
   useEffect(() => {
     const fetchYearLevels = async () => {
       try {
         const res = await axios.get(`${API_BASE_URL}/api/year-levels`);
         setYearLevelOptions(res.data);
-      } catch (err) {
-        console.error("Error fetching year levels:", err);
-      }
+      } catch (err) { console.error("Error fetching year levels:", err); }
     };
-
     fetchYearLevels();
   }, []);
-
-  const getYearLevelSelectValue = () => {
-    const current = person?.yearLevel;
-    if (current === null || current === undefined || current === "") return "";
-
-    const currentText = String(current).trim();
-    const byId = yearLevelOptions.find(
-      (yl) => String(yl.year_level_id) === currentText,
-    );
-    if (byId) return String(byId.year_level_id);
-
-    const byDesc = yearLevelOptions.find(
-      (yl) =>
-        String(yl.year_level_description || "")
-          .trim()
-          .toLowerCase() === currentText.toLowerCase(),
-    );
-    if (byDesc) return String(byDesc.year_level_id);
-
-    return currentText;
-  };
-
-
-  const filteredYearLevels = yearLevelOptions.filter((yl) => {
-    // If Graduate program → show only Master & Doctor
-    if (Number(person.academicProgram) === 1) {
-      return yl.level_type === "graduate";
-    }
-
-    // If College/Bachelor → show only year levels
-    return yl.level_type === "year";
-  });
-
-
-
-
-
-  const [programAvailability, setProgramAvailability] = useState([]);
-  const [activeYearId, setActiveYearId] = useState(null);
-  const [activeSemesterId, setActiveSemesterId] = useState(null);
 
   useEffect(() => {
     const fetchActiveYearAndAvailability = async () => {
       const yearRes = await axios.get(`${API_BASE_URL}/api/active_school_year`);
       const activeYear = yearRes.data[0];
-      console.log(activeYear);
-
       if (activeYear) {
         setActiveYearId(activeYear.year_id);
         setActiveSemesterId(activeYear.semester_id);
-
-        const availRes = await axios.get(
-          `${API_BASE_URL}/api/programs/availability`,
-          {
-            params: {
-              year_id: activeYear.year_id,
-              semester_id: activeYear.semester_id,
-            },
-          }
-        );
-
+        const availRes = await axios.get(`${API_BASE_URL}/api/programs/availability`, { params: { year_id: activeYear.year_id, semester_id: activeYear.semester_id } });
         setProgramAvailability(availRes.data);
-        console.log("Program Availability:", availRes.data);
       }
     };
-
     fetchActiveYearAndAvailability();
   }, []);
-
-  const availabilityMap = React.useMemo(() => {
-    const map = {};
-    programAvailability.forEach((p) => {
-      map[p.curriculum_id] = {
-        remaining: Number(p.remaining),
-        isFull: Number(p.remaining) <= 0,
-      };
-    });
-    return map;
-  }, [programAvailability]);
-
-
-  const [studentNumber, setStudentNumber] = useState("");
-
-  const queryParams = new URLSearchParams(location.search);
-  const queryPersonId = queryParams.get("person_id");
-
-  // Always pull student_number from sessionStorage
-  const queryStudentNumber = sessionStorage.getItem("student_number");
 
   useEffect(() => {
     if (!queryStudentNumber) return;
     const fetchPersonId = async () => {
       try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/person_id/${queryStudentNumber}`,
-        );
+        const res = await axios.get(`${API_BASE_URL}/api/person_id/${queryStudentNumber}`);
         setUserID(res.data.person_id);
         setStudentNumber(queryStudentNumber);
         setPerson(res.data);
         setSelectedPerson(res.data);
-      } catch (err) {
-        console.error("❌ Failed to fetch person_id:", err);
-      }
+      } catch (err) { console.error("❌ Failed to fetch person_id:", err); }
     };
     fetchPersonId();
   }, [queryStudentNumber]);
@@ -330,59 +258,30 @@ const StudentDashboard1 = () => {
     const storedRole = localStorage.getItem("role");
     const loggedInPersonId = localStorage.getItem("person_id");
     const searchedPersonId = sessionStorage.getItem("student_edit_person_id");
-
-    if (!storedUser || !storedRole || !loggedInPersonId) {
-      window.location.href = "/login";
-      return;
-    }
-
+    if (!storedUser || !storedRole || !loggedInPersonId) { window.location.href = "/login"; return; }
     setUser(storedUser);
     setUserRole(storedRole);
-
-    // Roles that can access
     const allowedRoles = ["student", "registrar"];
     if (allowedRoles.includes(storedRole)) {
-      // ✅ Prefer URL param if student is editing, otherwise logged-in student
       const targetId = queryPersonId || searchedPersonId || loggedInPersonId;
-
-      // Make sure student_number is in sessionStorage for later steps
-      if (studentNumber) {
-        sessionStorage.setItem("student_number", studentNumber);
-      }
-
+      if (studentNumber) sessionStorage.setItem("student_number", studentNumber);
       setUserID(targetId);
       return;
     }
-
     window.location.href = "/login";
   }, [queryPersonId, studentNumber]);
 
   useEffect(() => {
     let consumedFlag = false;
-
     const tryLoad = async () => {
-      if (queryPersonId) {
-        await fetchByPersonId(queryPersonId);
-        setExplicitSelection(true);
-        consumedFlag = true;
-        return;
-      }
-
-      // fallback only if it's a fresh selection from Applicant List
+      if (queryPersonId) { await fetchByPersonId(queryPersonId); setExplicitSelection(true); consumedFlag = true; return; }
       const source = sessionStorage.getItem("student_edit_person_id_source");
       const tsStr = sessionStorage.getItem("student_edit_person_id_ts");
       const id = sessionStorage.getItem("student_edit_person_id");
       const ts = tsStr ? parseInt(tsStr, 10) : 0;
-      const isFresh =
-        source === "applicant_list" && Date.now() - ts < 5 * 60 * 1000;
-
-      if (id && isFresh) {
-        await fetchByPersonId(id);
-        setExplicitSelection(true);
-        consumedFlag = true;
-      }
+      const isFresh = source === "applicant_list" && Date.now() - ts < 5 * 60 * 1000;
+      if (id && isFresh) { await fetchByPersonId(id); setExplicitSelection(true); consumedFlag = true; }
     };
-
     tryLoad().finally(() => {
       if (consumedFlag) {
         sessionStorage.removeItem("student_edit_person_id_source");
@@ -391,741 +290,233 @@ const StudentDashboard1 = () => {
     });
   }, [queryPersonId]);
 
-  // Fetch person by ID (when navigating with ?person_id=... or sessionStorage)
   useEffect(() => {
     const fetchPersonById = async () => {
       if (!userID) return;
-
       try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/student_data_as_applicant/${userID}`,
-        );
-        if (res.data) {
-          setPerson(res.data);
-          setSelectedPerson(res.data);
-        } else {
-          console.warn("⚠️ No person found for ID:", userID);
-        }
-      } catch (err) {
-        console.error("❌ Failed to fetch person by ID:", err);
-      }
+        const res = await axios.get(`${API_BASE_URL}/api/student_data_as_applicant/${userID}`);
+        if (res.data) { setPerson(res.data); setSelectedPerson(res.data); }
+      } catch (err) { console.error("❌ Failed to fetch person by ID:", err); }
     };
-
     fetchPersonById();
   }, [userID]);
 
   useEffect(() => {
     const fetchPersons = async () => {
       try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/enrollment_upload_documents`,
-        );
+        const res = await axios.get(`${API_BASE_URL}/api/enrollment_upload_documents`);
         setPersons(res.data);
-      } catch (err) {
-        console.error("❌ Failed to fetch persons list", err);
-      }
+      } catch (err) { console.error("❌ Failed to fetch persons list", err); }
     };
-
     fetchPersons();
   }, []);
 
-  const isReadOnly = userRole === "student";
-  const readOnlySx = isReadOnly
-    ? {
-      "& input, & textarea": { pointerEvents: "none" },
-      "& .MuiSelect-select": { pointerEvents: "none" },
-      "& .MuiCheckbox-root": { pointerEvents: "none" },
-    }
-    : {};
+  useEffect(() => {
+    const fetchCurriculums = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/applied_program`);
+        setCurriculumOptions(response.data);
+      } catch (error) { console.error("Error fetching curriculum options:", error); }
+    };
+    fetchCurriculums();
+  }, []);
 
-  const steps = [
-    {
-      label: "Personal Information",
-      icon: <PersonIcon />,
-      path: `/student_dashboard1`,
-    },
-    {
-      label: "Family Background",
-      icon: <FamilyRestroomIcon />,
-      path: `/student_dashboard2`,
-    },
-    {
-      label: "Educational Attainment",
-      icon: <SchoolIcon />,
-      path: `/student_dashboard3`,
-    },
-    {
-      label: "Health Medical Records",
-      icon: <HealthAndSafetyIcon />,
-      path: `/student_dashboard4`,
-    },
-    {
-      label: "Other Information",
-      icon: <InfoIcon />,
-      path: `/student_dashboard5`,
-    },
-  ];
+  // Address cascades
+  useEffect(() => { setRegionList(regions); }, []);
+  useEffect(() => { setPermanentRegionList(regions); }, []);
+  useEffect(() => { const region = regions.find((r) => r.region_name === selectedRegion); setProvinceList(region ? provinces.filter((p) => p.region_code === region.region_code) : []); }, [selectedRegion]);
+  useEffect(() => { const province = provinces.find((p) => p.province_name === selectedProvince); setCityList(province ? cities.filter((c) => c.province_code === province.province_code) : []); }, [selectedProvince]);
+  useEffect(() => { const city = cities.find((c) => c.city_name === selectedCity); setBarangayList(city ? barangays.filter((b) => b.city_code === city.city_code) : []); }, [selectedCity]);
+  useEffect(() => { const region = regions.find((r) => r.region_name === person.presentRegion); setProvinceList(region ? provinces.filter((p) => p.region_code === region.region_code) : []); }, [person.presentRegion]);
+  useEffect(() => { const province = provinces.find((p) => p.province_name === person.presentProvince); setCityList(province ? cities.filter((c) => c.province_code === province.province_code) : []); }, [person.presentProvince]);
+  useEffect(() => { const city = cities.find((c) => c.city_name === person.presentMunicipality); setBarangayList(city ? barangays.filter((b) => b.city_code === city.city_code) : []); }, [person.presentMunicipality]);
+  useEffect(() => { const region = regions.find((r) => r.region_name === person.permanentRegion); setPermanentProvinceList(region ? provinces.filter((p) => p.region_code === region.region_code) : []); }, [person.permanentRegion]);
+  useEffect(() => { const province = provinces.find((p) => p.province_name === person.permanentProvince); setPermanentCityList(province ? cities.filter((c) => c.province_code === province.province_code) : []); }, [person.permanentProvince]);
+  useEffect(() => { const city = cities.find((c) => c.city_name === person.permanentMunicipality); setPermanentBarangayList(city ? barangays.filter((b) => b.city_code === city.city_code) : []); }, [person.permanentMunicipality]);
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [clickedSteps, setClickedSteps] = useState(
-    Array(steps.length).fill(false),
-  );
+  useEffect(() => {
+    const delayDebounce = setTimeout(async () => {
+      if (searchQuery.trim() === "") return;
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/search-person`, { params: { query: searchQuery } });
+        if (res.data && res.data.person_id) {
+          const details = await axios.get(`${API_BASE_URL}/api/student_data_as_applicant/${res.data.person_id}`);
+          setPerson(details.data);
+          sessionStorage.setItem("student_edit_person_id", details.data.person_id);
+          setUserID(details.data.person_id);
+          setSearchError("");
+        } else { setSearchError("Invalid search result"); }
+      } catch (err) { console.error("Search failed:", err); setSearchError("Applicant not found"); }
+    }, 500);
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
 
-  const handleStepClick = async (index) => {
-    if (isFormValid()) {
-      await handleUpdate(person);
-
-      setSnackbar({
-        open: true,
-        message: "Your record has been saved successfully!",
-        severity: "success",
-      });
-
-      setActiveStep(index);
-      const newClickedSteps = [...clickedSteps];
-      newClickedSteps[index] = true;
-      setClickedSteps(newClickedSteps);
-
-      // Delay navigation so snackbar can be seen
-      setTimeout(() => {
-        navigate(steps[index].path);
-      }, 1000);
-    } else {
-      setSnackbar({
-        open: true,
-        message: "Please fill all required fields before proceeding.",
-        severity: "error",
-      });
-    }
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const fetchByPersonId = async (personID) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/enrollment_person/${personID}`);
+      setPerson(res.data);
+      setSelectedPerson(res.data);
+    } catch (err) { console.error("❌ person_with_applicant failed:", err); }
   };
 
-  // Helper: parse "YYYY-MM-DD" safely (local date in Asia/Manila)
-  const parseISODate = (dateString) => {
-    if (!dateString) return null;
-    const [y, m, d] = dateString.split("-").map(Number);
-    if (!y || !m || !d) return null;
-    return new Date(y, m - 1, d);
-  };
-
-  // Helper: get current date in Asia/Manila (no time portion)
-  const getManilaDate = () => {
-    const now = new Date();
-    // Convert current UTC time to Manila time using locale
-    const manilaString = now.toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-
-    // manilaString format: "MM/DD/YYYY"
-    const [month, day, year] = manilaString.split("/");
-    return new Date(`${year}-${month}-${day}`);
-  };
-
-  // 🧮 Calculate age using Manila time
-  const calculateAge = (birthDateString) => {
-    const birthDate = parseISODate(birthDateString);
-    if (!birthDate) return "";
-
-    const today = getManilaDate();
-
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    const dayDiff = today.getDate() - birthDate.getDate();
-
-    // 🎂 Subtract 1 if birthday hasn't occurred yet this year
-    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-      age--;
-    }
-
-    return age < 0 ? "" : age;
-  };
-
-  // 🧠 Updates record in ENROLLMENT.person_table in real time
   const handleUpdate = async (updatedPerson) => {
     try {
-      // Strip UI-only fields that don't exist in the DB
       const { presentDswdChecked, permanentDswdChecked, ...personToSave } = updatedPerson;
-
-      await axios.put(
-        `${API_BASE_URL}/api/enrollment/person/${userID}`,
-        personToSave,
-      );
-      console.log("✅ Auto-saved to ENROLLMENT DB3");
-    } catch (error) {
-      console.error("❌ Auto-save failed:", error);
-    }
+      await axios.put(`${API_BASE_URL}/api/enrollment/person/${userID}`, personToSave);
+    } catch (error) { console.error("❌ Auto-save failed:", error); }
   };
 
-  // 🧩 Real-time handleChange with Manila-based age + filtering reset
   const handleChange = (e) => {
     const target = e && e.target ? e.target : {};
     const { name, type, checked, value } = target;
-
     const updatedValue = type === "checkbox" ? (checked ? 1 : 0) : value;
-
-    const updatedPerson = {
-      ...person,
-      [name]: updatedValue,
-    };
-
-    if (name === "academicProgram") {
-      if (Number(value) === 1) {
-        // Graduate → default to Master
-        updatedPerson.yearLevel = "Master";
-      } else {
-        // Reset for college
-        updatedPerson.yearLevel = "";
-      }
-    }
-
-    // ✅ Auto-calculate age
-    if (name === "birthOfDate") {
-      updatedPerson.age = calculateAge(value);
-    }
-
-    // ✅ Auto yearLevel if Freshman
-    if (name === "classifiedAs" && value === "Freshman (First Year)") {
-      updatedPerson.yearLevel = "First Year";
-    }
-
-    if (name === "campus" || name === "academicProgram") {
-      updatedPerson.program = "";
-    }
-
+    const updatedPerson = { ...person, [name]: updatedValue };
+    if (name === "academicProgram") updatedPerson.yearLevel = Number(value) === 1 ? "Master" : "";
+    if (name === "birthOfDate") updatedPerson.age = calculateAge(value);
+    if (name === "classifiedAs" && value === "Freshman (First Year)") updatedPerson.yearLevel = "First Year";
+    if (name === "campus" || name === "academicProgram") updatedPerson.program = "";
     setPerson(updatedPerson);
-    handleUpdate(updatedPerson); // real-time save
+    handleUpdate(updatedPerson);
   };
 
-  // 🖱️ Triggered when input loses focus (safety net)
   const handleBlur = async () => {
     try {
-      await axios.put(
-        `${API_BASE_URL}/api/enrollment/person/${userID}`,
-        person,
-        getAuditHeaders(),
-      );
-      console.log("✅ Auto-saved (on blur) to ENROLLMENT DB3");
-    } catch (err) {
-      console.error("❌ Auto-save failed (on blur):", err);
-    }
+      await axios.put(`${API_BASE_URL}/api/enrollment/person/${userID}`, person);
+    } catch (err) { console.error("❌ Auto-save failed (on blur):", err); }
   };
 
-  // 💾 Manual autosave (optional call)
   const autoSave = async () => {
     try {
-      await axios.put(
-        `${API_BASE_URL}/api/enrollment/person/${userID}`,
-        person,
-        getAuditHeaders(),
-      );
-      console.log("✅ Auto-saved (manual trigger) to ENROLLMENT DB3");
-    } catch (err) {
-      console.error("❌ Auto-save failed (manual):", err);
-    }
+      await axios.put(`${API_BASE_URL}/api/enrollment/person/${userID}`, person);
+    } catch (err) { console.error("❌ Auto-save failed (manual):", err); }
   };
 
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === "clickaway") return;
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
 
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
-
-  const [open, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
-  const handleClose = () => {
-    setOpen(false);
-    setSelectedFile(null);
-    setPreview(null);
-  };
+  const handleClose = () => { setOpen(false); setSelectedFile(null); setPreview(null); };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const validTypes = ["image/jpeg", "image/jpg", "image/png"];
-    const maxSizeInBytes = 2 * 1024 * 1024; // 2MB
-
-    // Check file type
-    if (!validTypes.includes(file.type)) {
-      setSnackbar({
-        open: true,
-        message: "Invalid file type. Please select a JPEG or PNG file.",
-        severity: "error",
-      });
-      setSelectedFile(null);
-      setPreview(null);
-      return;
-    }
-
-    // Check file size
-    if (file.size > maxSizeInBytes) {
-      setSnackbar({
-        open: true,
-        message: "File is too large. Maximum allowed size is 2MB.",
-        severity: "error",
-      });
-      setSelectedFile(null);
-      setPreview(null);
-      return;
-    }
-
-    // If valid, set file and preview
+    const maxSizeInBytes = 2 * 1024 * 1024;
+    if (!validTypes.includes(file.type)) { setSnackbar({ open: true, message: "Invalid file type. Please select a JPEG or PNG file.", severity: "error" }); setSelectedFile(null); setPreview(null); return; }
+    if (file.size > maxSizeInBytes) { setSnackbar({ open: true, message: "File is too large. Maximum allowed size is 2MB.", severity: "error" }); setSelectedFile(null); setPreview(null); return; }
     setSelectedFile(file);
     const reader = new FileReader();
     reader.onloadend = () => setPreview(reader.result);
     reader.readAsDataURL(file);
   };
 
-  const MAX_SIZE = 2 * 1024 * 1024;
-
   const handleUpload = async () => {
-    if (!selectedFile) {
-      setSnackbar({
-        open: true,
-        message: "Please select a file first.",
-        severity: "warning",
-      });
-      return;
-    }
-    if (selectedFile.size > MAX_SIZE) {
-      setSnackbar({
-        open: true,
-        message: "File must be 2MB or less.",
-        severity: "error",
-      });
-      return;
-    }
-
+    if (!selectedFile) { setSnackbar({ open: true, message: "Please select a file first.", severity: "warning" }); return; }
+    if (selectedFile.size > MAX_SIZE) { setSnackbar({ open: true, message: "File must be 2MB or less.", severity: "error" }); return; }
     const formData = new FormData();
     formData.append("profile_picture", selectedFile);
     formData.append("person_id", userID);
-
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/upload-profile-picture`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        },
-      );
-
+      const response = await axios.post(`${API_BASE_URL}/api/enrollment/upload-profile-picture`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       const fileName = response.data.filename || response.data.profile_img;
-
-      // ✅ Set image AND trigger auto-save
-      const updatedPerson = {
-        ...person,
-        profile_img: fileName,
-      };
-
+      const updatedPerson = { ...person, profile_img: fileName };
       setPerson(updatedPerson);
-      await handleUpdate(updatedPerson); // ✅ this pushes the profile_img change into DB
-
+      await handleUpdate(updatedPerson);
       setUploadedImage(`${API_BASE_URL}/uploads/${fileName}`);
-      setSnackbar({
-        open: true,
-        message: "Upload successful!",
-        severity: "success",
-      });
+      setSnackbar({ open: true, message: "Upload successful!", severity: "success" });
       handleClose();
     } catch (error) {
-      console.error("Upload failed:", error);
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        "Upload failed.";
-
-      setSnackbar({
-        open: true,
-        message: errorMessage,
-        severity: "error",
-      });
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || "Upload failed.";
+      setSnackbar({ open: true, message: errorMessage, severity: "error" });
     }
   };
-
-  const [isLrnNA, setIsLrnNA] = useState(false);
 
   const handlePwdCheck = (event) => {
     if (isReadOnly) return;
     const checked = event.target.checked;
-
-    setPerson((prev) => ({
-      ...prev,
-      pwdMember: checked ? 1 : 0,
-      pwdType: checked ? prev.pwdType || "" : "",
-      pwdId: checked ? prev.pwdId || "" : "",
-    }));
+    setPerson((prev) => ({ ...prev, pwdMember: checked ? 1 : 0, pwdType: checked ? prev.pwdType || "" : "", pwdId: checked ? prev.pwdId || "" : "" }));
   };
-
-  // ✅ ADDRESS STATE
-  const [regionList, setRegionList] = useState([]);
-  const [provinceList, setProvinceList] = useState([]);
-  const [cityList, setCityList] = useState([]);
-  const [barangayList, setBarangayList] = useState([]);
-
-  const [selectedRegion, setSelectedRegion] = useState("");
-  const [selectedProvince, setSelectedProvince] = useState("");
-  const [selectedCity, setSelectedCity] = useState("");
-  const [selectedBarangay, setSelectedBarangay] = useState("");
-
-  // ✅ REGION LIST STATIC LOAD
-  useEffect(() => {
-    setRegionList(regions);
-  }, []);
-
-  // ✅ PROVINCES BASED ON SELECTED REGION
-  useEffect(() => {
-    const region = regions.find((r) => r.region_name === selectedRegion);
-    if (region) {
-      setProvinceList(
-        provinces.filter((p) => p.region_code === region.region_code),
-      );
-    } else {
-      setProvinceList([]);
-    }
-  }, [selectedRegion]);
-
-  // ✅ CITIES BASED ON SELECTED PROVINCE
-  useEffect(() => {
-    const province = provinces.find(
-      (p) => p.province_name === selectedProvince,
-    );
-    if (province) {
-      setCityList(
-        cities.filter((c) => c.province_code === province.province_code),
-      );
-    } else {
-      setCityList([]);
-    }
-  }, [selectedProvince]);
-
-  // ✅ BARANGAYS BASED ON SELECTED CITY
-  useEffect(() => {
-    const city = cities.find((c) => c.city_name === selectedCity);
-    if (city) {
-      setBarangayList(barangays.filter((b) => b.city_code === city.city_code));
-    } else {
-      setBarangayList([]);
-    }
-  }, [selectedCity]);
-
-  // ✅ UPDATE ON PERSON STATE
-  useEffect(() => {
-    const region = regions.find((r) => r.region_name === person.presentRegion);
-    if (region) {
-      setProvinceList(
-        provinces.filter((p) => p.region_code === region.region_code),
-      );
-    } else {
-      setProvinceList([]);
-    }
-  }, [person.presentRegion]);
-
-  useEffect(() => {
-    const province = provinces.find(
-      (p) => p.province_name === person.presentProvince,
-    );
-    if (province) {
-      setCityList(
-        cities.filter((c) => c.province_code === province.province_code),
-      );
-    } else {
-      setCityList([]);
-    }
-  }, [person.presentProvince]);
-
-  useEffect(() => {
-    const city = cities.find((c) => c.city_name === person.presentMunicipality);
-    if (city) {
-      setBarangayList(barangays.filter((b) => b.city_code === city.city_code));
-    } else {
-      setBarangayList([]);
-    }
-  }, [person.presentMunicipality]);
-
-  // ✅ PERMANENT ADDRESS STATES
-  const [permanentRegionList, setPermanentRegionList] = useState([]);
-  const [permanentProvinceList, setPermanentProvinceList] = useState([]);
-  const [permanentCityList, setPermanentCityList] = useState([]);
-  const [permanentBarangayList, setPermanentBarangayList] = useState([]);
-
-  const [permanentRegion, setPermanentRegion] = useState("");
-  const [permanentProvince, setPermanentProvince] = useState("");
-  const [permanentCity, setPermanentCity] = useState("");
-  const [permanentBarangay, setPermanentBarangay] = useState("");
-
-  // Initial load of permanent region list
-  useEffect(() => {
-    setPermanentRegionList(regions);
-  }, []);
-
-  // Update provinces when permanent region changes
-  useEffect(() => {
-    const region = regions.find(
-      (r) => r.region_name === person.permanentRegion,
-    );
-    if (region) {
-      setPermanentProvinceList(
-        provinces.filter((p) => p.region_code === region.region_code),
-      );
-    } else {
-      setPermanentProvinceList([]);
-    }
-  }, [person.permanentRegion]);
-
-  // Update cities when permanent province changes
-  useEffect(() => {
-    const province = provinces.find(
-      (p) => p.province_name === person.permanentProvince,
-    );
-    if (province) {
-      setPermanentCityList(
-        cities.filter((c) => c.province_code === province.province_code),
-      );
-    } else {
-      setPermanentCityList([]);
-    }
-  }, [person.permanentProvince]);
-
-  // Update barangays when permanent city changes
-  useEffect(() => {
-    const city = cities.find(
-      (c) => c.city_name === person.permanentMunicipality,
-    );
-    if (city) {
-      setPermanentBarangayList(
-        barangays.filter((b) => b.city_code === city.city_code),
-      );
-    } else {
-      setPermanentBarangayList([]);
-    }
-  }, [person.permanentMunicipality]);
-
-  const [curriculumOptions, setCurriculumOptions] = useState([]);
-
-  useEffect(() => {
-    const fetchCurriculums = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/applied_program`);
-        setCurriculumOptions(response.data); // array of { curriculum_id: "..." }
-      } catch (error) {
-        console.error("Error fetching curriculum options:", error);
-      }
-    };
-
-    fetchCurriculums();
-  }, []);
-
-  const filteredCurriculum = curriculumOptions.filter((item) => {
-    // ✅ ACADEMIC PROGRAM FILTER
-    if (person.academicProgram !== "" && person.academicProgram !== null) {
-      if (Number(item.academic_program) !== Number(person.academicProgram)) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  const [errors, setErrors] = useState({});
 
   const isFormValid = () => {
     const requiredFields = [
-      "campus",
-      "academicProgram",
-      "classifiedAs",
-      "applyingAs",
-      "program",
-      "yearLevel",
-      "profile_img",
-      "last_name",
-      "first_name",
-      "height",
-      "weight",
-      "gender",
-      "birthOfDate",
-      "age",
-      "birthPlace",
-      "languageDialectSpoken",
-      "citizenship",
-      "religion",
-      "civilStatus",
-      "tribeEthnicGroup",
-      "cellphoneNumber",
-      "emailAddress",
-      "presentStreet",
-      "presentZipCode",
-      "presentRegion",
-      "presentProvince",
-      "presentMunicipality",
-      "presentBarangay",
-      "permanentStreet",
-      "permanentZipCode",
-      "permanentRegion",
-      "permanentProvince",
-      "permanentMunicipality",
-      "permanentBarangay",
+      "campus", "academicProgram", "classifiedAs", "applyingAs", "program", "yearLevel",
+      "profile_img", "last_name", "first_name", "height", "weight", "gender",
+      "birthOfDate", "age", "birthPlace", "languageDialectSpoken", "citizenship",
+      "religion", "civilStatus", "tribeEthnicGroup", "cellphoneNumber", "emailAddress",
+      "presentStreet", "presentZipCode", "presentRegion", "presentProvince", "presentMunicipality", "presentBarangay",
+      "permanentStreet", "permanentZipCode", "permanentRegion", "permanentProvince", "permanentMunicipality", "permanentBarangay",
     ];
-
     let newErrors = {};
     let isValid = true;
-
-    // Generic required fields
     requiredFields.forEach((field) => {
       const value = person[field];
-      if (
-        value === null ||
-        value === undefined ||
-        value === "" ||
-        value === "null" ||
-        value === "undefined"
-      ) {
-        newErrors[field] = true;
-        isValid = false;
-      }
+      if (value === null || value === undefined || value === "" || value === "null" || value === "undefined") { newErrors[field] = true; isValid = false; }
     });
-
-    // ✅ NEW EMAIL VALIDATION (any domain allowed)
     const emailValue = person.emailAddress?.trim();
     const emailPattern = /^[^@]+@[^@]+\.[^@]+$/;
-
-    if (!emailValue || !emailPattern.test(emailValue)) {
-      newErrors.emailAddress = true;
-      isValid = false;
-    }
-
-    // ✅ LRN Number: required only if N/A is NOT checked
-    if (!isLrnNA) {
-      const lrnValue = person.lrnNumber?.toString().trim();
-      if (!lrnValue) {
-        newErrors.lrnNumber = true;
-        isValid = false;
-      }
-    }
-
-    if (person.presentDswdChecked === 1) {
-      const value = person.presentDswdHouseholdNumber?.trim();
-      if (!value) {
-        newErrors.presentDswdHouseholdNumber = true;
-        isValid = false;
-      }
-    }
-
-    // ✅ Permanent DSWD (only if checked)
-    if (person.permanentDswdChecked === 1) {
-      const value = person.permanentDswdHouseholdNumber?.trim();
-      if (!value) {
-        newErrors.permanentDswdHouseholdNumber = true;
-        isValid = false;
-      }
-    }
-
-    // ✅ PWD fields: required only if PWD checkbox is checked
+    if (!emailValue || !emailPattern.test(emailValue)) { newErrors.emailAddress = true; isValid = false; }
+    if (!isLrnNA) { const lrnValue = person.lrnNumber?.toString().trim(); if (!lrnValue) { newErrors.lrnNumber = true; isValid = false; } }
+    if (person.presentDswdChecked === 1) { if (!person.presentDswdHouseholdNumber?.trim()) { newErrors.presentDswdHouseholdNumber = true; isValid = false; } }
+    if (person.permanentDswdChecked === 1) { if (!person.permanentDswdHouseholdNumber?.trim()) { newErrors.permanentDswdHouseholdNumber = true; isValid = false; } }
     if (person.pwdMember === 1) {
-      const pwdTypeValue = person.pwdType?.toString().trim();
-      const pwdIdValue = person.pwdId?.toString().trim();
-
-      if (!pwdTypeValue) {
-        newErrors.pwdType = true;
-        isValid = false;
-      }
-
-      if (!pwdIdValue) {
-        newErrors.pwdId = true;
-        isValid = false;
-      }
+      if (!person.pwdType?.toString().trim()) { newErrors.pwdType = true; isValid = false; }
+      if (!person.pwdId?.toString().trim()) { newErrors.pwdId = true; isValid = false; }
     }
-
     setErrors(newErrors);
     return isValid;
   };
+
+  const handleStepClick = async (index) => {
+    const valid = isFormValid();
+    if (!valid) {
+      setSnackbar({
+        open: true,
+        message: "Please fill all required fields before proceeding.",
+        severity: "error",
+      });
+      return; // hard stop — no navigation
+    }
+    await handleUpdate(person);
+    setSnackbar({
+      open: true,
+      message: "Your record has been saved successfully!",
+      severity: "success",
+    });
+    setActiveStep(index);
+    const newClickedSteps = [...clickedSteps];
+    newClickedSteps[index] = true;
+    setClickedSteps(newClickedSteps);
+    setTimeout(() => { navigate(steps[index].path); }, 1000);
+  };
+
+  const steps = [
+    { label: "Personal Information", icon: <PersonIcon />, path: `/student_dashboard1` },
+    { label: "Family Background", icon: <FamilyRestroomIcon />, path: `/student_dashboard2` },
+    { label: "Educational Attainment", icon: <SchoolIcon />, path: `/student_dashboard3` },
+    { label: "Health Medical Records", icon: <HealthAndSafetyIcon />, path: `/student_dashboard4` },
+    { label: "Other Information", icon: <InfoIcon />, path: `/student_dashboard5` },
+  ];
 
   const links = [
     { to: `/student_ecat_application_form`, label: "ECAT Application Form" },
     { to: `/student_form_process`, label: "Admission Form Process" },
     { to: `/student_personal_data_form`, label: "Personal Data Form" },
-    {
-      to: `/student_office_of_the_registrar`,
-      label: `Application For ${shortTerm ? shortTerm.toUpperCase() : ""}  College Admission" `,
-    },
+    { to: `/student_office_of_the_registrar`, label: `Application For ${shortTerm ? shortTerm.toUpperCase() : ""} College Admission` },
     { to: `/student_admission_services`, label: "Admission Services" },
   ];
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchError, setSearchError] = useState("");
-
-  useEffect(() => {
-    const delayDebounce = setTimeout(async () => {
-      if (searchQuery.trim() === "") return; // Don't search empty
-
-      try {
-        const res = await axios.get(`${API_BASE_URL}/api/search-person`, {
-          params: { query: searchQuery },
-        });
-
-        if (res.data && res.data.person_id) {
-          const details = await axios.get(
-            `${API_BASE_URL}/api/student_data_as_applicant/${res.data.person_id}`,
-          );
-          setPerson(details.data);
-
-          sessionStorage.setItem(
-            "student_edit_person_id",
-            details.data.person_id,
-          );
-          setUserID(details.data.person_id);
-          setSearchError("");
-        } else {
-          console.error("No valid person ID found in search result");
-          setSearchError("Invalid search result");
-        }
-      } catch (err) {
-        console.error("Search failed:", err);
-        setSearchError("Applicant not found");
-      }
-    }, 500); // debounce
-
-    return () => clearTimeout(delayDebounce);
-  }, [searchQuery]);
-
-  // dot not alter
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Box
-      sx={{
-        height: "calc(100vh - 150px)",
-        overflowY: "auto",
-        paddingRight: 1,
-        backgroundColor: "transparent",
-        mt: 1,
-        padding: 2,
-      }}
-    >
-      {/* ✅ Hidden render of ExamPermit for printing */}
+    <Box sx={{ height: "calc(100vh - 150px)", overflowY: "auto", paddingRight: 1, backgroundColor: "transparent", mt: 1, padding: 2 }}>
 
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-
-          mb: 2,
-        }}
-      >
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: "bold",
-            color: titleColor,
-            fontSize: "36px",
-          }}
-        >
-          PERSONAL INFORMATION
-        </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", mb: 2 }}>
+        <Typography variant="h4" sx={{ fontWeight: "bold", color: titleColor, fontSize: "36px" }}>PERSONAL INFORMATION</Typography>
       </Box>
-      <hr style={{ border: "1px solid #ccc", width: "100%" }} />
+      <hr style={{ border: "1px solid #ccc", width: "100%" }} /><br />
 
-      <br />
       <Box
         sx={{
           display: "flex",
@@ -1176,179 +567,66 @@ const StudentDashboard1 = () => {
             }}
           >
             <strong style={{ color: "maroon" }}>Notice:</strong> &nbsp;
-            <strong></strong>
-            <span style={{ fontSize: '1.2em', margin: '0 15px' }}>➔</span>
-            Please indicate “NA” or “N/A” in fields where the requested information is not applicable or no response can be provided.
-            &nbsp;&nbsp;<br />
-
-            <strong></strong>
+            <strong></strong>{" "}
+            <span style={{ fontSize: "1.2em", margin: "0 15px" }}>➔</span>{" "}
+            Kindly type 'NA' in boxes where there are no possible answers to the
+            information being requested. &nbsp; &nbsp; <br />
+            <strong></strong>{" "}
             <span
               style={{
-                fontSize: '1.2em',
-                margin: '0 15px',
-                marginLeft: '100px',
+                fontSize: "1.2em",
+                margin: "0 15px",
+                marginLeft: "100px",
               }}
             >
               ➔
-            </span>
-            To enter the letter “Ñ”, press and hold the ALT key while typing “165”. For “ñ”, press and hold the ALT key while typing “164”.
+            </span>{" "}
+            To make use of the letter 'Ñ', please press ALT while typing "165",
+            while for 'ñ', please press ALT while typing "164"
           </Typography>
         </Box>
       </Box>
 
-      <h1
-        style={{
-          fontSize: "30px",
-          fontWeight: "bold",
-          textAlign: "center",
-          color: "black",
-          marginTop: "25px",
-        }}
-      >
-        PRINTABLE DOCUMENTS
-      </h1>
 
-      {/* Cards Section */}
-      <Box
-        sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 2,
-          mt: 2,
-          pb: 1,
-          justifyContent: "center", // Centers all cards horizontally
-        }}
-      >
+      <h1 style={{ fontSize: "30px", fontWeight: "bold", textAlign: "center", color: "black", marginTop: "25px" }}>PRINTABLE DOCUMENTS</h1>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 2, pb: 1, justifyContent: "center" }}>
         {links.map((lnk, i) => (
-          <motion.div
-            key={i}
-            style={{ flex: "0 0 calc(30% - 16px)" }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1, duration: 0.4 }}
-          >
-            <Card
-              sx={{
-                minHeight: 60,
-                borderRadius: 2,
-                border: `1px solid ${borderColor}`,
-                backgroundColor: "#fff",
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                p: 1.5,
-                cursor: "pointer",
-                transition: "all 0.3s ease-in-out",
-                "&:hover": {
-                  transform: "scale(1.05)",
-                  backgroundColor: settings?.header_color || "#1976d2",
-
-                  "& .card-text": {
-                    color: "#fff", // ✅ text becomes white
-                  },
-                  "& .card-icon": {
-                    color: "#fff", // ✅ icon becomes white
-                  },
-                },
-              }}
-              onClick={() => {
-                if (lnk.onClick) {
-                  lnk.onClick(); // run handler
-                } else if (lnk.to) {
-                  navigate(lnk.to); // navigate if it has a `to`
-                }
-              }}
-            >
-              {/* Icon */}
-              <PictureAsPdfIcon
-                className="card-icon"
-                sx={{ fontSize: 35, color: mainButtonColor, mr: 1.5 }}
-              />
-
-              {/* Label */}
-              <Typography
-                className="card-text"
-                sx={{
-                  color: mainButtonColor,
-                  fontFamily: "Poppins, sans-serif",
-                  fontWeight: "bold",
-                  fontSize: "0.85rem",
-                }}
-              >
-                {lnk.label}
-              </Typography>
+          <motion.div key={i} style={{ flex: "0 0 calc(30% - 16px)" }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1, duration: 0.4 }}>
+            <Card sx={{ minHeight: 60, borderRadius: 2, border: `1px solid ${borderColor}`, backgroundColor: "#fff", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", textAlign: "center", p: 1.5, cursor: "pointer", transition: "all 0.3s ease-in-out", "&:hover": { transform: "scale(1.05)", backgroundColor: settings?.header_color || "#1976d2", "& .card-text": { color: "#fff" }, "& .card-icon": { color: "#fff" } } }} onClick={() => { if (lnk.onClick) lnk.onClick(); else if (lnk.to) navigate(lnk.to); }}>
+              <PictureAsPdfIcon className="card-icon" sx={{ fontSize: 35, color: mainButtonColor, mr: 1.5 }} />
+              <Typography className="card-text" sx={{ color: mainButtonColor, fontFamily: "Poppins, sans-serif", fontWeight: "bold", fontSize: "0.85rem" }}>{lnk.label}</Typography>
             </Card>
           </motion.div>
         ))}
       </Box>
 
-      {/* Applicant Form Section */}
       <Container>
         <Container>
-          <h1
-            style={{
-              fontSize: "50px",
-              fontWeight: "bold",
-              textAlign: "center",
-              color: subtitleColor,
-              marginTop: "25px",
-            }}
-          >
-            APPLICANT FORM
+       <h1 style={{ fontSize: "50px", fontWeight: "bold", textAlign: "center", color: subtitleColor, marginTop: "25px" }}>
+            STUDENT FORM
           </h1>
           <div style={{ textAlign: "center" }}>
-            Complete the applicant form to secure your place for the upcoming
-            academic year at{" "}
-            {shortTerm ? (
-              <>
-                <strong>{shortTerm.toUpperCase()}</strong> <br />
-                {companyName || ""}
-              </>
-            ) : (
-              companyName || ""
-            )}
-            .
+            Please update your personal information to keep your student records accurate and up to date for the upcoming academic year at{" "}
+            {shortTerm ? <><strong>{shortTerm.toUpperCase()}</strong> - {companyName || ""}</> : companyName || ""}.
           </div>
         </Container>
-
         <br />
 
-        {/* Steps */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            width: "100%",
-            px: 4,
-          }}
-        >
+        {/* Stepper */}
+        <Box sx={{ display: "flex", justifyContent: "center", width: "100%", px: 4 }}>
           {steps.map((step, index) => (
             <React.Fragment key={index}>
               <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  cursor: "pointer",
-                }}
+                sx={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer" }}
                 onClick={() => handleStepClick(index)}
               >
                 <Box
                   sx={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: "50%",
+                    width: 50, height: 50, borderRadius: "50%",
                     border: `1px solid ${borderColor}`,
-                    backgroundColor:
-                      activeStep === index
-                        ? settings?.header_color || "#1976d2"
-                        : "#E8C999",
+                    backgroundColor: activeStep === index ? settings?.header_color || "#1976d2" : "#E8C999",
                     color: activeStep === index ? "#fff" : "#000",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
                   {step.icon}
@@ -1364,17 +642,8 @@ const StudentDashboard1 = () => {
                   {step.label}
                 </Typography>
               </Box>
-
               {index < steps.length - 1 && (
-                <Box
-                  sx={{
-                    height: "2px",
-                    backgroundColor: mainButtonColor,
-                    flex: 1,
-                    alignSelf: "center",
-                    mx: 2,
-                  }}
-                />
+                <Box sx={{ height: "2px", backgroundColor: mainButtonColor, flex: 1, alignSelf: "center", mx: 2 }} />
               )}
             </React.Fragment>
           ))}
@@ -1382,1308 +651,370 @@ const StudentDashboard1 = () => {
         <br />
 
         <form>
-          <Container
-            maxWidth="100%"
-            sx={{
-              backgroundColor: settings?.header_color || "#1976d2",
-              border: `1px solid ${borderColor}`,
-              maxHeight: "500px",
-              overflowY: "auto",
-              color: "white",
-              borderRadius: 2,
-              boxShadow: 3,
-              padding: "4px",
-            }}
-          >
+          <Container maxWidth="100%" sx={{ backgroundColor: settings?.header_color || "#1976d2", border: `1px solid ${borderColor}`, color: "white", borderRadius: 2, boxShadow: 3, padding: "4px" }}>
             <Box sx={{ width: "100%" }}>
-              <Typography
-                style={{
-                  fontSize: "20px",
-                  padding: "10px",
-                  fontFamily: "Poppins, sans-serif",
-                }}
-              >
-                Step 1: Personal Information
-              </Typography>
+              <Typography style={{ fontSize: "20px", padding: "10px", fontFamily: "Poppins, sans-serif" }}>Step 1: Personal Information</Typography>
             </Box>
           </Container>
 
-          <Container
-            maxWidth="100%"
-            sx={{
-              backgroundColor: "#f1f1f1",
-              border: `1px solid ${borderColor}`,
-              padding: 4,
-              borderRadius: 2,
-              boxShadow: 3,
-            }}
-          >
-            <Typography
-              style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}
-            >
-              Personal Information:
-            </Typography>
-            <hr style={{ border: "1px solid #ccc", width: "100%" }} />
-            <br />
+          <Container maxWidth="100%" sx={{ backgroundColor: "#f1f1f1", border: `1px solid ${borderColor}`, padding: 4, borderRadius: 2, boxShadow: 3 }}>
+            <Typography style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}>Personal Information:</Typography>
+            <hr style={{ border: "1px solid #ccc", width: "100%" }} /><br />
+
+            {/* Campus — system-locked */}
             <div className="flex items-center mb-4 gap-4">
               <label className="w-40 font-medium">Campus:<span style={{ color: "red" }}> *</span></label>
-
-              <FormControl
-                fullWidth
-                size="small"
-                required
-                error={!!errors.campus}
-                className="mb-4"
-              >
-                <Select
-                  readOnly
-                  id="campus-select"
-                  name="campus"
-                  value={person.campus || ""}
-                  onChange={(e) => {
-                    handleChange({
-                      target: { name: "campus", value: e.target.value },
-                    });
-                  }}
-                  displayEmpty
-                  renderValue={(selected) => {
-                    if (!selected) return <em>Select Campus</em>;
-
-                    const branch = branches.find(b => String(b.id) === String(selected));
-                    return branch ? branch.branch.toUpperCase() : "Select Campus";
-                  }}
-                >
-                  <MenuItem value="">
-                    <em>Select Campus</em>
-                  </MenuItem>
-
-                  {branches.map((b) => (
-                    <MenuItem key={b.id} value={String(b.id)}>
-                      {b.branch.toUpperCase()}
-                    </MenuItem>
-                  ))}
+              <FormControl fullWidth size="small" required error={!!errors.campus} className="mb-4">
+                <Select readOnly name="campus" value={person.campus || ""} onChange={(e) => handleChange({ target: { name: "campus", value: e.target.value } })} displayEmpty renderValue={(selected) => { if (!selected) return <em>Select Campus</em>; const branch = branches.find(b => String(b.id) === String(selected)); return branch ? branch.branch.toUpperCase() : "Select Campus"; }}>
+                  <MenuItem value=""><em>Select Campus</em></MenuItem>
+                  {branches.map((b) => (<MenuItem key={b.id} value={String(b.id)}>{b.branch.toUpperCase()}</MenuItem>))}
                 </Select>
-
-
-                {errors.campus && (
-                  <FormHelperText>This field is required.</FormHelperText>
-                )}
+                {errors.campus && <FormHelperText>This field is required.</FormHelperText>}
               </FormControl>
             </div>
 
+            {/* Academic Program — system-locked */}
             <div className="flex items-center mb-4 gap-4">
               <label className="w-40 font-medium">Academic Program:<span style={{ color: "red" }}> *</span></label>
-              <FormControl
-                fullWidth
-                size="small"
-                required
-                error={!!errors.academicProgram}
-                className="mb-4"
-              >
-                <InputLabel id="academic-program-label">
-                  Academic Program
-                </InputLabel>
-                <Select
-                  readOnly
-                  labelId="academic-program-label"
-                  id="academic-program-select"
-                  name="academicProgram"
-                  value={person.academicProgram || ""}
-                  label="Academic Program"
-                  onChange={handleChange}
-                  onBlur={() => handleUpdate(person)}
-                >
-                  <MenuItem value="">
-                    <em>Select Program</em>
-                  </MenuItem>
+              <FormControl fullWidth size="small" required error={!!errors.academicProgram} className="mb-4">
+                <InputLabel id="academic-program-label">Academic Program</InputLabel>
+                <Select readOnly labelId="academic-program-label" name="academicProgram" value={person.academicProgram || ""} label="Academic Program" onChange={handleChange} onBlur={() => handleUpdate(person)}>
+                  <MenuItem value=""><em>Select Program</em></MenuItem>
                   <MenuItem value="0">Undergraduate</MenuItem>
                   <MenuItem value="1">Graduate</MenuItem>
                   <MenuItem value="2">Techvoc</MenuItem>
-
-
                 </Select>
-                {errors.academicProgram && (
-                  <FormHelperText>This field is required.</FormHelperText>
-                )}
+                {errors.academicProgram && <FormHelperText>This field is required.</FormHelperText>}
               </FormControl>
             </div>
 
+            {/* Classified As — admin-controlled */}
             <div className="flex items-center mb-4 gap-4">
-              <label className="w-40 font-medium">Classified As:<span style={{ color: "red" }}> *</span></label>
-              <FormControl
-                fullWidth
-                size="small"
-                required
-                error={!!errors.classifiedAs}
-                className="mb-4"
-              >
+              <label className="w-40 font-medium">
+                Classified As:<span style={{ color: "red" }}> *</span>
+                {!canEdit("classifiedAs") && <LockedBadge />}
+              </label>
+              <FormControl fullWidth size="small" required error={!!errors.classifiedAs} className="mb-4">
                 <InputLabel id="classified-as-label">Classified As</InputLabel>
-                <Select
-                  labelId="classified-as-label"
-                  id="classified-as-select"
-                  name="classifiedAs"
-                  value={person.classifiedAs || ""}
-                  label="Classified As"
-                  onChange={handleChange}
-                  onBlur={() => handleUpdate(person)}
-                >
-                  <MenuItem value="">
-                    <em>Select Classification</em>
-                  </MenuItem>
-                  <MenuItem value="Freshman (First Year)">
-                    Freshman (First Year)
-                  </MenuItem>
+                <Select labelId="classified-as-label" name="classifiedAs" value={person.classifiedAs || ""} label="Classified As" onChange={canEdit("classifiedAs") ? handleChange : undefined} inputProps={{ readOnly: !canEdit("classifiedAs") }} onBlur={() => handleUpdate(person)}>
+                  <MenuItem value=""><em>Select Classification</em></MenuItem>
+                  <MenuItem value="Freshman (First Year)">Freshman (First Year)</MenuItem>
                   <MenuItem value="Transferee">Transferee</MenuItem>
                   <MenuItem value="Returnee">Returnee</MenuItem>
                   <MenuItem value="Shiftee">Shiftee</MenuItem>
                   <MenuItem value="Foreign Student">Foreign Student</MenuItem>
                 </Select>
-                {errors.classifiedAs && (
-                  <FormHelperText>This field is required.</FormHelperText>
-                )}
+                {errors.classifiedAs && <FormHelperText>This field is required.</FormHelperText>}
               </FormControl>
             </div>
 
+            {/* Applying As — admin-controlled */}
             <div className="flex items-center mb-4 gap-4">
-              <label className="w-40 font-medium">Applying As:<span style={{ color: "red" }}> *</span></label>
-              <FormControl
-                fullWidth
-                size="small"
-                required
-                error={!!errors.applyingAs}
-                className="mb-4"
-              >
+              <label className="w-40 font-medium">
+                Applying As:<span style={{ color: "red" }}> *</span>
+                {!canEdit("applyingAs") && <LockedBadge />}
+              </label>
+              <FormControl fullWidth size="small" required error={!!errors.applyingAs} className="mb-4">
                 <InputLabel id="applying-as-label">Applying As</InputLabel>
-                <Select
-
-                  labelId="applying-as-label"
-                  id="applying-as-select"
-                  name="applyingAs"
-                  value={person.applyingAs || ""}
-                  label="Applying As"
-                  onChange={handleChange}
-                  onBlur={() => handleUpdate(person)}
-                >
-                  <MenuItem value="">
-                    <em>Select Applying</em>
-                  </MenuItem>
-                  <MenuItem value="1">
-                    Senior High School Graduate
-                  </MenuItem>
-                  <MenuItem value="2">
-                    Senior High School Graduating Student
-                  </MenuItem>
-                  <MenuItem value="3">
-                    ALS (Alternative Learning System) Passer
-                  </MenuItem>
-                  <MenuItem value="4">
-                    Transferee from other University/College
-                  </MenuItem>
-                  <MenuItem value="5">
-                    Cross Enrolee Student
-                  </MenuItem>
-                  <MenuItem value="6">
-                    Foreign Applicant/Student
-                  </MenuItem>
-                  <MenuItem value="7">
-                    Baccalaureate Graduate
-                  </MenuItem>
-                  <MenuItem value="8">
-                    Master Degree Graduate
-                  </MenuItem>
+                <Select labelId="applying-as-label" name="applyingAs" value={person.applyingAs || ""} label="Applying As" onChange={canEdit("applyingAs") ? handleChange : undefined} inputProps={{ readOnly: !canEdit("applyingAs") }} onBlur={() => handleUpdate(person)}>
+                  <MenuItem value=""><em>Select Applying</em></MenuItem>
+                  <MenuItem value="1">Senior High School Graduate</MenuItem>
+                  <MenuItem value="2">Senior High School Graduating Student</MenuItem>
+                  <MenuItem value="3">ALS (Alternative Learning System) Passer</MenuItem>
+                  <MenuItem value="4">Transferee from other University/College</MenuItem>
+                  <MenuItem value="5">Cross Enrolee Student</MenuItem>
+                  <MenuItem value="6">Foreign Applicant/Student</MenuItem>
+                  <MenuItem value="7">Baccalaureate Graduate</MenuItem>
+                  <MenuItem value="8">Master Degree Graduate</MenuItem>
                 </Select>
-                {errors.applyingAs && (
-                  <FormHelperText>This field is required.</FormHelperText>
-                )}
+                {errors.applyingAs && <FormHelperText>This field is required.</FormHelperText>}
               </FormControl>
             </div>
 
             <br />
-
-            <Typography
-              style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}
-            >
-              Course Program:
-            </Typography>
-            <hr style={{ border: "1px solid #ccc", width: "100%" }} />
-            <br />
+            <Typography style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}>Course Program:</Typography>
+            <hr style={{ border: "1px solid #ccc", width: "100%" }} /><br />
 
             <Box display="flex" width="100%" gap={2}>
-              {/* Left Side: TextFields with label beside each input */}
               <Box display="flex" flexDirection="column" sx={{ width: "75%" }}>
-                {/* Program Fields */}
-                <Box
-                  display="flex"
-                  flexDirection="column"
-                  sx={{ width: "100%" }}
-                >
-                  {/* Program 1 */}
+                <Box display="flex" flexDirection="column" sx={{ width: "100%" }}>
+                  {/* Course Applied — system-locked */}
                   <Box display="flex" alignItems="center" gap={2} mb={3}>
                     <label className="w-40 font-medium">Course Applied:<span style={{ color: "red" }}> *</span></label>
                     <FormControl fullWidth size="small" required error={!!errors.program}>
                       <InputLabel>Course Applied</InputLabel>
-                      <Select
-                        readOnly
-                        name="program"
-                        value={person.program || ""}
-                        onBlur={() => handleUpdate(person)} onChange={handleChange}
-                        label="Program"
-                      >
+                      <Select readOnly name="program" value={person.program || ""} onBlur={() => handleUpdate(person)} onChange={handleChange} label="Program">
                         <MenuItem value=""><em>Select Program</em></MenuItem>
                         {filteredCurriculum.map((item, index) => (
                           <MenuItem key={index} value={item.curriculum_id}>
-                            {`(${item.program_code}): ${item.program_description}${item.major ? ` (${item.major})` : ""
-                              } (${item.current_year}-${item.next_year}) (${getBranchLabel(item.components)})`}
+                            {`(${item.program_code}): ${item.program_description}${item.major ? ` (${item.major})` : ""} (${item.current_year}-${item.next_year}) (${getBranchLabel(item.components)})`}
                           </MenuItem>
                         ))}
-
-
                       </Select>
-                      {errors.program && (
-                        <FormHelperText>This field is required.</FormHelperText>
-                      )}
+                      {errors.program && <FormHelperText>This field is required.</FormHelperText>}
                     </FormControl>
                   </Box>
 
-                  {/* <Box display="flex" alignItems="center" gap={2} mb={1}>
-                           <label className="w-40 font-medium">Course Applied:</label>
-                            <FormControl fullWidth size="small" required error={!!errors.program2}>
-                                                                      <InputLabel>Course Applied</InputLabel>
-                                                                      <Select
-                                                                          name="program2"
-                                                                          value={person.program2 || ""}
-                                                                          onBlur={() => handleUpdate(person)} onChange={handleChange}
-                                                                          label="Program 2"
-                                                                      >
-                                                                          <MenuItem value=""><em>Select Program</em></MenuItem>
-                                                                          {filteredCurriculum.map((item, index) => (
-                                                                              <MenuItem key={index} value={item.curriculum_id}>
-                                                                                  {`(${item.program_code}): ${item.program_description}${item.major ? ` (${item.major})` : ""
-                                                                                      } ${item.current_year}-${item.next_year} (${getBranchLabel(item.components)})`}
-                                                                              </MenuItem>
-                                                                          ))}
-                          
-                          
-                                                                      </Select>
-                                                                      {errors.program2 && (
-                                                                          <FormHelperText>This field is required.</FormHelperText>
-                                                                      )}
-                                                                  </FormControl>
-                         </Box> */}
-
-                  {/* Program 3 */}
-                  {/* <Box display="flex" alignItems="center" gap={2}>
-                           <label className="w-40 font-medium">Course Applied:</label>
-                          <FormControl fullWidth size="small" required error={!!errors.program3}>
-                                                                    <InputLabel>Course Applied</InputLabel>
-                                                                    <Select
-                                                                        name="program3"
-                                                                        value={person.program3 || ""}
-                                                                        onBlur={() => handleUpdate(person)} onChange={handleChange}
-                                                                        label="Program 3"
-                                                                    >
-                                                                        <MenuItem value=""><em>Select Program</em></MenuItem>
-                                                                        {filteredCurriculum.map((item, index) => (
-                                                                            <MenuItem key={index} value={item.curriculum_id}>
-                                                                                {`(${item.program_code}): ${item.program_description}${item.major ? ` (${item.major})` : ""
-                                                                                    } ${item.current_year}-${item.next_year} (${getBranchLabel(item.components)})`}
-                                                                            </MenuItem>
-                                                                        ))}
-                        
-                        
-                                                                    </Select>
-                                                                    {errors.program3 && (
-                                                                        <FormHelperText>This field is required.</FormHelperText>
-                                                                    )}
-                                                                </FormControl>
-                         </Box> */}
-
-
-                  {/* Year Level */}
+                  {/* Year Level — system-locked */}
                   <div className="flex items-center mb-4 gap-2">
-                    <label className="w-40 mt:[2] font-medium ">
-                      Year Level:<span style={{ color: "red" }}> *</span>
-                    </label>
-                    <FormControl
-                      fullWidth
-                      size="small"
-                      required
-                      error={!!errors.yearLevel}
-                    >
+                    <label className="w-40 font-medium">Year Level:<span style={{ color: "red" }}> *</span></label>
+                    <FormControl fullWidth size="small" required error={!!errors.yearLevel}>
                       <InputLabel id="year-level-label">Year Level</InputLabel>
-                      <Select
-                        readOnly
-                        labelId="year-level-label"
-                        id="year-level-select"
-                        name="yearLevel"
-                        value={getYearLevelSelectValue()}
-                        label="Year Level"
-                        onChange={handleChange}
-                        onBlur={() => handleUpdate(person)}
-                      >
-                        <MenuItem value="">
-                          <em>Select Year Level</em>
-                        </MenuItem>
-
-                        {filteredYearLevels.map((yl) => (
-                          <MenuItem
-                            key={yl.year_level_id}
-                            value={String(yl.year_level_id)}
-                          >
-                            {yl.year_level_description}
-                          </MenuItem>
-                        ))}
+                      <Select readOnly labelId="year-level-label" name="yearLevel" value={getYearLevelSelectValue()} label="Year Level" onChange={handleChange} onBlur={() => handleUpdate(person)}>
+                        <MenuItem value=""><em>Select Year Level</em></MenuItem>
+                        {filteredYearLevels.map((yl) => (<MenuItem key={yl.year_level_id} value={String(yl.year_level_id)}>{yl.year_level_description}</MenuItem>))}
                       </Select>
-
-                      {errors.yearLevel && (
-                        <FormHelperText>This field is required.</FormHelperText>
-                      )}
+                      {errors.yearLevel && <FormHelperText>This field is required.</FormHelperText>}
                     </FormControl>
                   </div>
                 </Box>
               </Box>
 
-              <Box
-                sx={{
-                  textAlign: "center",
-                  marginTop: "10px",
-                  marginLeft: "35px",
-                  marginBottom: "-10px",
-                  border: errors.profile_img
-                    ? "1px solid red"
-                    : "1px solid black",
-                  width: "5.50cm",
-                  height: "5.50cm",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  flexDirection: "column",
-                  backgroundColor: "white",
-                }}
-              >
+              {/* Profile photo box */}
+              <Box sx={{ textAlign: "center", marginTop: "10px", marginLeft: "35px", marginBottom: "-10px", border: errors.profile_img ? "1px solid red" : "1px solid black", width: "5.50cm", height: "5.50cm", display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column", backgroundColor: "white" }}>
                 {person.profile_img && person.profile_img !== "" ? (
-                  <img
-                    src={`${API_BASE_URL}/uploads/Student1by1/${person.profile_img}?t=${Date.now()}`}
-                    alt="Profile"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
+                  <img src={`${API_BASE_URL}/uploads/Student1by1/${person.profile_img}?t=${Date.now()}`} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <>
-                    <Typography
-                      fontSize={12}
-                      color={errors.profile_img ? "error" : "textSecondary"}
-                    >
-                      No Profile Image Uploaded
-                    </Typography>
-                    {errors.profile_img && (
-                      <Typography fontSize={12} color="error">
-                        This field is required.
-                      </Typography>
-                    )}
+                    <Typography fontSize={12} color={errors.profile_img ? "error" : "textSecondary"}>No Profile Image Uploaded</Typography>
+                    {errors.profile_img && <Typography fontSize={12} color="error">This field is required.</Typography>}
                   </>
                 )}
               </Box>
             </Box>
 
-            <Typography
-              style={{
-                fontSize: "20px",
-                color: mainButtonColor,
-                fontWeight: "bold",
-                mt: "-50px",
-              }}
-            >
-              Person Details:
-            </Typography>
-            <hr style={{ border: "1px solid #ccc", width: "100%" }} />
-            <br />
+            <Typography style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold", mt: "-50px" }}>Person Details:</Typography>
+            <hr style={{ border: "1px solid #ccc", width: "100%" }} /><br />
 
             <Box display="flex" gap={2} mb={2}>
-              {/* Last Name */}
+              {/* Last Name — system-locked */}
               <Box flex="1 1 20%">
-                <Typography mb={1} fontWeight="medium">
-                  Last Name<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <TextField
-                  InputProps={{
-                    readOnly: true,
-                    sx: { textTransform: "uppercase" } // must be inside InputProps
-                  }}
-                  fullWidth
-                  size="small"
-                  name="last_name"
-                  require
-                  value={(person.last_name || "").toUpperCase()}
-                  onChange={(e) =>
-                    handleChange({
-                      ...e,
-                      target: {
-                        ...e.target,
-                        value: e.target.value.toUpperCase()
-                      }
-                    })
-                  }
-                  onBlur={() => handleUpdate(person)}
-                  placeholder="Enter your Last Name"
-                  error={errors.last_name}
-                  helperText={errors.last_name ? "This field is required." : ""}
-                />
+                <Typography mb={1} fontWeight="medium">Last Name<span style={{ color: "red" }}> *</span></Typography>
+                <TextField InputProps={{ readOnly: true, sx: { textTransform: "uppercase" } }} fullWidth size="small" name="last_name" value={(person.last_name || "").toUpperCase()} onChange={(e) => handleChange({ ...e, target: { ...e.target, value: e.target.value.toUpperCase() } })} onBlur={() => handleUpdate(person)} placeholder="Enter your Last Name" error={errors.last_name} helperText={errors.last_name ? "This field is required." : ""} />
               </Box>
 
-              {/* First Name */}
+              {/* First Name — system-locked */}
               <Box flex="1 1 20%">
-                <Typography mb={1} fontWeight="medium">
-                  First Name<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <TextField
-                  fullWidth
-                  InputProps={{
-                    readOnly: true,
-                    sx: { textTransform: "uppercase" } // must be inside InputProps
-                  }}
-                  size="small"
-                  name="first_name"
-                  required
-                  value={(person.first_name || "").toUpperCase()}
-                  onChange={(e) =>
-                    handleChange({
-                      ...e,
-                      target: {
-                        ...e.target,
-                        value: e.target.value.toUpperCase()
-                      }
-                    })
-                  }
-                  onBlur={() => handleUpdate(person)}
-                  placeholder="Enter your First Name"
-                  error={errors.first_name}
-                  helperText={
-                    errors.first_name ? "This field is required." : ""
-                  }
-                />
+                <Typography mb={1} fontWeight="medium">First Name<span style={{ color: "red" }}> *</span></Typography>
+                <TextField fullWidth size="small" name="first_name" InputProps={{ readOnly: true, sx: { textTransform: "uppercase" } }} value={(person.first_name || "").toUpperCase()} onChange={(e) => handleChange({ ...e, target: { ...e.target, value: e.target.value.toUpperCase() } })} onBlur={() => handleUpdate(person)} placeholder="Enter your First Name" error={errors.first_name} helperText={errors.first_name ? "This field is required." : ""} />
               </Box>
 
-              {/* Middle Name */}
+              {/* Middle Name — system-locked */}
               <Box flex="1 1 20%">
-                <Typography mb={1} fontWeight="medium">
-                  Middle Name
-                </Typography>
-                <TextField
-                  fullWidth
-                  InputProps={{
-                    readOnly: true,
-                    sx: { textTransform: "uppercase" } // must be inside InputProps
-                  }}
-                  size="small"
-                  name="middle_name"
-                  required
-                  value={(person.middle_name || "").toUpperCase()}
-                  onChange={(e) =>
-                    handleChange({
-                      ...e,
-                      target: {
-                        ...e.target,
-                        value: e.target.value.toUpperCase()
-                      }
-                    })
-                  }
-                  onBlur={() => handleUpdate(person)}
-                  placeholder="Enter your Middle Name"
-                />
+                <Typography mb={1} fontWeight="medium">Middle Name</Typography>
+                <TextField fullWidth size="small" name="middle_name" InputProps={{ readOnly: true, sx: { textTransform: "uppercase" } }} value={(person.middle_name || "").toUpperCase()} onChange={(e) => handleChange({ ...e, target: { ...e.target, value: e.target.value.toUpperCase() } })} onBlur={() => handleUpdate(person)} placeholder="Enter your Middle Name" />
               </Box>
 
-              {/* Extension */}
+              {/* Extension — admin-controlled */}
               <Box flex="1 1 20%">
                 <Typography mb={1} fontWeight="medium">
                   Extension
+                  {!canEdit("extension") && <LockedBadge />}
                 </Typography>
                 <FormControl fullWidth size="small" error={errors.extension}>
                   <InputLabel id="extension-label">Extension</InputLabel>
-                  <Select
-                    labelId="extension-label"
-                    id="extension-select"
-                    name="extension"
-                    value={person.extension || ""}
-                    label="Extension"
-                    onChange={handleChange}
-                    onBlur={() => handleUpdate(person)}
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    <MenuItem value="Jr.">Jr.</MenuItem>
-                    <MenuItem value="Sr.">Sr.</MenuItem>
-                    <MenuItem value="I">I</MenuItem>
-                    <MenuItem value="II">II</MenuItem>
-                    <MenuItem value="III">III</MenuItem>
-                    <MenuItem value="IV">IV</MenuItem>
-                    <MenuItem value="V">V</MenuItem>
+                  <Select labelId="extension-label" name="extension" value={person.extension || ""} label="Extension" onChange={canEdit("extension") ? handleChange : undefined} inputProps={{ readOnly: !canEdit("extension") }} onBlur={() => handleUpdate(person)}>
+                    <MenuItem value=""><em>None</em></MenuItem>
+                    {["Jr.", "Sr.", "I", "II", "III", "IV", "V"].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
                   </Select>
                 </FormControl>
               </Box>
 
-              {/* Nickname */}
+              {/* Nickname — admin-controlled */}
               <Box flex="1 1 20%">
                 <Typography mb={1} fontWeight="medium">
                   Nickname
+                  {!canEdit("nickname") && <LockedBadge />}
                 </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="nickname"
-                  required
-                  value={person.nickname || ""}
-                  onChange={handleChange}
-                  onBlur={() => handleUpdate(person)}
-                  placeholder="Enter your Nickname"
-                />
+                <TextField fullWidth size="small" name="nickname" value={person.nickname || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} placeholder="Enter your Nickname" InputProps={{ readOnly: !canEdit("nickname") }} sx={!canEdit("nickname") ? { backgroundColor: "#f5f5f5" } : {}} />
               </Box>
             </Box>
+
             <Box display="flex" gap={4} mb={2}>
-              {/* Height Field */}
+              {/* Height — admin-controlled */}
               <Box display="flex" flexDirection="column" flex="0 0 28%">
                 <Box display="flex" alignItems="center" gap={1}>
                   <Typography fontWeight="medium" minWidth="75px">
                     Height:<span style={{ color: "red" }}> *</span>
+                    {!canEdit("height") && <LockedBadge />}
                   </Typography>
-                  <TextField
-                    size="small"
-                    type="number"
-                    name="height"
-                    value={person.height || ""}
-                    onChange={handleChange}
-                    onBlur={() => handleUpdate(person)}
-                    placeholder="Enter your Height"
-                    error={!!errors.height}
-                    fullWidth
-                  />
+                  <TextField size="small" type="number" name="height" value={person.height || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} placeholder="Enter your Height" error={!!errors.height} fullWidth InputProps={{ readOnly: !canEdit("height") }} sx={!canEdit("height") ? { backgroundColor: "#f5f5f5" } : {}} />
                   <Typography variant="body2">cm.</Typography>
                 </Box>
-                {errors.height && (
-                  <Typography color="error" variant="caption" mt={0.5}>
-                    This field is required.
-                  </Typography>
-                )}
+                {errors.height && <Typography color="error" variant="caption" mt={0.5}>This field is required.</Typography>}
               </Box>
 
-              {/* Weight Field */}
+              {/* Weight — admin-controlled */}
               <Box display="flex" flexDirection="column" flex="0 0 28%">
                 <Box display="flex" alignItems="center" gap={1}>
                   <Typography fontWeight="medium" minWidth="85px">
                     Weight:<span style={{ color: "red" }}> *</span>
+                    {!canEdit("weight") && <LockedBadge />}
                   </Typography>
-                  <TextField
-                    size="small"
-                    type="number"
-                    name="weight"
-                    value={person.weight || ""}
-                    onChange={handleChange}
-                    onBlur={() => handleUpdate(person)}
-                    placeholder="Enter your Weight"
-                    error={!!errors.weight}
-                    fullWidth
-                  />
-
+                  <TextField size="small" type="number" name="weight" value={person.weight || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} placeholder="Enter your Weight" error={!!errors.weight} fullWidth InputProps={{ readOnly: !canEdit("weight") }} sx={!canEdit("weight") ? { backgroundColor: "#f5f5f5" } : {}} />
                   <Typography variant="body2">kg</Typography>
                 </Box>
-                {errors.weight && (
-                  <Typography color="error" variant="caption" mt={0.5}>
-                    This field is required.
-                  </Typography>
-                )}
+                {errors.weight && <Typography color="error" variant="caption" mt={0.5}>This field is required.</Typography>}
               </Box>
             </Box>
 
-            <Box
-              display="flex"
-              alignItems="center"
-              gap={2}
-              flexWrap="nowrap"
-              width="100%"
-              mb={2}
-            >
-              {/* LRN Label */}
-              <Typography fontWeight="medium" minWidth="180px">
-                Learning Reference Number:<span style={{ color: "red" }}> *</span>
-              </Typography>
+            <Box display="flex" alignItems="center" gap={2} flexWrap="nowrap" width="100%" mb={2}>
+              <Typography fontWeight="medium" minWidth="180px">Learning Reference Number:<span style={{ color: "red" }}> *</span></Typography>
 
-              {/* LRN Input */}
-              <TextField
-
-                id="lrnNumber"
-                name="lrnNumber"
-                required={person.lrnNumber !== "No LRN Number"}
-                label="Enter your LRN Number"
-                value={
-                  person.lrnNumber === "No LRN Number"
-                    ? ""
-                    : person.lrnNumber || ""
-                }
-                onChange={handleChange}
-                onBlur={() => handleUpdate(person)}
-                disabled={person.lrnNumber === "No LRN Number"}
-                size="small"
-                sx={{ width: 220 }}
-                InputProps={{ readOnly: true }}
-                error={errors.lrnNumber}
-                helperText={errors.lrnNumber ? "This field is required." : ""}
-              />
+              {/* LRN — system-locked */}
+              <TextField id="lrnNumber" name="lrnNumber" required={person.lrnNumber !== "No LRN Number"} label="Enter your LRN Number" value={person.lrnNumber === "No LRN Number" ? "" : person.lrnNumber || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} disabled={person.lrnNumber === "No LRN Number"} size="small" sx={{ width: 220 }} InputProps={{ readOnly: true }} error={errors.lrnNumber} helperText={errors.lrnNumber ? "This field is required." : ""} />
 
               <FormControlLabel
                 control={
-                  <Checkbox
-                    name="lrn_na"
-                    checked={person.lrnNumber === "No LRN Number"}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      const updatedPerson = {
-                        ...person,
-                        lrnNumber: checked ? "No LRN Number" : "",
-                      };
-
-                      setPerson(updatedPerson);
-                      setIsLrnNA(checked); // optional: if you're tracking this separately
-                      setLrnNAFlag(checked ? "1" : "0"); // optional: if you're sending this to backend
-                    }}
+                  <Checkbox name="lrn_na" checked={person.lrnNumber === "No LRN Number"}
+                    onChange={(e) => { const checked = e.target.checked; const updatedPerson = { ...person, lrnNumber: checked ? "No LRN Number" : "" }; setPerson(updatedPerson); setIsLrnNA(checked); }}
                     onBlur={() => handleUpdate(person)}
                   />
                 }
-                label="N/A"
-                sx={{ mr: 2 }}
+                label="N/A" sx={{ mr: 2 }}
               />
 
-              <Typography fontWeight="medium">
-                Gender:<span style={{ color: "red" }}> *</span>
-              </Typography>
-              {/* Gender */}
-              <TextField
+              <Typography fontWeight="medium">Gender:<span style={{ color: "red" }}> *</span></Typography>
 
-                select
-                size="small"
-                label="SEX"
-                name="gender"
-                required
-                value={person.gender == null ? "" : String(person.gender)}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  handleChange({
-                    target: {
-                      name: "gender",
-                      value: val === "" ? null : parseInt(val, 10),
-                    },
-                  });
-                }}
-                onBlur={() => handleUpdate(person)}
-                error={Boolean(errors.gender)}
-                sx={{ width: 150 }}
-                InputProps={{ readOnly: true }}
-              >
-                <MenuItem value="">
-                  <em>Select Gender</em>
-                </MenuItem>
+              {/* Gender — system-locked */}
+              <TextField select size="small" label="SEX" name="gender" required value={person.gender == null ? "" : String(person.gender)} onChange={(e) => { const val = e.target.value; handleChange({ target: { name: "gender", value: val === "" ? null : parseInt(val, 10) } }); }} onBlur={() => handleUpdate(person)} error={Boolean(errors.gender)} sx={{ width: 150 }} InputProps={{ readOnly: true }}>
+                <MenuItem value=""><em>Select Gender</em></MenuItem>
                 <MenuItem value="0">MALE</MenuItem>
                 <MenuItem value="1">FEMALE</MenuItem>
               </TextField>
 
-              {errors.gender && (
-                <Typography color="error" variant="caption" ml={1}>
-                  This field is required.
-                </Typography>
-              )}
+              {errors.gender && <Typography color="error" variant="caption" ml={1}>This field is required.</Typography>}
 
-              {/* PWD Checkbox */}
+              {/* PWD — admin-controlled */}
               <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={person.pwdMember === 1}
-                    onChange={handlePwdCheck}
-                    inputProps={{ "aria-label": "PWD Checkbox" }}
-                  />
-                }
-                label="PWD"
+                control={<Checkbox checked={person.pwdMember === 1} onChange={canEdit("pwdMember") ? handlePwdCheck : undefined} disabled={!canEdit("pwdMember")} inputProps={{ "aria-label": "PWD Checkbox" }} />}
+                label={<Box sx={{ display: "flex", alignItems: "center" }}>PWD {!canEdit("pwdMember") && <LockedBadge />}</Box>}
                 sx={{ ml: 2 }}
               />
 
               {person.pwdMember === 1 && (
                 <>
-                  {/* PWD Type */}
-                  <TextField
-                    select
-                    size="small"
-                    label="PWD Type"
-                    name="pwdType"
-                    value={person.pwdType || ""}
-                    onChange={handleChange}
-                    onBlur={() => handleUpdate(person)}
-                    required={person.pwdMember === 1}
-                    error={person.pwdMember === 1 && !!errors.pwdType}
-                    helperText={
-                      person.pwdMember === 1 && errors.pwdType
-                        ? "This field is required."
-                        : ""
-                    }
-                    sx={{ width: 220 }}
-                    InputProps={{ sx: { height: 40 } }}
-                    inputProps={{ style: { height: 40 } }}
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    <MenuItem value="Blindness">Blindness</MenuItem>
-                    <MenuItem value="Low-vision">Low-vision</MenuItem>
-                    <MenuItem value="Leprosy Cured persons">
-                      Leprosy Cured persons
-                    </MenuItem>
-                    <MenuItem value="Hearing Impairment">
-                      Hearing Impairment
-                    </MenuItem>
-                    <MenuItem value="Locomotor Disability">
-                      Locomotor Disability
-                    </MenuItem>
-                    <MenuItem value="Dwarfism">Dwarfism</MenuItem>
-                    <MenuItem value="Intellectual Disability">
-                      Intellectual Disability
-                    </MenuItem>
-                    <MenuItem value="Mental Illness">Mental Illness</MenuItem>
-                    <MenuItem value="Autism Spectrum Disorder">
-                      Autism Spectrum Disorder
-                    </MenuItem>
-                    <MenuItem value="Cerebral Palsy">Cerebral Palsy</MenuItem>
-                    <MenuItem value="Muscular Dystrophy">
-                      Muscular Dystrophy
-                    </MenuItem>
-                    <MenuItem value="Chronic Neurological conditions">
-                      Chronic Neurological conditions
-                    </MenuItem>
-                    <MenuItem value="Specific Learning Disabilities">
-                      Specific Learning Disabilities
-                    </MenuItem>
-                    <MenuItem value="Multiple Sclerosis">
-                      Multiple Sclerosis
-                    </MenuItem>
-                    <MenuItem value="Speech and Language disability">
-                      Speech and Language disability
-                    </MenuItem>
-                    <MenuItem value="Thalassemia">Thalassemia</MenuItem>
-                    <MenuItem value="Hemophilia">Hemophilia</MenuItem>
-                    <MenuItem value="Sickle cell disease">
-                      Sickle cell disease
-                    </MenuItem>
-                    <MenuItem value="Multiple Disabilities including">
-                      Multiple Disabilities including
-                    </MenuItem>
+                  <TextField select size="small" label="PWD Type" name="pwdType" value={person.pwdType || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} required={person.pwdMember === 1} error={person.pwdMember === 1 && !!errors.pwdType} helperText={person.pwdMember === 1 && errors.pwdType ? "This field is required." : ""} sx={{ width: 220 }} InputProps={{ sx: { height: 40 }, readOnly: !canEdit("pwdMember") }} inputProps={{ style: { height: 40 } }}>
+                    <MenuItem value=""><em>None</em></MenuItem>
+                    {["Blindness", "Low-vision", "Leprosy Cured persons", "Hearing Impairment", "Locomotor Disability", "Dwarfism", "Intellectual Disability", "Mental Illness", "Autism Spectrum Disorder", "Cerebral Palsy", "Muscular Dystrophy", "Chronic Neurological conditions", "Specific Learning Disabilities", "Multiple Sclerosis", "Speech and Language disability", "Thalassemia", "Hemophilia", "Sickle cell disease", "Multiple Disabilities including"].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
                   </TextField>
-
-                  {/* PWD ID */}
-                  <TextField
-                    size="small"
-                    label="PWD ID"
-                    name="pwdId"
-                    value={person.pwdId || ""}
-                    onChange={handleChange}
-                    onBlur={() => handleUpdate(person)}
-                    required={person.pwdMember === 1}
-                    error={person.pwdMember === 1 && !!errors.pwdId}
-                    helperText={
-                      person.pwdMember === 1 && errors.pwdId
-                        ? "This field is required."
-                        : ""
-                    }
-                    sx={{ width: 200 }}
-                    InputProps={{ sx: { height: 40 } }}
-                    inputProps={{ style: { height: 40 } }}
-                  />
+                  <TextField size="small" label="PWD ID" name="pwdId" value={person.pwdId || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} required={person.pwdMember === 1} error={person.pwdMember === 1 && !!errors.pwdId} helperText={person.pwdMember === 1 && errors.pwdId ? "This field is required." : ""} sx={{ width: 200 }} InputProps={{ sx: { height: 40 }, readOnly: !canEdit("pwdMember") }} inputProps={{ style: { height: 40 } }} />
                 </>
               )}
             </Box>
 
-            {/* Row 1: Birth Place + Citizenship */}
             <Box display="flex" gap={2} mb={2}>
-              {/* 🎂 Birth Date */}
+              {/* Birth Date — system-locked */}
               <Box flex={1}>
-                <Typography mb={1} fontWeight="medium">
-                  Birth of Date<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <DateField
-                  fullWidth
-                  InputProps={{ readOnly: true }}
-
-                  size="small"
-                  name="birthOfDate"
-                  required
-                  value={person.birthOfDate || ""}
-                  onChange={handleChange}
-                  onBlur={() => handleUpdate(person)}
-                  error={!!errors.birthOfDate}
-                  helperText={
-                    errors.birthOfDate ? "This field is required." : ""
-                  }
-                />
+                <Typography mb={1} fontWeight="medium">Birth of Date<span style={{ color: "red" }}> *</span></Typography>
+                <DateField fullWidth InputProps={{ readOnly: true }} size="small" name="birthOfDate" required value={person.birthOfDate || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} error={!!errors.birthOfDate} helperText={errors.birthOfDate ? "This field is required." : ""} />
               </Box>
 
-              {/* 👤 Age (auto-filled, read-only) */}
+              {/* Age — system-locked (auto-computed) */}
               <Box flex={1}>
-                <Typography mb={1} fontWeight="medium">
-                  Age<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="age"
-                  value={person.age || ""}
-                  placeholder="Enter your Age"
-                  required
-                  onBlur={() => handleUpdate(person)}
-                  onChange={handleChange}
-                  error={!!errors.age}
-                  helperText={errors.age ? "This field is required." : ""}
-                  InputProps={{ readOnly: true }} // read-only so user can’t manually change
-                />
+                <Typography mb={1} fontWeight="medium">Age<span style={{ color: "red" }}> *</span></Typography>
+                <TextField fullWidth size="small" name="age" value={person.age || ""} placeholder="Enter your Age" required onBlur={() => handleUpdate(person)} onChange={handleChange} error={!!errors.age} helperText={errors.age ? "This field is required." : ""} InputProps={{ readOnly: true }} />
               </Box>
+
+              {/* Birth Place — system-locked */}
               <Box flex={1}>
-                <Typography mb={1} fontWeight="medium">
-                  Birth Place<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="birthPlace"
-                  placeholder="Enter your Birth Place"
-                  value={person.birthPlace || ""}
-                  required
-                  onBlur={handleBlur}
-                  onChange={handleChange}
-                  error={!!errors.birthPlace}
-                  InputProps={{ readOnly: true }}
-                  helperText={
-                    errors.birthPlace ? "This field is required." : ""
-                  }
-                />
+                <Typography mb={1} fontWeight="medium">Birth Place<span style={{ color: "red" }}> *</span></Typography>
+                <TextField fullWidth size="small" name="birthPlace" placeholder="Enter your Birth Place" value={person.birthPlace || ""} required onBlur={handleBlur} onChange={handleChange} error={!!errors.birthPlace} InputProps={{ readOnly: true }} helperText={errors.birthPlace ? "This field is required." : ""} />
               </Box>
+
+              {/* Language — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Language/Dialect Spoken<span style={{ color: "red" }}> *</span>
+                  {!canEdit("languageDialectSpoken") && <LockedBadge />}
                 </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="languageDialectSpoken"
-                  placeholder="Enter your Language Spoken"
-                  value={person.languageDialectSpoken || ""}
-                  required
-                  onBlur={handleBlur}
-                  onChange={handleChange}
-                  error={!!errors.languageDialectSpoken}
-                  helperText={
-                    errors.languageDialectSpoken
-                      ? "This field is required."
-                      : ""
-                  }
-                />
+                <TextField fullWidth size="small" name="languageDialectSpoken" placeholder="Enter your Language Spoken" value={person.languageDialectSpoken || ""} required onBlur={handleBlur} onChange={handleChange} error={!!errors.languageDialectSpoken} helperText={errors.languageDialectSpoken ? "This field is required." : ""} InputProps={{ readOnly: !canEdit("languageDialectSpoken") }} sx={!canEdit("languageDialectSpoken") ? { backgroundColor: "#f5f5f5" } : {}} />
               </Box>
             </Box>
 
             <Box display="flex" gap={2}>
+              {/* Citizenship — system-locked */}
               <Box flex={1}>
-                <Typography mb={1} fontWeight="medium">
-                  Citizenship<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <FormControl
-
-                  fullWidth
-                  size="small"
-                  required
-                  error={!!errors.citizenship}
-                >
+                <Typography mb={1} fontWeight="medium">Citizenship<span style={{ color: "red" }}> *</span></Typography>
+                <FormControl fullWidth size="small" required error={!!errors.citizenship}>
                   <InputLabel id="citizenship-label">Citizenship</InputLabel>
-                  <Select
-                    readOnly
-                    labelId="citizenship-label"
-                    id="citizenship"
-                    name="citizenship"
-                    value={person.citizenship || ""}
-                    onChange={handleChange}
-                    onBlur={() => handleUpdate(person)}
-                    label="Citizenship" // Required for floating label
-                  >
-                    <MenuItem value="">
-                      <em>Select Citizenship</em>
-                    </MenuItem>
-                    <MenuItem value="AFGHAN">AFGHAN</MenuItem>
-                    <MenuItem value="ALBANIAN">ALBANIAN</MenuItem>
-                    <MenuItem value="ARAB">ARAB</MenuItem>
-                    <MenuItem value="ARGENTINIAN">ARGENTINIAN</MenuItem>
-                    <MenuItem value="AUSTRALIAN">AUSTRALIAN</MenuItem>
-                    <MenuItem value="AUSTRIAN">AUSTRIAN</MenuItem>
-                    <MenuItem value="BELGIAN">BELGIAN</MenuItem>
-                    <MenuItem value="BANGLADESHI">BANGLADESHI</MenuItem>
-                    <MenuItem value="BAHAMIAN">BAHAMIAN</MenuItem>
-                    <MenuItem value="BHUTANESE">BHUTANESE</MenuItem>
-                    <MenuItem value="BERMUDAN">BERMUDAN</MenuItem>
-                    <MenuItem value="BOLIVIAN">BOLIVIAN</MenuItem>
-                    <MenuItem value="BRAZILIAN">BRAZILIAN</MenuItem>
-                    <MenuItem value="BRUNEI">BRUNEI</MenuItem>
-                    <MenuItem value="BOTSWANIAN">BOTSWANIAN</MenuItem>
-                    <MenuItem value="CANADIAN">CANADIAN</MenuItem>
-                    <MenuItem value="CHILE">CHILE</MenuItem>
-                    <MenuItem value="CHINESE">CHINESE</MenuItem>
-                    <MenuItem value="COLOMBIAN">COLOMBIAN</MenuItem>
-                    <MenuItem value="COSTA RICAN">COSTA RICAN</MenuItem>
-                    <MenuItem value="CUBAN">CUBAN</MenuItem>
-                    <MenuItem value="CYPRIOT">CYPRIOT</MenuItem>
-                    <MenuItem value="CZECH">CZECH</MenuItem>
-                    <MenuItem value="DANISH">DANISH</MenuItem>
-                    <MenuItem value="DOMINICAN">DOMINICAN</MenuItem>
-                    <MenuItem value="ALGERIAN">ALGERIAN</MenuItem>
-                    <MenuItem value="EGYPTIAN">EGYPTIAN</MenuItem>
-                    <MenuItem value="SPANISH">SPANISH</MenuItem>
-                    <MenuItem value="ESTONIAN">ESTONIAN</MenuItem>
-                    <MenuItem value="ETHIOPIAN">ETHIOPIAN</MenuItem>
-                    <MenuItem value="FIJI">FIJI</MenuItem>
-                    <MenuItem value="FILIPINO">FILIPINO</MenuItem>
-                    <MenuItem value="FINISH">FINISH</MenuItem>
-                    <MenuItem value="FRENCH">FRENCH</MenuItem>
-                    <MenuItem value="BRITISH">BRITISH</MenuItem>
-                    <MenuItem value="GERMAN">GERMAN</MenuItem>
-                    <MenuItem value="GHANAIAN">GHANAIAN</MenuItem>
-                    <MenuItem value="GREEK">GREEK</MenuItem>
-                    <MenuItem value="GUAMANIAN">GUAMANIAN</MenuItem>
-                    <MenuItem value="GUATEMALAN">GUATEMALAN</MenuItem>
-                    <MenuItem value="HONG KONG">HONG KONG</MenuItem>
-                    <MenuItem value="CROATIAN">CROATIAN</MenuItem>
-                    <MenuItem value="HAITIAN">HAITIAN</MenuItem>
-                    <MenuItem value="HUNGARIAN">HUNGARIAN</MenuItem>
-                    <MenuItem value="INDONESIAN">INDONESIAN</MenuItem>
-                    <MenuItem value="INDIAN">INDIAN</MenuItem>
-                    <MenuItem value="IRANIAN">IRANIAN</MenuItem>
-                    <MenuItem value="IRAQI">IRAQI</MenuItem>
-                    <MenuItem value="IRISH">IRISH</MenuItem>
-                    <MenuItem value="ICELANDER">ICELANDER</MenuItem>
-                    <MenuItem value="ISRAELI">ISRAELI</MenuItem>
-                    <MenuItem value="ITALIAN">ITALIAN</MenuItem>
-                    <MenuItem value="JAMAICAN">JAMAICAN</MenuItem>
-                    <MenuItem value="JORDANIAN">JORDANIAN</MenuItem>
-                    <MenuItem value="JAPANESE">JAPANESE</MenuItem>
-                    <MenuItem value="CAMBODIAN">CAMBODIAN</MenuItem>
-                    <MenuItem value="KOREAN">KOREAN</MenuItem>
-                    <MenuItem value="KUWAITI">KUWAITI</MenuItem>
-                    <MenuItem value="KENYAN">KENYAN</MenuItem>
-                    <MenuItem value="LAOTIAN">LAOTIAN</MenuItem>
-                    <MenuItem value="LEBANESE">LEBANESE</MenuItem>
-                    <MenuItem value="LIBYAN">LIBYAN</MenuItem>
-                    <MenuItem value="LUXEMBURGER">LUXEMBURGER</MenuItem>
-                    <MenuItem value="MALAYSIAN">MALAYSIAN</MenuItem>
-                    <MenuItem value="MOROCCAN">MOROCCAN</MenuItem>
-                    <MenuItem value="MEXICAN">MEXICAN</MenuItem>
-                    <MenuItem value="BURMESE">BURMESE</MenuItem>
-                    <MenuItem value="MYANMAR">MYANMAR</MenuItem>
-                    <MenuItem value="NIGERIAN">NIGERIAN</MenuItem>
-                    <MenuItem value="NOT INDICATED">NOT INDICATED</MenuItem>
-                    <MenuItem value="DUTCH">DUTCH</MenuItem>
-                    <MenuItem value="NORWEGIAN">NORWEGIAN</MenuItem>
-                    <MenuItem value="NEPALI">NEPALI</MenuItem>
-                    <MenuItem value="NEW ZEALANDER">NEW ZEALANDER</MenuItem>
-                    <MenuItem value="OMANI">OMANI</MenuItem>
-                    <MenuItem value="PAKISTANI">PAKISTANI</MenuItem>
-                    <MenuItem value="PANAMANIAN">PANAMANIAN</MenuItem>
-                    <MenuItem value="PERUVIAN">PERUVIAN</MenuItem>
-                    <MenuItem value="PAPUAN">PAPUAN</MenuItem>
-                    <MenuItem value="POLISH">POLISH</MenuItem>
-                    <MenuItem value="PUERTO RICAN">PUERTO RICAN</MenuItem>
-                    <MenuItem value="PORTUGUESE">PORTUGUESE</MenuItem>
-                    <MenuItem value="PARAGUAYAN">PARAGUAYAN</MenuItem>
-                    <MenuItem value="PALESTINIAN">PALESTINIAN</MenuItem>
-                    <MenuItem value="QATARI">QATARI</MenuItem>
-                    <MenuItem value="ROMANIAN">ROMANIAN</MenuItem>
-                    <MenuItem value="RUSSIAN">RUSSIAN</MenuItem>
-                    <MenuItem value="RWANDAN">RWANDAN</MenuItem>
-                    <MenuItem value="SAUDI ARABIAN">SAUDI ARABIAN</MenuItem>
-                    <MenuItem value="SUDANESE">SUDANESE</MenuItem>
-                    <MenuItem value="SINGAPOREAN">SINGAPOREAN</MenuItem>
-                    <MenuItem value="SRI LANKAN">SRI LANKAN</MenuItem>
-                    <MenuItem value="EL SALVADORIAN">EL SALVADORIAN</MenuItem>
-                    <MenuItem value="SOMALIAN">SOMALIAN</MenuItem>
-                    <MenuItem value="SLOVAK">SLOVAK</MenuItem>
-                    <MenuItem value="SWEDISH">SWEDISH</MenuItem>
-                    <MenuItem value="SWISS">SWISS</MenuItem>
-                    <MenuItem value="SYRIAN">SYRIAN</MenuItem>
-                    <MenuItem value="THAI">THAI</MenuItem>
-                    <MenuItem value="TRINIDAD AND TOBAGO">
-                      TRINIDAD AND TOBAGO
-                    </MenuItem>
-                    <MenuItem value="TUNISIAN">TUNISIAN</MenuItem>
-                    <MenuItem value="TURKISH">TURKISH</MenuItem>
-                    <MenuItem value="TAIWANESE">TAIWANESE</MenuItem>
-                    <MenuItem value="UKRAINIAN">UKRAINIAN</MenuItem>
-                    <MenuItem value="URUGUYAN">URUGUYAN</MenuItem>
-                    <MenuItem value="UNITED STATES">UNITED STATES</MenuItem>
-                    <MenuItem value="VENEZUELAN">VENEZUELAN</MenuItem>
-                    <MenuItem value="VIRGIN ISLANDS">VIRGIN ISLANDS</MenuItem>
-                    <MenuItem value="VIETNAMESE">VIETNAMESE</MenuItem>
-                    <MenuItem value="YEMENI">YEMENI</MenuItem>
-                    <MenuItem value="YUGOSLAVIAN">YUGOSLAVIAN</MenuItem>
-                    <MenuItem value="SOUTH AFRICAN">SOUTH AFRICAN</MenuItem>
-                    <MenuItem value="ZAIREAN">ZAIREAN</MenuItem>
-                    <MenuItem value="ZIMBABWEAN">ZIMBABWEAN</MenuItem>
-                    <MenuItem value="Others">Others</MenuItem>
+                  <Select readOnly labelId="citizenship-label" name="citizenship" value={person.citizenship || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} label="Citizenship">
+                    <MenuItem value=""><em>Select Citizenship</em></MenuItem>
+                    {["AFGHAN", "AUSTRALIAN", "CANADIAN", "CHINESE", "FILIPINO", "JAPANESE", "KOREAN", "MALAYSIAN", "UNITED STATES", "Others"].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
                   </Select>
-                  {errors.citizenship && (
-                    <FormHelperText>This field is required.</FormHelperText>
-                  )}
+                  {errors.citizenship && <FormHelperText>This field is required.</FormHelperText>}
                 </FormControl>
               </Box>
 
+              {/* Religion — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Religion<span style={{ color: "red" }}> *</span>
+                  {!canEdit("religion") && <LockedBadge />}
                 </Typography>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  required
-                  error={!!errors.religion}
-                >
+                <FormControl fullWidth size="small" required error={!!errors.religion}>
                   <InputLabel id="religion-label">Religion</InputLabel>
-                  <Select
-                    labelId="religion-label"
-                    id="religion"
-                    name="religion"
-                    value={person.religion || ""}
-                    onChange={handleChange}
+                  <Select labelId="religion-label" name="religion" value={person.religion || ""} onChange={canEdit("religion") ? handleChange : undefined} inputProps={{ readOnly: !canEdit("religion") }} onBlur={() => handleUpdate(person)} label="Religion">
+                    <MenuItem value=""><em>Select Religion</em></MenuItem>
+                    {["Jehovah's Witness", "Buddist", "Catholic", "Dating Daan", "Pagano", "Atheist", "Born Again", "Adventis", "Baptist", "Mormons", "Free Methodist", "Christian", "Protestant", "Aglipay", "Islam", "LDS", "Seventh Day Adventist", "Iglesia Ni Cristo", "UCCP", "PMCC", "Baha'i Faith", "None", "Others"].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                  </Select>
+                  {errors.religion && <FormHelperText>This field is required.</FormHelperText>}
+                </FormControl>
+              </Box>
 
-                    onBlur={() => handleUpdate(person)}
-                    label="Religion" // Enables floating label
-                  >
-                    <MenuItem value="">
-                      <em>Select Religion</em>
-                    </MenuItem>
-                    <MenuItem value="Jehovah's Witness">
-                      Jehovah's Witness
-                    </MenuItem>
-                    <MenuItem value="Buddist">Buddist</MenuItem>
-                    <MenuItem value="Catholic">Catholic</MenuItem>
-                    <MenuItem value="Dating Daan">Dating Daan</MenuItem>
-                    <MenuItem value="Pagano">Pagano</MenuItem>
-                    <MenuItem value="Atheist">Atheist</MenuItem>
-                    <MenuItem value="Born Again">Born Again</MenuItem>
-                    <MenuItem value="Adventis">Adventis</MenuItem>
-                    <MenuItem value="Baptist">Baptist</MenuItem>
-                    <MenuItem value="Mormons">Mormons</MenuItem>
-                    <MenuItem value="Free Methodist">Free Methodist</MenuItem>
-                    <MenuItem value="Christian">Christian</MenuItem>
-                    <MenuItem value="Protestant">Protestant</MenuItem>
-                    <MenuItem value="Aglipay">Aglipay</MenuItem>
-                    <MenuItem value="Islam">Islam</MenuItem>
-                    <MenuItem value="LDS">LDS</MenuItem>
-                    <MenuItem value="Seventh Day Adventist">
-                      Seventh Day Adventist
-                    </MenuItem>
-                    <MenuItem value="Iglesia Ni Cristo">
-                      Iglesia Ni Cristo
-                    </MenuItem>
-                    <MenuItem value="UCCP">UCCP</MenuItem>
-                    <MenuItem value="PMCC">PMCC</MenuItem>
-                    <MenuItem value="Baha'i Faith">Baha'i Faith</MenuItem>
-                    <MenuItem value="None">None</MenuItem>
-                    <MenuItem value="Others">Others</MenuItem>
-                  </Select>
-                  {errors.religion && (
-                    <FormHelperText>This field is required.</FormHelperText>
-                  )}
-                </FormControl>
-              </Box>
+              {/* Civil Status — system-locked */}
               <Box flex={1}>
-                <Typography mb={1} fontWeight="medium">
-                  Civil Status<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  required
-                  error={!!errors.civilStatus}
-                >
+                <Typography mb={1} fontWeight="medium">Civil Status<span style={{ color: "red" }}> *</span></Typography>
+                <FormControl fullWidth size="small" required error={!!errors.civilStatus}>
                   <InputLabel id="civil-status-label">Civil Status</InputLabel>
-                  <Select
-                    readOnly
-                    labelId="civil-status-label"
-                    id="civilStatus"
-                    name="civilStatus"
-                    value={person.civilStatus || ""}
-                    onChange={handleChange}
-                    onBlur={() => handleUpdate(person)}
-                    label="Civil Status"
-                  >
-                    <MenuItem value="">
-                      <em> Select Status </em>
-                    </MenuItem>
-                    <MenuItem value="Single">Single</MenuItem>
-                    <MenuItem value="Married">Married</MenuItem>
-                    <MenuItem value="Legally Seperated">
-                      Legally Seperated
-                    </MenuItem>
-                    <MenuItem value="Widowed">Widowed</MenuItem>
-                    <MenuItem value="Solo Parent">Solo Parent</MenuItem>
+                  <Select readOnly labelId="civil-status-label" name="civilStatus" value={person.civilStatus || ""} onChange={handleChange} onBlur={() => handleUpdate(person)} label="Civil Status">
+                    <MenuItem value=""><em>Select Status</em></MenuItem>
+                    {["Single", "Married", "Legally Seperated", "Widowed", "Solo Parent"].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
                   </Select>
-                  {errors.civilStatus && (
-                    <FormHelperText>This field is required.</FormHelperText>
-                  )}
+                  {errors.civilStatus && <FormHelperText>This field is required.</FormHelperText>}
                 </FormControl>
               </Box>
+
+              {/* Tribe/Ethnic Group — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Tribe/Ethnic Group<span style={{ color: "red" }}> *</span>
+                  {!canEdit("tribeEthnicGroup") && <LockedBadge />}
                 </Typography>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  required
-                  error={!!errors.tribeEthnicGroup}
-                >
+                <FormControl fullWidth size="small" required error={!!errors.tribeEthnicGroup}>
                   <InputLabel id="tribe-label">Tribe/Ethnic Group</InputLabel>
-                  <Select
-                    labelId="tribe-label"
-                    id="tribeEthnicGroup"
-                    name="tribeEthnicGroup"
-                    value={person.tribeEthnicGroup || ""}
-                    onChange={handleChange}
-                    onBlur={() => handleUpdate(person)}
-                    label="Tribe/Ethnic Group"
-                  >
-                    <MenuItem value="">
-                      <em>Select Tribe/Ethnic Group</em>
-                    </MenuItem>
-                    <MenuItem value="Agta">Agta</MenuItem>
-                    <MenuItem value="Agutaynen">Agutaynen</MenuItem>
-                    <MenuItem value="Aklanon">Aklanon</MenuItem>
-                    <MenuItem value="Alangan">Alangan</MenuItem>
-                    <MenuItem value="Alta">Alta</MenuItem>
-                    <MenuItem value="Amersian">Amersian</MenuItem>
-                    <MenuItem value="Ati">Ati</MenuItem>
-                    <MenuItem value="Atta">Atta</MenuItem>
-                    <MenuItem value="Ayta">Ayta</MenuItem>
-                    <MenuItem value="B'laan">B'laan</MenuItem>
-                    <MenuItem value="Badjao">Badjao</MenuItem>
-                    <MenuItem value="Bagobo">Bagobo</MenuItem>
-                    <MenuItem value="Balangao">Balangao</MenuItem>
-                    <MenuItem value="Balangingi">Balangingi</MenuItem>
-                    <MenuItem value="Bangon">Bangon</MenuItem>
-                    <MenuItem value="Bantoanon">Bantoanon</MenuItem>
-                    <MenuItem value="Banwaon">Banwaon</MenuItem>
-                    <MenuItem value="Batak">Batak</MenuItem>
-                    <MenuItem value="Bicolano">Bicolano</MenuItem>
-                    <MenuItem value="Binukid">Binukid</MenuItem>
-                    <MenuItem value="Bohalano">Bohalano</MenuItem>
-                    <MenuItem value="Bolinao">Bolinao</MenuItem>
-                    <MenuItem value="Bontoc">Bontoc</MenuItem>
-                    <MenuItem value="Buhid">Buhid</MenuItem>
-                    <MenuItem value="Butuanon">Butuanon</MenuItem>
-                    <MenuItem value="Cagyanen">Cagyanen</MenuItem>
-                    <MenuItem value="Caray-a">Caray-a</MenuItem>
-                    <MenuItem value="Cebuano">Cebuano</MenuItem>
-                    <MenuItem value="Cuyunon">Cuyunon</MenuItem>
-                    <MenuItem value="Dasen">Dasen</MenuItem>
-                    <MenuItem value="Ilocano">Ilocano</MenuItem>
-                    <MenuItem value="Ilonggo">Ilonggo</MenuItem>
-                    <MenuItem value="Jamah Mapun">Jamah Mapun</MenuItem>
-                    <MenuItem value="Malay">Malay</MenuItem>
-                    <MenuItem value="Mangyan">Mangyan</MenuItem>
-                    <MenuItem value="Maranao">Maranao</MenuItem>
-                    <MenuItem value="Molbogs">Molbogs</MenuItem>
-                    <MenuItem value="Palawano">Palawano</MenuItem>
-                    <MenuItem value="Panimusan">Panimusan</MenuItem>
-                    <MenuItem value="Tagbanua">Tagbanua</MenuItem>
-                    <MenuItem value="Tao't">Tao't</MenuItem>
-                    <MenuItem value="Bato">Bato</MenuItem>
-                    <MenuItem value="Tausug">Tausug</MenuItem>
-                    <MenuItem value="Waray">Waray</MenuItem>
-                    <MenuItem value="None">None</MenuItem>
-                    <MenuItem value="Others">Others</MenuItem>
+                  <Select labelId="tribe-label" name="tribeEthnicGroup" value={person.tribeEthnicGroup || ""} onChange={canEdit("tribeEthnicGroup") ? handleChange : undefined} inputProps={{ readOnly: !canEdit("tribeEthnicGroup") }} onBlur={() => handleUpdate(person)} label="Tribe/Ethnic Group">
+                    {["Agta", "Agutaynen", "Aklanon", "Alangan", "Alta", "Amersian", "Ati", "Atta", "Ayta", "B'laan", "Badjao", "Bagobo", "Balangao", "Balangingi", "Bangon", "Bantoanon", "Banwaon", "Batak", "Bicolano", "Binukid", "Bohalano", "Bolinao", "Bontoc", "Buhid", "Butuanon", "Cagyanen", "Caray-a", "Cebuano", "Cuyunon", "Dasen", "Ilocano", "Ilonggo", "Jamah Mapun", "Malay", "Mangyan", "Maranao", "Molbogs", "Palawano", "Panimusan", "Tagbanua", "Tao't", "Bato", "Tausug", "Waray", "None", "Others"].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
                   </Select>
-                  {errors.tribeEthnicGroup && (
-                    <FormHelperText>This field is required.</FormHelperText>
-                  )}
+                  {errors.tribeEthnicGroup && <FormHelperText>This field is required.</FormHelperText>}
                 </FormControl>
               </Box>
             </Box>
 
             <br />
-            <Typography
-              style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}
-            >
-              Contact Information:
-            </Typography>
-            <hr style={{ border: "1px solid #ccc", width: "100%" }} />
-            <br />
+            <Typography style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}>Contact Information:</Typography>
+            <hr style={{ border: "1px solid #ccc", width: "100%" }} /><br />
 
             <Box display="flex" gap={2} mb={2}>
+              {/* Contact Number — admin-controlled */}
               <Box flex={1} display="flex" alignItems="center" gap={2}>
                 <Typography sx={{ width: 180 }} fontWeight="medium">
                   Contact Number:<span style={{ color: "red" }}> *</span>
+                  {!canEdit("cellphoneNumber") && <LockedBadge />}
                 </Typography>
-
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="cellphoneNumber"
-                  placeholder="9XXXXXXXXX"
-                  value={person.cellphoneNumber || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={(e) => {
-                    const onlyNumbers = e.target.value.replace(/\D/g, ""); // remove letters
-                    handleChange({
-                      target: {
-                        name: "cellphoneNumber",
-                        value: onlyNumbers,
-                      },
-                    });
-                  }}
-                  error={!!errors.cellphoneNumber}
-                  helperText={
-                    errors.cellphoneNumber && "This field is required."
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <Typography sx={{ mr: 1, fontWeight: "bold" }}>
-                        +63
-                      </Typography>
-                    ),
-                  }}
-                />
+                <TextField fullWidth size="small" name="cellphoneNumber" placeholder="9XXXXXXXXX" value={person.cellphoneNumber || ""} onBlur={() => handleUpdate(person)} onChange={(e) => { const onlyNumbers = e.target.value.replace(/\D/g, ""); handleChange({ target: { name: "cellphoneNumber", value: onlyNumbers } }); }} error={!!errors.cellphoneNumber} helperText={errors.cellphoneNumber && "This field is required."} InputProps={{ readOnly: !canEdit("cellphoneNumber"), startAdornment: <Typography sx={{ mr: 1, fontWeight: "bold" }}>+63</Typography> }} sx={!canEdit("cellphoneNumber") ? { backgroundColor: "#f5f5f5" } : {}} />
               </Box>
 
+              {/* Email — always system-locked */}
               <Box flex={1} display="flex" alignItems="center" gap={2}>
-                <Typography sx={{ width: 180 }} fontWeight="medium">
-                  Email Address:<span style={{ color: "red" }}> *</span>
-                </Typography>
-
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="emailAddress"
-                  required
-                  value={person.emailAddress || ""}
-                  placeholder="Your registered email"
-                  InputProps={{
-                    readOnly: true,
-                  }}
-                  sx={{
-                    backgroundColor: "#f0f0f0",
-                  }}
-                />
+                <Typography sx={{ width: 180 }} fontWeight="medium">Email Address:<span style={{ color: "red" }}> *</span></Typography>
+                <TextField fullWidth size="small" name="emailAddress" required value={person.emailAddress || ""} placeholder="Your registered email" InputProps={{ readOnly: true }} sx={{ backgroundColor: "#f0f0f0" }} />
               </Box>
             </Box>
 
-            <Typography
-              style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}
-            >
-              Present Address:
-            </Typography>
-            <hr style={{ border: "1px solid #ccc", width: "100%" }} />
-            <br />
+            <Typography style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}>Present Address:</Typography>
+            <hr style={{ border: "1px solid #ccc", width: "100%" }} /><br />
+
             <Box
               sx={{
                 display: "flex",
@@ -2714,295 +1045,116 @@ const StudentDashboard1 = () => {
             </Box>
 
             <Box display="flex" gap={2} mb={2}>
+              {/* Present Street — system-locked */}
               <Box flex={1}>
-                <Typography mb={1} fontWeight="medium">
-                  Present Street<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <TextField
-                  InputProps={{ readOnly: true }}
-                  fullWidth
-                  size="small"
-                  name="presentStreet"
-                  value={person.presentStreet || ""}
-                  onBlur={() => handleUpdate(person)}
-                  placeholder="Enter your Present Street"
-                  onChange={handleChange}
-                  error={!!errors.presentStreet}
-                  helperText={errors.presentStreet && "This field is required."}
-                />
+                <Typography mb={1} fontWeight="medium">Present Street<span style={{ color: "red" }}> *</span></Typography>
+                <TextField InputProps={{ readOnly: true }} fullWidth size="small" name="presentStreet" value={person.presentStreet || ""} onBlur={() => handleUpdate(person)} placeholder="Enter your Present Street" onChange={handleChange} error={!!errors.presentStreet} helperText={errors.presentStreet && "This field is required."} />
               </Box>
 
+              {/* Zip Code — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Zip Code<span style={{ color: "red" }}> *</span>
+                  {!canEdit("presentZipCode") && <LockedBadge />}
                 </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="presentZipCode"
-                  placeholder="Enter your Zip Code"
-                  type="number"
-                  value={person.presentZipCode || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={handleChange}
-                  error={!!errors.presentZipCode}
-                  helperText={errors.presentZipCode && "This field is required."}
-                />
+                <TextField fullWidth size="small" name="presentZipCode" placeholder="Enter your Zip Code" type="number" value={person.presentZipCode || ""} onBlur={() => handleUpdate(person)} onChange={handleChange} error={!!errors.presentZipCode} helperText={errors.presentZipCode && "This field is required."} InputProps={{ readOnly: !canEdit("presentZipCode") }} sx={!canEdit("presentZipCode") ? { backgroundColor: "#f5f5f5" } : {}} />
               </Box>
             </Box>
 
             <Box display="flex" gap={2} mb={2}>
-              {/* REGION */}
-              <FormControl
-                fullWidth
-                size="small"
-                required
-                error={!!errors.presentRegion}
-              >
+              {/* Present Region — admin-controlled */}
+              <FormControl fullWidth size="small" required error={!!errors.presentRegion}>
                 <Typography mb={1} fontWeight="medium">
                   Region<span style={{ color: "red" }}> *</span>
+                  {!canEdit("presentRegion") && <LockedBadge />}
                 </Typography>
-
-                <Select
-                  name="presentRegion"
-                  displayEmpty
-                  value={person.presentRegion || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={(e) => {
-                    handleChange(e);
-                    setSelectedRegion(e.target.value);
-                    setSelectedProvince("");
-                    setSelectedCity("");
-                    setSelectedBarangay("");
-                    setProvinceList([]);
-                    setCityList([]);
-                    setBarangayList([]);
-                    autoSave();
-                  }}
-                >
-                  <MenuItem value="">
-                    <em>Select Region</em>
-                  </MenuItem>
-
-                  {regionList.map((region) => (
-                    <MenuItem
-                      key={region.region_code}
-                      value={region.region_name}
-                    >
-                      {region.region_name}
-                    </MenuItem>
-                  ))}
+                <Select name="presentRegion" displayEmpty value={person.presentRegion || ""} onBlur={() => handleUpdate(person)} onChange={canEdit("presentRegion") ? (e) => { handleChange(e); setSelectedRegion(e.target.value); setSelectedProvince(""); setSelectedCity(""); setSelectedBarangay(""); setProvinceList([]); setCityList([]); setBarangayList([]); autoSave(); } : undefined} inputProps={{ readOnly: !canEdit("presentRegion") }}>
+                  <MenuItem value=""><em>Select Region</em></MenuItem>
+                  {regionList.map((region) => (<MenuItem key={region.region_code} value={region.region_name}>{region.region_name}</MenuItem>))}
                 </Select>
-
-                {errors.presentRegion && (
-                  <FormHelperText>This field is required.</FormHelperText>
-                )}
+                {errors.presentRegion && <FormHelperText>This field is required.</FormHelperText>}
               </FormControl>
 
-              {/* PROVINCE */}
-              <FormControl
-                fullWidth
-                size="small"
-                required
-                error={!!errors.presentProvince}
-              >
+              {/* Present Province — admin-controlled */}
+              <FormControl fullWidth size="small" required error={!!errors.presentProvince}>
                 <Typography mb={1} fontWeight="medium">
                   Province<span style={{ color: "red" }}> *</span>
+                  {!canEdit("presentProvince") && <LockedBadge />}
                 </Typography>
-
-                <Select
-                  name="presentProvince"
-                  displayEmpty
-                  value={person.presentProvince || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={(e) => {
-                    handleChange(e);
-                    setSelectedProvince(e.target.value);
-                    setSelectedCity("");
-                    setSelectedBarangay("");
-                    setCityList([]);
-                    setBarangayList([]);
-                    autoSave();
-                  }}
-                  disabled={!person.presentRegion}
-                >
-                  <MenuItem value="">
-                    <em>Select Province</em>
-                  </MenuItem>
-
-                  {provinceList.map((province) => (
-                    <MenuItem
-                      key={province.province_code}
-                      value={province.province_name}
-                    >
-                      {province.province_name}
-                    </MenuItem>
-                  ))}
+                <Select name="presentProvince" displayEmpty value={person.presentProvince || ""} onBlur={() => handleUpdate(person)} onChange={canEdit("presentProvince") ? (e) => { handleChange(e); setSelectedProvince(e.target.value); setSelectedCity(""); setSelectedBarangay(""); setCityList([]); setBarangayList([]); autoSave(); } : undefined} inputProps={{ readOnly: !canEdit("presentProvince") }} disabled={!person.presentRegion}>
+                  <MenuItem value=""><em>Select Province</em></MenuItem>
+                  {provinceList.map((province) => (<MenuItem key={province.province_code} value={province.province_name}>{province.province_name}</MenuItem>))}
                 </Select>
-
-                {errors.presentProvince && (
-                  <FormHelperText>This field is required.</FormHelperText>
-                )}
+                {errors.presentProvince && <FormHelperText>This field is required.</FormHelperText>}
               </FormControl>
             </Box>
 
-            {/* MUNICIPALITY & BARANGAY */}
             <Box display="flex" gap={2} mb={2}>
-              {/* MUNICIPALITY */}
-              <FormControl
-                fullWidth
-                size="small"
-                required
-                error={!!errors.presentMunicipality}
-              >
+              {/* Present Municipality — admin-controlled */}
+              <FormControl fullWidth size="small" required error={!!errors.presentMunicipality}>
                 <Typography mb={1} fontWeight="medium">
                   Municipality<span style={{ color: "red" }}> *</span>
+                  {!canEdit("presentMunicipality") && <LockedBadge />}
                 </Typography>
-
-                <Select
-                  name="presentMunicipality"
-                  displayEmpty
-                  value={person.presentMunicipality || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={(e) => {
-                    handleChange(e);
-                    setSelectedCity(e.target.value);
-                    setSelectedBarangay("");
-                    setBarangayList([]);
-                    autoSave();
-                  }}
-                  disabled={!person.presentProvince}
-                >
-                  <MenuItem value="">
-                    <em>Select Municipality</em>
-                  </MenuItem>
-
-                  {cityList.map((city) => (
-                    <MenuItem key={city.city_code} value={city.city_name}>
-                      {city.city_name}
-                    </MenuItem>
-                  ))}
+                <Select name="presentMunicipality" displayEmpty value={person.presentMunicipality || ""} onBlur={() => handleUpdate(person)} onChange={canEdit("presentMunicipality") ? (e) => { handleChange(e); setSelectedCity(e.target.value); setSelectedBarangay(""); setBarangayList([]); autoSave(); } : undefined} inputProps={{ readOnly: !canEdit("presentMunicipality") }} disabled={!person.presentProvince}>
+                  <MenuItem value=""><em>Select Municipality</em></MenuItem>
+                  {cityList.map((city) => (<MenuItem key={city.city_code} value={city.city_name}>{city.city_name}</MenuItem>))}
                 </Select>
-
-                {errors.presentMunicipality && (
-                  <FormHelperText>This field is required.</FormHelperText>
-                )}
+                {errors.presentMunicipality && <FormHelperText>This field is required.</FormHelperText>}
               </FormControl>
 
-              {/* BARANGAY */}
-              <FormControl
-                fullWidth
-                size="small"
-                required
-                error={!!errors.presentBarangay}
-              >
+              {/* Present Barangay — admin-controlled */}
+              <FormControl fullWidth size="small" required error={!!errors.presentBarangay}>
                 <Typography mb={1} fontWeight="medium">
                   Barangay<span style={{ color: "red" }}> *</span>
+                  {!canEdit("presentBarangay") && <LockedBadge />}
                 </Typography>
-
-                <Select
-                  name="presentBarangay"
-                  displayEmpty
-                  value={person.presentBarangay || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={(e) => {
-                    handleChange(e);
-                    setSelectedBarangay(e.target.value);
-                    autoSave();
-                  }}
-                  disabled={!person.presentMunicipality}
-                >
-                  <MenuItem value="">
-                    <em>Select Barangay</em>
-                  </MenuItem>
-
-                  {barangayList.map((brgy) => (
-                    <MenuItem key={brgy.brgy_code} value={brgy.brgy_name}>
-                      {brgy.brgy_name}
-                    </MenuItem>
-                  ))}
+                <Select name="presentBarangay" displayEmpty value={person.presentBarangay || ""} onBlur={() => handleUpdate(person)} onChange={canEdit("presentBarangay") ? (e) => { handleChange(e); setSelectedBarangay(e.target.value); autoSave(); } : undefined} inputProps={{ readOnly: !canEdit("presentBarangay") }} disabled={!person.presentMunicipality}>
+                  <MenuItem value=""><em>Select Barangay</em></MenuItem>
+                  {barangayList.map((brgy) => (<MenuItem key={brgy.brgy_code} value={brgy.brgy_name}>{brgy.brgy_name}</MenuItem>))}
                 </Select>
-
-                {errors.presentBarangay && (
-                  <FormHelperText>This field is required.</FormHelperText>
-                )}
+                {errors.presentBarangay && <FormHelperText>This field is required.</FormHelperText>}
               </FormControl>
             </Box>
 
-            {/* DSWD Household Number */}
             <Box mb={2}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    name="presentDswdChecked"
-                    checked={person.presentDswdChecked === 1}
-                    onChange={handleChange}
-                  />
-                }
-                label="I have a Present DSWD Household Number"
-              />
+              <FormControlLabel control={<Checkbox name="presentDswdChecked" checked={person.presentDswdChecked === 1} onChange={handleChange} />} label="I have a Present DSWD Household Number" />
             </Box>
 
             {person.presentDswdChecked === 1 && (
               <Box mb={2}>
                 <Typography mb={1} fontWeight="medium">
                   Present DSWD Household Number <span style={{ color: "red" }}>*</span>
+                  {!canEdit("presentDswdHouseholdNumber") && <LockedBadge />}
                 </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="presentDswdHouseholdNumber"
-                  value={person.presentDswdHouseholdNumber || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={handleChange}
-                  placeholder="Enter your Present DSWD Household Number"
-                  error={!!errors.presentDswdHouseholdNumber}
-                  helperText={
-                    errors.presentDswdHouseholdNumber && "This field is required."
-                  }
-                />
+                <TextField fullWidth size="small" name="presentDswdHouseholdNumber" value={person.presentDswdHouseholdNumber || ""} onBlur={() => handleUpdate(person)} onChange={handleChange} placeholder="Enter your Present DSWD Household Number" error={!!errors.presentDswdHouseholdNumber} helperText={errors.presentDswdHouseholdNumber && "This field is required."} InputProps={{ readOnly: !canEdit("presentDswdHouseholdNumber") }} sx={!canEdit("presentDswdHouseholdNumber") ? { backgroundColor: "#f5f5f5" } : {}} />
               </Box>
             )}
 
-            <Typography
-              style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}
-            >
-              Permanent Address:
-            </Typography>
-            <hr style={{ border: "1px solid #ccc", width: "100%" }} />
-            <br />
+            <Typography style={{ fontSize: "20px", color: mainButtonColor, fontWeight: "bold" }}>Permanent Address:</Typography>
+            <hr style={{ border: "1px solid #ccc", width: "100%" }} /><br />
 
             <FormControlLabel
               control={
-                <Checkbox
-                  name="sameAsPresentAddress"
-                  checked={person.sameAsPresentAddress === 1}
+                <Checkbox name="sameAsPresentAddress" checked={person.sameAsPresentAddress === 1}
                   onChange={(e) => {
                     const checked = e.target.checked;
-                    const updatedPerson = {
-                      ...person,
-                      sameAsPresentAddress: checked ? 1 : 0,
-                    };
-
+                    const updatedPerson = { ...person, sameAsPresentAddress: checked ? 1 : 0 };
                     if (checked) {
                       updatedPerson.permanentStreet = person.presentStreet;
                       updatedPerson.permanentZipCode = person.presentZipCode;
                       updatedPerson.permanentRegion = person.presentRegion;
                       updatedPerson.permanentProvince = person.presentProvince;
-                      updatedPerson.permanentMunicipality =
-                        person.presentMunicipality;
+                      updatedPerson.permanentMunicipality = person.presentMunicipality;
                       updatedPerson.permanentBarangay = person.presentBarangay;
-                      updatedPerson.permanentDswdHouseholdNumber =
-                        person.presentDswdHouseholdNumber;
-
+                      updatedPerson.permanentDswdHouseholdNumber = person.presentDswdHouseholdNumber;
                       setPermanentRegion(person.presentRegion);
                       setPermanentProvince(person.presentProvince);
                       setPermanentCity(person.presentMunicipality);
                       setPermanentBarangay(person.presentBarangay);
                     }
-
                     setPerson(updatedPerson);
-                    handleUpdate(updatedPerson); // optional: real-time save
+                    handleUpdate(updatedPerson);
                   }}
                   onBlur={() => handleUpdate(person)}
                 />
@@ -3011,270 +1163,97 @@ const StudentDashboard1 = () => {
             />
 
             <Box display="flex" gap={2} mb={2}>
+              {/* Permanent Street — system-locked */}
               <Box flex={1}>
-                <Typography mb={1} fontWeight="medium">
-                  Permanent Street<span style={{ color: "red" }}> *</span>
-                </Typography>
-                <TextField
-                  InputProps={{ readOnly: true }}
-                  fullWidth
-                  size="small"
-                  name="permanentStreet"
-                  placeholder="Enter your Permanent Street"
-                  value={person.permanentStreet || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={handleChange}
-                  error={!!errors.permanentStreet}
-                  helperText={
-                    errors.permanentStreet && "This field is required."
-                  }
-                />
+                <Typography mb={1} fontWeight="medium">Permanent Street<span style={{ color: "red" }}> *</span></Typography>
+                <TextField InputProps={{ readOnly: true }} fullWidth size="small" name="permanentStreet" placeholder="Enter your Permanent Street" value={person.permanentStreet || ""} onBlur={() => handleUpdate(person)} onChange={handleChange} error={!!errors.permanentStreet} helperText={errors.permanentStreet && "This field is required."} />
               </Box>
 
+              {/* Permanent Zip — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Zip Code<span style={{ color: "red" }}> *</span>
+                  {!canEdit("permanentZipCode") && <LockedBadge />}
                 </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="permanentZipCode"
-                  type="number"
-                  placeholder="Enter your Permanent Zip Code"
-                  value={person.permanentZipCode || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={handleChange}
-                  error={!!errors.permanentZipCode}
-                  helperText={
-                    errors.permanentZipCode && "This field is required."
-                  }
-                />
+                <TextField fullWidth size="small" name="permanentZipCode" type="number" placeholder="Enter your Permanent Zip Code" value={person.permanentZipCode || ""} onBlur={() => handleUpdate(person)} onChange={handleChange} error={!!errors.permanentZipCode} helperText={errors.permanentZipCode && "This field is required."} InputProps={{ readOnly: !canEdit("permanentZipCode") }} sx={!canEdit("permanentZipCode") ? { backgroundColor: "#f5f5f5" } : {}} />
               </Box>
             </Box>
 
-            {/* Permanent Region & Province */}
             <Box display="flex" gap={2} mb={2}>
-              {/* Permanent Region */}
+              {/* Permanent Region — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Permanent Region<span style={{ color: "red" }}> *</span>
+                  {!canEdit("permanentRegion") && <LockedBadge />}
                 </Typography>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  required
-                  error={!!errors.permanentRegion}
-                >
-                  <Select
-                    name="permanentRegion"
-                    displayEmpty
-                    value={person.permanentRegion || ""}
-                    onBlur={() => handleUpdate(person)}
-                    onChange={(e) => {
-                      handleChange(e);
-                      setPermanentRegion(e.target.value);
-                      setPermanentProvince("");
-                      setPermanentCity("");
-                      setPermanentBarangay("");
-                      setPermanentProvinceList([]);
-                      setPermanentCityList([]);
-                      setPermanentBarangayList([]);
-                      autoSave();
-                    }}
-                  >
-                    <MenuItem value="">
-                      <em>Select Region</em>
-                    </MenuItem>
-
-                    {permanentRegionList.map((region) => (
-                      <MenuItem
-                        key={region.region_code}
-                        value={region.region_name}
-                      >
-                        {region.region_name}
-                      </MenuItem>
-                    ))}
+                <FormControl fullWidth size="small" required error={!!errors.permanentRegion}>
+                  <Select name="permanentRegion" displayEmpty value={person.permanentRegion || ""} onBlur={() => handleUpdate(person)} onChange={canEdit("permanentRegion") ? (e) => { handleChange(e); setPermanentRegion(e.target.value); setPermanentProvince(""); setPermanentCity(""); setPermanentBarangay(""); setPermanentProvinceList([]); setPermanentCityList([]); setPermanentBarangayList([]); autoSave(); } : undefined} inputProps={{ readOnly: !canEdit("permanentRegion") }}>
+                    <MenuItem value=""><em>Select Region</em></MenuItem>
+                    {permanentRegionList.map((region) => (<MenuItem key={region.region_code} value={region.region_name}>{region.region_name}</MenuItem>))}
                   </Select>
-
-                  {errors.permanentRegion && (
-                    <FormHelperText error>
-                      This field is required.
-                    </FormHelperText>
-                  )}
+                  {errors.permanentRegion && <FormHelperText error>This field is required.</FormHelperText>}
                 </FormControl>
               </Box>
 
-              {/* Permanent Province */}
+              {/* Permanent Province — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Permanent Province<span style={{ color: "red" }}> *</span>
+                  {!canEdit("permanentProvince") && <LockedBadge />}
                 </Typography>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  required
-                  error={!!errors.permanentProvince}
-                >
-                  <Select
-                    name="permanentProvince"
-                    displayEmpty
-                    value={person.permanentProvince || ""}
-                    onBlur={() => handleUpdate(person)}
-                    onChange={(e) => {
-                      handleChange(e);
-                      setPermanentProvince(e.target.value);
-                      setPermanentCity("");
-                      setPermanentBarangay("");
-                      setPermanentCityList([]);
-                      setPermanentBarangayList([]);
-                      autoSave();
-                    }}
-                    disabled={!person.permanentRegion}
-                  >
-                    <MenuItem value="">
-                      <em>Select Province</em>
-                    </MenuItem>
-
-                    {permanentProvinceList.map((province) => (
-                      <MenuItem
-                        key={province.province_code}
-                        value={province.province_name}
-                      >
-                        {province.province_name}
-                      </MenuItem>
-                    ))}
+                <FormControl fullWidth size="small" required error={!!errors.permanentProvince}>
+                  <Select name="permanentProvince" displayEmpty value={person.permanentProvince || ""} onBlur={() => handleUpdate(person)} onChange={canEdit("permanentProvince") ? (e) => { handleChange(e); setPermanentProvince(e.target.value); setPermanentCity(""); setPermanentBarangay(""); setPermanentCityList([]); setPermanentBarangayList([]); autoSave(); } : undefined} inputProps={{ readOnly: !canEdit("permanentProvince") }} disabled={!person.permanentRegion}>
+                    <MenuItem value=""><em>Select Province</em></MenuItem>
+                    {permanentProvinceList.map((province) => (<MenuItem key={province.province_code} value={province.province_name}>{province.province_name}</MenuItem>))}
                   </Select>
-
-                  {errors.permanentProvince && (
-                    <FormHelperText error>
-                      This field is required.
-                    </FormHelperText>
-                  )}
+                  {errors.permanentProvince && <FormHelperText error>This field is required.</FormHelperText>}
                 </FormControl>
               </Box>
             </Box>
 
-            {/* Permanent Municipality & Barangay */}
             <Box display="flex" gap={2} mb={2}>
-              {/* Permanent Municipality */}
+              {/* Permanent Municipality — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Permanent Municipality<span style={{ color: "red" }}> *</span>
+                  {!canEdit("permanentMunicipality") && <LockedBadge />}
                 </Typography>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  required
-                  error={!!errors.permanentMunicipality}
-                >
-                  <Select
-                    name="permanentMunicipality"
-                    displayEmpty
-                    value={person.permanentMunicipality || ""}
-                    onBlur={() => handleUpdate(person)}
-                    onChange={(e) => {
-                      handleChange(e);
-                      setPermanentCity(e.target.value);
-                      setPermanentBarangay("");
-                      setPermanentBarangayList([]);
-                      autoSave();
-                    }}
-                    disabled={!person.permanentProvince}
-                  >
-                    <MenuItem value="">
-                      <em>Select Municipality</em>
-                    </MenuItem>
-
-                    {permanentCityList.map((city) => (
-                      <MenuItem key={city.city_code} value={city.city_name}>
-                        {city.city_name}
-                      </MenuItem>
-                    ))}
+                <FormControl fullWidth size="small" required error={!!errors.permanentMunicipality}>
+                  <Select name="permanentMunicipality" displayEmpty value={person.permanentMunicipality || ""} onBlur={() => handleUpdate(person)} onChange={canEdit("permanentMunicipality") ? (e) => { handleChange(e); setPermanentCity(e.target.value); setPermanentBarangay(""); setPermanentBarangayList([]); autoSave(); } : undefined} inputProps={{ readOnly: !canEdit("permanentMunicipality") }} disabled={!person.permanentProvince}>
+                    <MenuItem value=""><em>Select Municipality</em></MenuItem>
+                    {permanentCityList.map((city) => (<MenuItem key={city.city_code} value={city.city_name}>{city.city_name}</MenuItem>))}
                   </Select>
-
-                  {errors.permanentMunicipality && (
-                    <FormHelperText error>
-                      This field is required.
-                    </FormHelperText>
-                  )}
+                  {errors.permanentMunicipality && <FormHelperText error>This field is required.</FormHelperText>}
                 </FormControl>
               </Box>
 
-              {/* Permanent Barangay */}
+              {/* Permanent Barangay — admin-controlled */}
               <Box flex={1}>
                 <Typography mb={1} fontWeight="medium">
                   Permanent Barangay<span style={{ color: "red" }}> *</span>
+                  {!canEdit("permanentBarangay") && <LockedBadge />}
                 </Typography>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  required
-                  error={!!errors.permanentBarangay}
-                >
-                  <Select
-                    name="permanentBarangay"
-                    displayEmpty
-                    value={person.permanentBarangay || ""}
-                    onBlur={() => handleUpdate(person)}
-                    onChange={(e) => {
-                      handleChange(e);
-                      setPermanentBarangay(e.target.value);
-                      autoSave();
-                    }}
-                    disabled={!person.permanentMunicipality}
-                  >
-                    <MenuItem value="">
-                      <em>Select Barangay</em>
-                    </MenuItem>
-
-                    {permanentBarangayList.map((brgy) => (
-                      <MenuItem key={brgy.brgy_code} value={brgy.brgy_name}>
-                        {brgy.brgy_name}
-                      </MenuItem>
-                    ))}
+                <FormControl fullWidth size="small" required error={!!errors.permanentBarangay}>
+                  <Select name="permanentBarangay" displayEmpty value={person.permanentBarangay || ""} onBlur={() => handleUpdate(person)} onChange={canEdit("permanentBarangay") ? (e) => { handleChange(e); setPermanentBarangay(e.target.value); autoSave(); } : undefined} inputProps={{ readOnly: !canEdit("permanentBarangay") }} disabled={!person.permanentMunicipality}>
+                    <MenuItem value=""><em>Select Barangay</em></MenuItem>
+                    {permanentBarangayList.map((brgy) => (<MenuItem key={brgy.brgy_code} value={brgy.brgy_name}>{brgy.brgy_name}</MenuItem>))}
                   </Select>
-
-                  {errors.permanentBarangay && (
-                    <FormHelperText error>
-                      This field is required.
-                    </FormHelperText>
-                  )}
+                  {errors.permanentBarangay && <FormHelperText error>This field is required.</FormHelperText>}
                 </FormControl>
               </Box>
             </Box>
 
-            {/* DSWD Household Number */}
             <Box mb={2}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    name="permanentDswdChecked"
-                    checked={person.permanentDswdChecked === 1}
-                    onChange={handleChange}
-                  />
-                }
-                label="I have a Permanent DSWD Household Number"
-              />
+              <FormControlLabel control={<Checkbox name="permanentDswdChecked" checked={person.permanentDswdChecked === 1} onChange={handleChange} />} label="I have a Permanent DSWD Household Number" />
             </Box>
 
             {person.permanentDswdChecked === 1 && (
               <Box mb={2}>
                 <Typography mb={1} fontWeight="medium">
                   Permanent DSWD Household Number <span style={{ color: "red" }}>*</span>
+                  {!canEdit("permanentDswdHouseholdNumber") && <LockedBadge />}
                 </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  name="permanentDswdHouseholdNumber"
-                  value={person.permanentDswdHouseholdNumber || ""}
-                  onBlur={() => handleUpdate(person)}
-                  onChange={handleChange}
-                  placeholder="Enter your Permanent DSWD Household Number"
-                  error={!!errors.permanentDswdHouseholdNumber}
-                  helperText={
-                    errors.permanentDswdHouseholdNumber && "This field is required."
-                  }
-                />
+                <TextField fullWidth size="small" name="permanentDswdHouseholdNumber" value={person.permanentDswdHouseholdNumber || ""} onBlur={() => handleUpdate(person)} onChange={handleChange} placeholder="Enter your Permanent DSWD Household Number" error={!!errors.permanentDswdHouseholdNumber} helperText={errors.permanentDswdHouseholdNumber && "This field is required."} InputProps={{ readOnly: !canEdit("permanentDswdHouseholdNumber") }} sx={!canEdit("permanentDswdHouseholdNumber") ? { backgroundColor: "#f5f5f5" } : {}} />
               </Box>
             )}
 
@@ -3309,12 +1288,11 @@ const StudentDashboard1 = () => {
                       top: 8,
                       right: 8,
                       color: "#fff",
+                      border: `1px solid ${borderColor}`,
                       backgroundColor: settings?.header_color || "#1976d2",
 
-                      border: `1px solid ${borderColor}`,
-
                       "&:hover": {
-                        bgcolor: "black",
+                        bgcolor: "#000",
                       },
                     }}
                   >
@@ -3325,9 +1303,7 @@ const StudentDashboard1 = () => {
                   <Box
                     sx={{
                       backgroundColor: settings?.header_color || "#1976d2",
-
                       border: `1px solid ${borderColor}`,
-
                       color: "white",
                       py: 2,
                       px: 3,
@@ -3341,7 +1317,6 @@ const StudentDashboard1 = () => {
                     </Typography>
                   </Box>
 
-                  {/* Preview Image */}
                   {(preview || person.profile_img) && (
                     <Box
                       sx={{
@@ -3356,7 +1331,7 @@ const StudentDashboard1 = () => {
                         src={
                           preview
                             ? preview
-                            : `${API_BASE_URL}/uploads/Applicant1by1/${person.profile_img}`
+                            : `${API_BASE_URL}/uploads/Student1by1/${person.profile_img}`
                         }
                         alt="Preview"
                         sx={{
@@ -3390,7 +1365,6 @@ const StudentDashboard1 = () => {
                             severity: "info",
                           });
                         }}
-
                         sx={{
                           position: "absolute",
                           top: -8,
@@ -3484,13 +1458,11 @@ const StudentDashboard1 = () => {
                     onClick={handleUpload}
                     sx={{
                       backgroundColor: settings?.header_color || "#1976d2",
-
                       border: `1px solid ${borderColor}`,
-
                       color: "white",
                       fontWeight: "bold",
                       "&:hover": {
-                        backgroundColor: "#0000000",
+                        backgroundColor: "#000",
                       },
                     }}
                   >
@@ -3502,88 +1474,34 @@ const StudentDashboard1 = () => {
 
 
 
+
             <Box display="flex" justifyContent="right" mt={4}>
-              {/* Previous Page Button */}
+              {canEdit("profile_img") && (
+                <Button variant="contained" onClick={handleOpen} sx={{ backgroundColor: mainButtonColor, border: `1px solid ${borderColor}`, color: "#fff", marginRight: "5px", "&:hover": { backgroundColor: "#000000" }, display: "flex", alignItems: "center" }}>
+                  <PhotoCameraIcon sx={{ marginRight: "8px" }} />
+                  Upload Photo <br /> Student Picture
+                </Button>
+              )}
               <Button
                 variant="contained"
-                onClick={handleOpen}
-                sx={{
-                  backgroundColor: mainButtonColor,
-                  border: `1px solid ${borderColor}`,
-                  color: "#fff", // Set text color to white
-                  marginRight: "5px", // Add margin between buttons
-                  "&:hover": {
-                    backgroundColor: "#000000", // Adjust hover color to match
-                  },
-                  display: "flex", // Ensure icon and text are aligned
-                  alignItems: "center", // Center the content vertically
-                }}
-              >
-                <PhotoCameraIcon sx={{ marginRight: "8px" }} />{" "}
-                {/* Photo Icon */}
-                Upload Photo <br /> Student Picture
-              </Button>
-              <Button
-                variant="contained"
-                onClick={async (e) => {
+                onClick={async () => {
                   if (isFormValid()) {
                     await handleUpdate(person);
-
-                    setSnackbar({
-                      open: true,
-                      message: "Your record has been saved successfully!",
-                      severity: "success",
-                    });
-
-                    setTimeout(() => {
-                      navigate("/student_dashboard2");
-                    }, 1200);
+                    setSnackbar({ open: true, message: "Your record has been saved successfully!", severity: "success" });
+                    setTimeout(() => { navigate("/student_dashboard2"); }, 1200);
                   } else {
-                    setSnackbar({
-                      open: true,
-                      message: "Please complete all required fields before proceeding.",
-                      severity: "error",
-                    });
+                    setSnackbar({ open: true, message: "Please complete all required fields before proceeding.", severity: "error" });
                   }
                 }}
-                endIcon={
-                  <ArrowForwardIcon
-                    sx={{
-                      color: "#fff",
-                      transition: "color 0.3s",
-                    }}
-                  />
-                }
-                sx={{
-                  backgroundColor: mainButtonColor,
-                  border: `1px solid ${borderColor}`,
-                  color: "#fff",
-                  "&:hover": {
-                    backgroundColor: "#000000",
-                    color: "#fff",
-                    "& .MuiSvgIcon-root": {
-                      color: "#fff",
-                    },
-                  },
-                }}
+                endIcon={<ArrowForwardIcon sx={{ color: "#fff", transition: "color 0.3s" }} />}
+                sx={{ backgroundColor: mainButtonColor, border: `1px solid ${borderColor}`, color: "#fff", "&:hover": { backgroundColor: "#000000", color: "#fff" } }}
               >
                 Next Step
               </Button>
             </Box>
 
-            <Snackbar
-              open={snackbar.open}
-              autoHideDuration={1000} // 3 seconds
-              onClose={handleCloseSnackbar}
-              anchorOrigin={{ vertical: "top", horizontal: "center" }}
-            >
-              <Alert
-                onClose={handleCloseSnackbar}
-                severity={snackbar.severity}
-                sx={{ width: "100%" }}
-              >
-                {snackbar.message}
-              </Alert>
+            <Snackbar open={snackbar.open} autoHideDuration={1000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: "top", horizontal: "center" }}>
+              <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>{snackbar.message}</Alert>
             </Snackbar>
           </Container>
         </form>

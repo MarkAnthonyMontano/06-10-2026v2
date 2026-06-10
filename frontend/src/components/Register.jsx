@@ -36,6 +36,8 @@ import ZoomInIcon from "@mui/icons-material/ZoomIn";
 import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import CloseIcon from "@mui/icons-material/Close";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { SettingsContext } from "../App";
 import API_BASE_URL from "../apiConfig";
 import AnnouncementSlider from "../components/AnnouncementSlider";
@@ -57,16 +59,68 @@ const useIsMobile = (bp = 768) => {
   return isMobile;
 };
 
-/* ─── Fullscreen Announcement Viewer Modal ─── */
+/* ─── Formats announcement text with bullets / line-breaks ─── */
+const FormattedContent = ({ text, style = {} }) => {
+  if (!text) return null;
+  const lines = text.split("\n");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "3px", ...style }}>
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} style={{ height: "5px" }} />;
+
+        /* Sub-bullet: leading spaces then bullet char */
+        const subBullet = line.match(/^[\s\t]{2,}[•*\-–]\s+(.*)/);
+        if (subBullet) {
+          return (
+            <div key={i} style={{ display: "flex", gap: "6px", alignItems: "flex-start", paddingLeft: "14px" }}>
+              <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", marginTop: "3px", flexShrink: 0 }}>◦</span>
+              <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "12.5px", lineHeight: 1.55 }}>{subBullet[1]}</span>
+            </div>
+          );
+        }
+
+        /* Main bullet */
+        const bullet = trimmed.match(/^[•*\-–]\s+(.*)/);
+        if (bullet) {
+          return (
+            <div key={i} style={{ display: "flex", gap: "7px", alignItems: "flex-start" }}>
+              <span style={{ color: "#fff", fontSize: "13px", marginTop: "2px", flexShrink: 0 }}>•</span>
+              <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "13px", lineHeight: 1.55 }}>{bullet[1]}</span>
+            </div>
+          );
+        }
+
+        /* Hashtag lines */
+        if (trimmed.startsWith("#")) {
+          return (
+            <p key={i} style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.45)", fontSize: "11.5px", lineHeight: 1.5 }}>
+              {trimmed}
+            </p>
+          );
+        }
+
+        return (
+          <p key={i} style={{ margin: 0, color: "rgba(255,255,255,0.9)", fontSize: "13px", lineHeight: 1.6 }}>
+            {trimmed}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
+/* ─── Fullscreen Announcement Viewer Modal (mobile) ─── */
 const AnnouncementViewerModal = ({ slides, startIndex, onClose }) => {
   const [index, setIndex] = useState(startIndex || 0);
   const [scale, setScale] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
+  const [showContent, setShowContent] = useState(false);
 
   const current = slides[index];
 
-  const goNext = () => { setIndex((prev) => (prev + 1) % slides.length); setScale(1); };
-  const goPrev = () => { setIndex((prev) => (prev - 1 + slides.length) % slides.length); setScale(1); };
+  const goNext = () => { setIndex((prev) => (prev + 1) % slides.length); setScale(1); setShowContent(false); };
+  const goPrev = () => { setIndex((prev) => (prev - 1 + slides.length) % slides.length); setScale(1); setShowContent(false); };
 
   const handleDragEnd = (_, info) => {
     if (scale > 1) return;
@@ -81,198 +135,197 @@ const AnnouncementViewerModal = ({ slides, startIndex, onClose }) => {
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  if (!current?.file_path) return null;
+  if (!current) return null;
+
+  const hasImage = !!current.file_path;
+  const hasContent = !!(current.content?.trim());
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 99999,
-        background: "rgba(0,0,0,0.96)",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 99999,
+      background: "rgba(0,0,0,0.97)",
+      display: "flex", flexDirection: "column",
+    }}>
       {/* ── Top Bar ── */}
       <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "12px 16px",
-        background: "rgba(0,0,0,0.7)",
-        flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 14px", background: "rgba(0,0,0,0.8)", flexShrink: 0,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <CampaignIcon sx={{ color: "#fff", fontSize: 20 }} />
-          <span style={{ color: "#fff", fontWeight: 600, fontSize: "14px", maxWidth: "60vw", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+          <CampaignIcon sx={{ color: "#fff", fontSize: 18, flexShrink: 0 }} />
+          <span style={{
+            color: "#fff", fontWeight: 600, fontSize: "13px",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
             {current.title}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {/* Zoom In */}
-          <button
-            onClick={() => setScale((s) => Math.min(s + 0.5, 3))}
-            style={{
-              background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%",
-              width: 36, height: 36, color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <ZoomInIcon sx={{ fontSize: 20 }} />
-          </button>
-          {/* Zoom Out */}
-          <button
-            onClick={() => setScale((s) => Math.max(s - 0.5, 1))}
-            style={{
-              background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%",
-              width: 36, height: 36, color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <ZoomOutIcon sx={{ fontSize: 20 }} />
-          </button>
-          {/* Close */}
-          <button
-            onClick={onClose}
-            style={{
-              background: "rgba(220,38,38,0.85)", border: "none", borderRadius: "50%",
-              width: 36, height: 36, color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 20 }} />
+        <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 }}>
+          {hasImage && (
+            <>
+              <button onClick={() => setScale((s) => Math.min(s + 0.5, 3))}
+                style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ZoomInIcon sx={{ fontSize: 18 }} />
+              </button>
+              <button onClick={() => setScale((s) => Math.max(s - 0.5, 1))}
+                style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ZoomOutIcon sx={{ fontSize: 18 }} />
+              </button>
+            </>
+          )}
+          <button onClick={onClose}
+            style={{ background: "rgba(220,38,38,0.85)", border: "none", borderRadius: "50%", width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CloseIcon sx={{ fontSize: 18 }} />
           </button>
         </div>
       </div>
 
       {/* ── Image Area ── */}
-      <div style={{
-        flex: 1,
-        position: "relative",
-        overflow: "hidden",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        {/* Prev */}
-        {slides.length > 1 && (
-          <button
-            onClick={goPrev}
-            style={{
-              position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+      {hasImage && (
+        <div style={{
+          /* When content panel is open, shrink image; otherwise let it flex */
+          flex: showContent ? "0 0 45%" : "1 1 auto",
+          position: "relative", overflow: "hidden",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "flex 0.3s ease",
+          minHeight: 0,
+        }}>
+          {slides.length > 1 && (
+            <button onClick={goPrev} style={{
+              position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
               zIndex: 10, background: "rgba(255,255,255,0.18)", border: "none", borderRadius: "50%",
-              width: 40, height: 40, color: "#fff", cursor: "pointer",
+              width: 38, height: 38, color: "#fff", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <ArrowBackIosNewIcon sx={{ fontSize: 18 }} />
-          </button>
-        )}
-
-        {/* Next */}
-        {slides.length > 1 && (
-          <button
-            onClick={goNext}
-            style={{
-              position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+            }}>
+              <ArrowBackIosNewIcon sx={{ fontSize: 17 }} />
+            </button>
+          )}
+          {slides.length > 1 && (
+            <button onClick={goNext} style={{
+              position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
               zIndex: 10, background: "rgba(255,255,255,0.18)", border: "none", borderRadius: "50%",
-              width: 40, height: 40, color: "#fff", cursor: "pointer",
+              width: 38, height: 38, color: "#fff", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <ArrowForwardIosIcon sx={{ fontSize: 18 }} />
-          </button>
-        )}
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={current.id}
-            drag={scale <= 1 ? "x" : false}
-            dragDirectionLock
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.03}
-            onDragStart={() => setIsDragging(true)}
-            onDragEnd={handleDragEnd}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.25 }}
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              touchAction: scale > 1 ? "pinch-zoom" : "pan-y",
-            }}
-          >
-            <img
-              src={`${API_BASE_URL}/uploads/Announcement/${current.file_path}`}
-              alt={current.title}
-              draggable={false}
+            }}>
+              <ArrowForwardIosIcon sx={{ fontSize: 17 }} />
+            </button>
+          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={current.id}
+              drag={scale <= 1 ? "x" : false}
+              dragDirectionLock
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.03}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={handleDragEnd}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
               style={{
-                maxWidth: "100%",
-                maxHeight: "100%",
-                objectFit: "contain",
-                transform: `scale(${scale})`,
-                transformOrigin: "center center",
-                transition: "transform 0.2s ease",
-                userSelect: "none",
-                borderRadius: scale > 1 ? 0 : "8px",
+                width: "100%", height: "100%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                touchAction: scale > 1 ? "pinch-zoom" : "pan-y",
               }}
-            />
-          </motion.div>
-        </AnimatePresence>
-      </div>
+            >
+              <img
+                src={`${API_BASE_URL}/uploads/Announcement/${current.file_path}`}
+                alt={current.title}
+                draggable={false}
+                style={{
+                  maxWidth: "100%", maxHeight: "100%",
+                  objectFit: "contain",
+                  transform: `scale(${scale})`,
+                  transformOrigin: "center center",
+                  transition: "transform 0.2s ease",
+                  userSelect: "none",
+                  borderRadius: scale > 1 ? 0 : "6px",
+                }}
+              />
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Zoom hint */}
+          {scale > 1 && (
+            <div style={{
+              position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)",
+              background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: "11px",
+              padding: "4px 10px", borderRadius: "20px", pointerEvents: "none",
+            }}>
+              {Math.round(scale * 100)}% — tap − to zoom out
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Content Toggle Tab (only if there's content) ── */}
+      {hasContent && (
+        <button
+          onClick={() => setShowContent((v) => !v)}
+          style={{
+            flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            padding: "9px 16px",
+            background: showContent ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
+            border: "none", borderTop: "1px solid rgba(255,255,255,0.12)",
+            color: "#fff", cursor: "pointer", fontSize: "12.5px", fontWeight: 600,
+            transition: "background 0.2s",
+          }}
+        >
+          {showContent ? <KeyboardArrowDownIcon sx={{ fontSize: 18 }} /> : <KeyboardArrowUpIcon sx={{ fontSize: 18 }} />}
+          {showContent ? "Hide announcement details" : "Show full announcement"}
+          {!showContent && (
+            <span style={{
+              background: "rgba(255,255,255,0.2)", borderRadius: "10px",
+              padding: "1px 7px", fontSize: "10.5px", marginLeft: 2,
+            }}>
+              tap to read
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* ── Content Panel ── */}
+      {hasContent && showContent && (
+        <div style={{
+          flex: hasImage ? "0 0 auto" : "1 1 auto",
+          maxHeight: hasImage ? "48%" : "100%",
+          overflowY: "auto",
+          background: "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+          padding: "16px 18px 20px",
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(255,255,255,0.2) transparent",
+        }}>
+          <p style={{ margin: "0 0 10px", color: "#fff", fontWeight: 700, fontSize: "13.5px", lineHeight: 1.4 }}>
+            {current.title}
+          </p>
+          <div style={{ width: 28, height: 2, background: "rgba(255,255,255,0.3)", borderRadius: 2, marginBottom: 12 }} />
+          <FormattedContent text={current.content} />
+        </div>
+      )}
 
       {/* ── Bottom Bar: dots + counter ── */}
       <div style={{
-        padding: "12px 16px",
-        background: "rgba(0,0,0,0.7)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-        gap: 12,
+        padding: "10px 14px", background: "rgba(0,0,0,0.8)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0, gap: 10,
       }}>
         {slides.length > 1 && slides.map((_, i) => (
-          <div
-            key={i}
-            onClick={() => { setIndex(i); setScale(1); }}
+          <div key={i} onClick={() => { setIndex(i); setScale(1); setShowContent(false); }}
             style={{
-              width: i === index ? 20 : 7, height: 7,
-              borderRadius: 4,
+              width: i === index ? 18 : 7, height: 7, borderRadius: 4,
               background: i === index ? "#fff" : "rgba(255,255,255,0.35)",
-              transition: "all 0.3s",
-              cursor: "pointer",
-            }}
-          />
+              transition: "all 0.3s", cursor: "pointer",
+            }} />
         ))}
         {slides.length > 1 && (
-          <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", marginLeft: 4 }}>
+          <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", marginLeft: 2 }}>
             {index + 1} / {slides.length}
           </span>
         )}
       </div>
-
-      {/* Zoom hint */}
-      {scale > 1 && (
-        <div style={{
-          position: "absolute",
-          bottom: 70,
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "rgba(0,0,0,0.6)",
-          color: "#fff",
-          fontSize: "11px",
-          padding: "4px 10px",
-          borderRadius: "20px",
-          pointerEvents: "none",
-        }}>
-          {Math.round(scale * 100)}% — tap − to zoom out
-        </div>
-      )}
     </div>
   );
 };
@@ -284,6 +337,7 @@ const MobileAnnouncementBanner = ({ slides }) => {
   const [index, setIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
+  const [expandedContent, setExpandedContent] = useState(false);
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -291,9 +345,15 @@ const MobileAnnouncementBanner = ({ slides }) => {
     return () => clearTimeout(t);
   }, [index, slides.length]);
 
+  /* Reset expanded state when slide changes */
+  useEffect(() => { setExpandedContent(false); }, [index]);
+
   if (!slides.length) return null;
   const current = slides[index];
-  if (!current?.file_path) return null;
+  if (!current) return null;
+
+  const hasImage = !!current.file_path;
+  const hasContent = !!(current.content?.trim());
 
   const goNext = () => setIndex((prev) => (prev + 1) % slides.length);
   const goPrev = () => setIndex((prev) => (prev - 1 + slides.length) % slides.length);
@@ -312,7 +372,6 @@ const MobileAnnouncementBanner = ({ slides }) => {
 
   return (
     <>
-      {/* ── Fullscreen Viewer ── */}
       {openViewer && (
         <AnnouncementViewerModal
           slides={slides}
@@ -321,153 +380,192 @@ const MobileAnnouncementBanner = ({ slides }) => {
         />
       )}
 
-      {/* ── Banner Toggle Button (when hidden) ── */}
+      {/* Toggle button when hidden */}
       {!bannerVisible && (
-        <button
-          onClick={() => setBannerVisible(true)}
-          style={{
-            width: "100%",
-            marginBottom: "14px",
-            padding: "10px",
-            background: "rgba(0,0,0,0.08)",
-            border: "1.5px dashed rgba(0,0,0,0.25)",
-            borderRadius: "10px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            color: "rgba(0,0,0,0.55)",
-            fontSize: "13px",
-            fontWeight: 500,
-          }}
-        >
+        <button onClick={() => setBannerVisible(true)} style={{
+          width: "100%", marginBottom: "14px", padding: "10px",
+          background: "rgba(0,0,0,0.08)", border: "1.5px dashed rgba(0,0,0,0.25)",
+          borderRadius: "10px", cursor: "pointer", display: "flex",
+          alignItems: "center", justifyContent: "center", gap: 6,
+          color: "rgba(0,0,0,0.55)", fontSize: "13px", fontWeight: 500,
+        }}>
           <CampaignIcon sx={{ fontSize: 16 }} />
           Show Announcements
         </button>
       )}
 
-      {/* ── Banner ── */}
       {bannerVisible && (
         <div style={{
           width: "100%",
           borderRadius: "14px",
           overflow: "hidden",
-          position: "relative",
-          background: "#000",
-          aspectRatio: "16 / 9",
           marginBottom: "16px",
           boxShadow: "0 4px 18px rgba(0,0,0,0.25)",
+          background: "#000",
+          border: "1.5px solid rgba(0,0,0,0.15)",
         }}>
-          {/* Close/Hide Banner */}
-          <button
-            onClick={() => setBannerVisible(false)}
-            style={{
-              position: "absolute", top: 8, right: 8,
-              zIndex: 20, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%",
-              width: 28, height: 28, color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 14 }} />
-          </button>
-
-          {/* Zoom / Fullscreen Button */}
-          <button
-            onClick={handleOpenViewer}
-            style={{
-              position: "absolute", top: 8, left: 8,
-              zIndex: 20, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "20px",
-              padding: "4px 10px", color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 4,
-              fontSize: "11px", fontWeight: 600,
-            }}
-          >
-            <ZoomInIcon sx={{ fontSize: 14 }} />
-            View
-          </button>
-
-          {/* Prev */}
-          <button
-            onClick={goPrev}
-            style={{
-              position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)",
-              zIndex: 10, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%",
-              width: 34, height: 34, color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <ArrowBackIosNewIcon sx={{ fontSize: 16 }} />
-          </button>
-
-          {/* Next */}
-          <button
-            onClick={goNext}
-            style={{
-              position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-              zIndex: 10, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%",
-              width: 34, height: 34, color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <ArrowForwardIosIcon sx={{ fontSize: 16 }} />
-          </button>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={current.id}
-              drag="x"
-              dragDirectionLock
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.03}
-              onDragStart={() => setIsDragging(true)}
-              onDragEnd={handleDragEnd}
-              initial={{ x: 120, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -120, opacity: 0 }}
-              transition={{ duration: 0.35 }}
-              style={{ width: "100%", height: "100%", position: "relative", touchAction: "pan-y" }}
-            >
-              <img
-                src={`${API_BASE_URL}/uploads/Announcement/${current.file_path}`}
-                alt={current.title}
-                onClick={handleOpenViewer}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  userSelect: "none",
-                  display: "block",
-                  cursor: "zoom-in",
-                  pointerEvents: "auto",
-                }}
-                draggable={false}
-              />
-              <div style={{
-                position: "absolute", bottom: 0, width: "100%",
-                padding: "0.7rem 0.9rem",
-                background: "linear-gradient(transparent, rgba(0,0,0,0.72))",
-                color: "#fff",
-                pointerEvents: "none",
+          {/* ── Image section ── */}
+          {hasImage && (
+            <div style={{ position: "relative", aspectRatio: "16 / 9", background: "#000" }}>
+              {/* Close */}
+              <button onClick={() => setBannerVisible(false)} style={{
+                position: "absolute", top: 8, right: 8, zIndex: 20,
+                background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%",
+                width: 28, height: 28, color: "#fff", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                <p style={{ margin: 0, fontWeight: 600, fontSize: "0.82rem" }}>{current.title}</p>
-              </div>
-            </motion.div>
-          </AnimatePresence>
+                <CloseIcon sx={{ fontSize: 14 }} />
+              </button>
 
-          {/* Dots */}
-          {slides.length > 1 && (
+              {/* View fullscreen */}
+              <button onClick={handleOpenViewer} style={{
+                position: "absolute", top: 8, left: 8, zIndex: 20,
+                background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "20px",
+                padding: "4px 10px", color: "#fff", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 4,
+                fontSize: "11px", fontWeight: 600,
+              }}>
+                <ZoomInIcon sx={{ fontSize: 14 }} />
+                View
+              </button>
+
+              {/* Prev */}
+              <button onClick={goPrev} style={{
+                position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)",
+                zIndex: 10, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%",
+                width: 34, height: 34, color: "#fff", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <ArrowBackIosNewIcon sx={{ fontSize: 16 }} />
+              </button>
+
+              {/* Next */}
+              <button onClick={goNext} style={{
+                position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                zIndex: 10, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%",
+                width: 34, height: 34, color: "#fff", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <ArrowForwardIosIcon sx={{ fontSize: 16 }} />
+              </button>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={current.id}
+                  drag="x"
+                  dragDirectionLock
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.03}
+                  onDragStart={() => setIsDragging(true)}
+                  onDragEnd={handleDragEnd}
+                  initial={{ x: 120, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -120, opacity: 0 }}
+                  transition={{ duration: 0.35 }}
+                  style={{ width: "100%", height: "100%", position: "relative", touchAction: "pan-y" }}
+                >
+                  <img
+                    src={`${API_BASE_URL}/uploads/Announcement/${current.file_path}`}
+                    alt={current.title}
+                    onClick={handleOpenViewer}
+                    style={{
+                      width: "100%", height: "100%",
+                      objectFit: "cover", userSelect: "none",
+                      display: "block", cursor: "zoom-in",
+                    }}
+                    draggable={false}
+                  />
+                  {/* Title gradient overlay */}
+                  <div style={{
+                    position: "absolute", bottom: 0, width: "100%",
+                    padding: "1.8rem 0.9rem 0.6rem",
+                    background: "linear-gradient(transparent, rgba(0,0,0,0.78))",
+                    color: "#fff", pointerEvents: "none",
+                  }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: "0.82rem", lineHeight: 1.3 }}>
+                      {current.title}
+                    </p>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Dots */}
+              {slides.length > 1 && (
+                <div style={{
+                  position: "absolute", bottom: 8, right: 10,
+                  display: "flex", gap: 5, zIndex: 10,
+                }}>
+                  {slides.map((_, i) => (
+                    <div key={i} onClick={() => setIndex(i)} style={{
+                      width: i === index ? 16 : 6, height: 6,
+                      borderRadius: 3,
+                      background: i === index ? "#fff" : "rgba(255,255,255,0.45)",
+                      transition: "all 0.3s", cursor: "pointer",
+                    }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Content toggle button ── */}
+          {hasContent && (
+            <button
+              onClick={() => setExpandedContent((v) => !v)}
+              style={{
+                width: "100%", display: "flex", alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                background: expandedContent
+                  ? "linear-gradient(135deg, #1a1a2e, #16213e)"
+                  : "linear-gradient(135deg, #1a1a2e, #0f3460)",
+                border: "none", cursor: "pointer",
+                borderTop: hasImage ? "1px solid rgba(255,255,255,0.08)" : "none",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <CampaignIcon sx={{ color: "rgba(255,255,255,0.7)", fontSize: 15 }} />
+                <span style={{ color: "#fff", fontSize: "12.5px", fontWeight: 600 }}>
+                  {expandedContent ? "Hide details" : "Read full announcement"}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                {!expandedContent && (
+                  <span style={{
+                    background: "rgba(255,255,255,0.18)", borderRadius: "10px",
+                    padding: "2px 8px", fontSize: "10.5px", color: "rgba(255,255,255,0.85)",
+                  }}>
+                    tap to read
+                  </span>
+                )}
+                {expandedContent
+                  ? <KeyboardArrowUpIcon sx={{ color: "#fff", fontSize: 18 }} />
+                  : <KeyboardArrowDownIcon sx={{ color: "#fff", fontSize: 18 }} />
+                }
+              </div>
+            </button>
+          )}
+
+          {/* ── Expanded content panel ── */}
+          {hasContent && expandedContent && (
             <div style={{
-              position: "absolute", bottom: 6, right: 10,
-              display: "flex", gap: 5, zIndex: 10,
+              background: "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+              padding: "14px 16px 18px",
+              maxHeight: "260px",
+              overflowY: "auto",
+              scrollbarWidth: "thin",
+              scrollbarColor: "rgba(255,255,255,0.2) transparent",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
             }}>
-              {slides.map((_, i) => (
-                <div key={i} onClick={() => setIndex(i)} style={{
-                  width: i === index ? 16 : 6, height: 6,
-                  borderRadius: 3, background: i === index ? "#fff" : "rgba(255,255,255,0.45)",
-                  transition: "all 0.3s", cursor: "pointer",
-                }} />
-              ))}
+              {!hasImage && (
+                <>
+                  <p style={{ margin: "0 0 8px", color: "#fff", fontWeight: 700, fontSize: "13.5px", lineHeight: 1.4 }}>
+                    {current.title}
+                  </p>
+                  <div style={{ width: 28, height: 2, background: "rgba(255,255,255,0.3)", borderRadius: 2, marginBottom: 12 }} />
+                </>
+              )}
+              <FormattedContent text={current.content} />
             </div>
           )}
         </div>
@@ -637,10 +735,7 @@ const Register = () => {
     setIsSubmitting(true);
     try {
       await axios.post(`${API_BASE_URL}/api/check-registration-duplicate`, {
-        email: normalizedEmail,
-        firstName,
-        lastName,
-        birthday,
+        email: normalizedEmail, firstName, lastName, birthday,
       });
       await axios.post(`${API_BASE_URL}/api/request-otp`, { email: normalizedEmail, audit_log_db: "db" });
       setTempEmail(normalizedEmail);
@@ -747,9 +842,10 @@ const Register = () => {
     setLoadingOtp(true);
     try {
       const response = await axios.post(`${API_BASE_URL}/api/register`, {
-        ...usersData, email: tempEmail || usersData.email.trim().toLowerCase(), campus: branchId, lastName, firstName, middleName, birthday,
-        academicProgram, applyingAs, program: selectedCurriculum,
-        active_school_year_id: activeSchoolYearId, otp: otpValue, audit_log_db: "db",
+        ...usersData, email: tempEmail || usersData.email.trim().toLowerCase(), campus: branchId,
+        lastName, firstName, middleName, birthday, academicProgram, applyingAs,
+        program: selectedCurriculum, active_school_year_id: activeSchoolYearId,
+        otp: otpValue, audit_log_db: "db",
       });
       if (!response.data.success) {
         setSnack({ open: true, message: response.data.message, severity: "error" });
@@ -819,7 +915,6 @@ const Register = () => {
 
   if (redirectLoading) return <RedirectLoading message="Account created! Redirecting to login..." />;
 
-  /* ─ shared input style ─ */
   const inputH = isMobile ? "44px" : "45px";
 
   return (
@@ -847,7 +942,6 @@ const Register = () => {
           }}
           maxWidth={false}
         >
-          {/* Desktop side slider */}
           {!isMobile && <AnnouncementSlider campusId={branchId} targetRole="applicant" />}
 
           <div
@@ -860,15 +954,12 @@ const Register = () => {
             }}
             className="Container"
           >
-            {/* ── Header ── */}
-            <div
-              className="Header"
-              style={{
-                backgroundColor: settings?.header_color || "#1976d2",
-                padding: isMobile ? "12px 10px" : "1rem 0",
-                borderBottom: "3px solid black",
-              }}
-            >
+            {/* Header */}
+            <div className="Header" style={{
+              backgroundColor: settings?.header_color || "#1976d2",
+              padding: isMobile ? "12px 10px" : "1rem 0",
+              borderBottom: "3px solid black",
+            }}>
               <div className="HeaderTitle">
                 <div className="CircleCon">
                   <img src={settings?.logo_url ? `${API_BASE_URL}${settings.logo_url}` : Logo} alt="Logo" />
@@ -886,10 +977,9 @@ const Register = () => {
               </div>
             </div>
 
-            {/* ── Body ── */}
+            {/* Body */}
             <div className="Body">
 
-              {/* Mobile banner inside card */}
               {isMobile && mobileSlides.length > 0 && (
                 <MobileAnnouncementBanner slides={mobileSlides} />
               )}
@@ -897,102 +987,71 @@ const Register = () => {
               {/* Campus */}
               <div className="TextField">
                 <label style={{ color: "black" }}>Campus<span style={{ color: "red" }}> *</span></label>
-                <select
-                  value={branchId}
-                  onChange={handleBranchSelect}
-                  className="border"
-                  required
-                  style={{
-                    height: inputH,
-                    border: errors.campus ? "2px solid red" : "2px solid black",
-                    width: "100%",
-                    appearance: "none",
-                    WebkitAppearance: "none",
-                    MozAppearance: "none",
-                    paddingRight: "2.2rem",
-                  }}
-                >
+                <select value={branchId} onChange={handleBranchSelect} className="border" required
+                  style={{ height: inputH, border: errors.campus ? "2px solid red" : "2px solid black", width: "100%", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: "2.2rem" }}>
                   <option value="">Select Campus</option>
                   {branches.map((b) => <option key={b.id} value={b.id}>{b.branch}</option>)}
                 </select>
                 <ArrowDropDownIcon sx={{ position: "absolute", right: "10px", top: "70%", transform: "translateY(-50%)", fontSize: "30px", color: "black", pointerEvents: "none" }} />
               </div>
 
-              {/* Section divider */}
               <div style={{ display: "flex", alignItems: "center", margin: "1.2rem 0" }}>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
                 <span style={{ margin: "0 0.8rem", fontWeight: "600", color: "#555", fontSize: isMobile ? "13px" : "14px", whiteSpace: "nowrap" }}>Personal Information</span>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
               </div>
 
-              {/* Name fields */}
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: isMobile ? "0" : "1rem",
-              }}>
-                {/* Last Name */}
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "0" : "1rem" }}>
                 <div className="TextField" style={{ position: "relative" }}>
                   <label style={{ color: "black" }}>Last Name<span style={{ color: "red" }}> *</span></label>
                   <input type="text" placeholder="Enter your last name" required disabled={fieldDisabled}
                     value={lastName} onChange={(e) => setLastName(e.target.value.toUpperCase())}
                     onKeyDown={handleKeyDownRegister} className="border"
-                    style={{ paddingLeft: "2.5rem", height: inputH, border: errors.lastName ? "2px solid red" : "2px solid black", width: "100%" }}
-                  />
+                    style={{ paddingLeft: "2.5rem", height: inputH, border: errors.lastName ? "2px solid red" : "2px solid black", width: "100%" }} />
                   <BadgeIcon style={{ position: "absolute", top: "2.5rem", left: "0.7rem", fontSize: "20px" }} />
                   {errors.lastName && <span style={{ color: "red", fontSize: "12px" }}>This field is required</span>}
                 </div>
 
-                {/* First Name */}
                 <div className="TextField" style={{ position: "relative" }}>
                   <label style={{ color: "black" }}>First Name<span style={{ color: "red" }}> *</span></label>
                   <input type="text" required placeholder="Enter your first name" value={firstName} disabled={fieldDisabled}
                     onChange={(e) => setFirstName(e.target.value.toUpperCase())} onKeyDown={handleKeyDownRegister} className="border"
-                    style={{ paddingLeft: "2.5rem", height: inputH, border: errors.firstName ? "2px solid red" : "2px solid black", width: "100%" }}
-                  />
+                    style={{ paddingLeft: "2.5rem", height: inputH, border: errors.firstName ? "2px solid red" : "2px solid black", width: "100%" }} />
                   <PersonIcon style={{ position: "absolute", top: "2.5rem", left: "0.7rem", fontSize: "20px" }} />
                   {errors.firstName && <span style={{ color: "red", fontSize: "12px" }}>This field is required</span>}
                 </div>
 
-                {/* Middle Name */}
                 <div className="TextField" style={{ position: "relative" }}>
                   <label style={{ color: "black" }}>Middle Name (Optional)</label>
                   <input type="text" placeholder="Enter your middle name" value={middleName} disabled={fieldDisabled}
                     onChange={(e) => setMiddleName(e.target.value.toUpperCase())} onKeyDown={handleKeyDownRegister} className="border"
-                    style={{ paddingLeft: "2.5rem", height: inputH, border: "2px solid black", width: "100%" }}
-                  />
+                    style={{ paddingLeft: "2.5rem", height: inputH, border: "2px solid black", width: "100%" }} />
                   <PersonIcon style={{ position: "absolute", top: "2.5rem", left: "0.7rem", fontSize: "20px" }} />
                 </div>
 
-                {/* Birthday */}
                 <div className="TextField" style={{ position: "relative" }}>
                   <label style={{ color: "black" }}>Birth Date<span style={{ color: "red" }}> *</span></label>
                   <input type="date" required value={birthday} disabled={fieldDisabled}
                     onChange={(e) => setBirthday(e.target.value)} onKeyDown={handleKeyDownRegister} className="border"
-                    style={{ paddingLeft: "2.5rem", height: inputH, border: errors.birthday ? "2px solid red" : "2px solid black", width: "100%" }}
-                  />
+                    style={{ paddingLeft: "2.5rem", height: inputH, border: errors.birthday ? "2px solid red" : "2px solid black", width: "100%" }} />
                   <CakeIcon style={{ position: "absolute", top: "2.5rem", left: "0.7rem", fontSize: "20px" }} />
                   {errors.birthday && <span style={{ color: "red", fontSize: "12px" }}>This field is required</span>}
                 </div>
               </div>
 
-              {/* Section divider */}
               <div style={{ display: "flex", alignItems: "center", margin: "1.2rem 0" }}>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
                 <span style={{ margin: "0 0.8rem", fontWeight: "600", color: "#555", fontSize: isMobile ? "13px" : "14px", whiteSpace: "nowrap" }}>Academic Information</span>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
               </div>
 
-              {/* Academic Program + Applying As */}
               <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", flexDirection: isMobile ? "column" : "row" }}>
-                {/* Academic Program */}
                 <div className="TextField" style={{ position: "relative", flex: 1 }}>
                   <label style={{ color: "black" }}>Academic Program<span style={{ color: "red" }}> *</span></label>
                   <select required value={academicProgram} disabled={fieldDisabled}
                     onChange={(e) => { setAcademicProgram(e.target.value); setApplyingAs(""); setSelectedCurriculum(""); }}
                     className="border"
-                    style={{ paddingLeft: "1rem", height: inputH, border: errors.academicProgram ? "2px solid red" : "2px solid black", width: "100%", appearance: "none", paddingRight: "2.2rem" }}
-                  >
+                    style={{ paddingLeft: "1rem", height: inputH, border: errors.academicProgram ? "2px solid red" : "2px solid black", width: "100%", appearance: "none", paddingRight: "2.2rem" }}>
                     <option value="">Select Program</option>
                     {selectedBranch?.academicPrograms?.filter((prog) => prog.open === 1).map((prog) => (
                       <option key={prog.id} value={prog.id}>{prog.name}</option>
@@ -1002,7 +1061,6 @@ const Register = () => {
                   <ArrowDropDownIcon sx={{ position: "absolute", right: "10px", top: getIconTop(errors.academicProgram), transform: "translateY(-50%)", fontSize: "30px", pointerEvents: "none" }} />
                 </div>
 
-                {/* Applying As */}
                 <div className="TextField" style={{ position: "relative", flex: 1 }}>
                   <label style={{ color: "black" }}>Applying As<span style={{ color: "red" }}> *</span></label>
                   <select required value={applyingAs} disabled={fieldDisabled}
@@ -1011,8 +1069,7 @@ const Register = () => {
                       setApplyingAs(e.target.value); setSelectedCurriculum("");
                     }}
                     className="border"
-                    style={{ paddingLeft: "1rem", height: inputH, border: errors.applyingAs ? "2px solid red" : "2px solid black", width: "100%", appearance: "none", paddingRight: "2.2rem" }}
-                  >
+                    style={{ paddingLeft: "1rem", height: inputH, border: errors.applyingAs ? "2px solid red" : "2px solid black", width: "100%", appearance: "none", paddingRight: "2.2rem" }}>
                     <option value="">Select Applying</option>
                     {(() => {
                       const selectedProgram = selectedBranch?.academicPrograms?.find((prog) => prog.id.toString() === academicProgram);
@@ -1042,7 +1099,6 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* Course Applied */}
               <div className="TextField" style={{ position: "relative" }}>
                 <label style={{ color: "black" }}>Course Applied<span style={{ color: "red" }}> *</span></label>
                 <Autocomplete
@@ -1088,21 +1144,18 @@ const Register = () => {
                 />
               </div>
 
-              {/* Section divider */}
               <div style={{ display: "flex", alignItems: "center", margin: "1.2rem 0" }}>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
                 <span style={{ margin: "0 0.8rem", fontWeight: "600", color: "#555", fontSize: isMobile ? "13px" : "14px", whiteSpace: "nowrap" }}>Account Information</span>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
               </div>
 
-              {/* Email */}
               <div className="TextField" style={{ position: "relative" }}>
                 <label style={{ color: "black" }}>Email Address<span style={{ color: "red" }}> *</span></label>
                 <input required type="email" disabled={fieldDisabled} className="border"
                   id="email" name="email" placeholder="Enter your email address"
                   value={usersData.email} onChange={handleChanges} onKeyDown={handleKeyDownRegister}
-                  style={{ paddingLeft: "2.5rem", height: inputH, border: errors.email ? "2px solid red" : "2px solid black" }}
-                />
+                  style={{ paddingLeft: "2.5rem", height: inputH, border: errors.email ? "2px solid red" : "2px solid black" }} />
                 <EmailIcon style={{ position: "absolute", top: "2.5rem", left: "0.7rem", color: "rgba(0,0,0,0.4)", fontSize: "20px" }} />
                 {errors.email && <span style={{ color: "red", fontSize: "12px" }}>This field is required</span>}
                 <span style={{ fontSize: "13px", color: "red", marginTop: "4px", display: "block" }}>
@@ -1110,15 +1163,13 @@ const Register = () => {
                 </span>
               </div>
 
-              {/* Password + Confirm */}
               <div style={{ display: "flex", gap: "1rem", flexDirection: isMobile ? "column" : "row" }}>
                 <div className="TextField" style={{ position: "relative", flex: 1 }}>
                   <label style={{ color: "black" }}>Password<span style={{ color: "red" }}> *</span></label>
                   <input type={showPassword ? "text" : "password"} className="border" id="password" disabled={fieldDisabled}
                     name="password" placeholder="Enter your password" value={usersData.password}
                     onChange={handleChanges} onKeyDown={handleKeyDownRegister} required
-                    style={{ paddingLeft: "2.5rem", height: inputH, border: errors.password ? "2px solid red" : "2px solid black", width: "100%" }}
-                  />
+                    style={{ paddingLeft: "2.5rem", height: inputH, border: errors.password ? "2px solid red" : "2px solid black", width: "100%" }} />
                   <LockIcon style={{ position: "absolute", top: "2.5rem", left: "0.7rem", color: "rgba(0,0,0,0.4)", fontSize: "22px" }} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
                     style={{ position: "absolute", top: "2.5rem", right: "1rem", background: "none", border: "none", cursor: "pointer" }}>
@@ -1139,8 +1190,7 @@ const Register = () => {
                       width: "100%",
                       backgroundColor: !usersData.password ? "#f0f0f0" : "white",
                       cursor: !usersData.password ? "not-allowed" : "text",
-                    }}
-                  />
+                    }} />
                   <LockIcon style={{ position: "absolute", top: "2.5rem", left: "0.7rem", color: "rgba(0,0,0,0.4)", fontSize: "22px" }} />
                   <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     style={{ position: "absolute", top: "2.5rem", right: "1rem", background: "none", border: "none", cursor: "pointer" }}>
@@ -1150,7 +1200,6 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* Terms checkbox */}
               <Box sx={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
                 <FormControlLabel
                   control={<Checkbox checked={reminderChecked} onChange={(e) => setReminderChecked(e.target.checked)} />}
@@ -1162,7 +1211,6 @@ const Register = () => {
                 />
               </Box>
 
-              {/* Submit button */}
               <div
                 tabIndex={0}
                 onClick={() => {
@@ -1242,8 +1290,7 @@ const Register = () => {
                     width: isMobile ? "42px" : "54px", height: isMobile ? "50px" : "60px",
                     fontSize: "22px", fontWeight: 700, textAlign: "center",
                     borderRadius: "14px", border: "2px solid #ddd", outline: "none",
-                  }}
-                />
+                  }} />
               ))}
             </Box>
             <p style={{ fontSize: "13px", color: "#777", marginBottom: "18px", textAlign: "center" }}>
@@ -1273,7 +1320,7 @@ const Register = () => {
           <Alert severity={snack.severity} onClose={handleClose} sx={{ width: "100%" }}>{snack.message}</Alert>
         </Snackbar>
 
-        {/* ── Dialog: Important Reminder ── */}
+        {/* Dialog: Important Reminder */}
         <Dialog open={openReminder} onClose={() => setOpenReminder(false)} maxWidth="sm" fullWidth
           PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden", mx: isMobile ? 2 : "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" } }}>
           <DialogTitle sx={{ bgcolor: mainButtonColor, color: "white", display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: "bold", px: 3, py: 2 }}>
@@ -1314,7 +1361,7 @@ const Register = () => {
           </DialogActions>
         </Dialog>
 
-        {/* ── Dialog: Registration Closed ── */}
+        {/* Dialog: Registration Closed */}
         <Dialog open={openClosedDialog} maxWidth="sm" fullWidth
           PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden", mx: isMobile ? 2 : "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" } }}>
           <DialogTitle sx={{ bgcolor: "#7a0000", color: "white", display: "flex", alignItems: "center", fontWeight: "bold", px: 3, py: 2 }}>
@@ -1345,7 +1392,7 @@ const Register = () => {
           </DialogActions>
         </Dialog>
 
-        {/* ── Dialog: Branch Admissions Closed ── */}
+        {/* Dialog: Branch Admissions Closed */}
         <Dialog open={openBranchDialog} onClose={() => setOpenBranchDialog(false)} maxWidth="sm" fullWidth
           PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden", mx: isMobile ? 2 : "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" } }}>
           <DialogTitle sx={{ bgcolor: mainButtonColor, color: "white", display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: "bold", px: 3, py: 2 }}>

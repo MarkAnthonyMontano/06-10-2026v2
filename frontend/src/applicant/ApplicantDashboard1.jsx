@@ -268,7 +268,7 @@ const Dashboard1 = (props) => {
     const savedLast = localStorage.getItem("last_name");
     const savedMiddle = localStorage.getItem("middle_name");
     const savedBirth = localStorage.getItem("birthOfDate");
-    age: savedBirth ? calculateAge(savedBirth) : savedAge || ""
+
 
     setPerson(prev => ({
       ...prev,

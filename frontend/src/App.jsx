@@ -55,6 +55,8 @@ const SuperAdminApplicantDashboard3 = lazy(() => import("./account_management/Su
 const SuperAdminApplicantDashboard4 = lazy(() => import("./account_management/SuperAdminApplicantDashboard4"));
 const SuperAdminApplicantDashboard5 = lazy(() => import("./account_management/SuperAdminApplicantDashboard5"));
 const SuperAdminApplicantResetPassword = lazy(() => import("./account_management/SuperAdminApplicantResetPassword"));
+const SuperAdminStudentResetPassword = lazy(() => import("./account_management/SuperAdminStudentResetPassword"));
+
 const SuperAdminFacultyResetPassword = lazy(() => import("./account_management/SuperAdminFacultyResetPassword"));
 const SuperAdminProfessorEducation = lazy(() => import("./account_management/SuperAdminProfessorEducation"));
 const SuperAdminRegistrarPassword = lazy(() => import("./account_management/SuperAdminRegistrarResetPassword"));
@@ -65,7 +67,11 @@ const SuperAdminStudentDashboard2 = lazy(() => import("./account_management/Supe
 const SuperAdminStudentDashboard3 = lazy(() => import("./account_management/SuperAdminStudentDashboard3"));
 const SuperAdminStudentDashboard4 = lazy(() => import("./account_management/SuperAdminStudentDashboard4"));
 const SuperAdminStudentDashboard5 = lazy(() => import("./account_management/SuperAdminStudentDashboard5"));
-const SuperAdminStudentResetPassword = lazy(() => import("./account_management/SuperAdminStudentResetPassword"));
+const StudentEditPermissions1 = lazy(() => import("./account_management/StudentEditPermissions1"));
+const StudentEditPermissions2 = lazy(() => import("./account_management/StudentEditPermissions2"));
+const StudentEditPermissions3 = lazy(() => import("./account_management/StudentEditPermissions3"));
+const StudentEditPermissions4 = lazy(() => import("./account_management/StudentEditPermissions4"));
+const StudentEditPermissions5 = lazy(() => import("./account_management/StudentEditPermissions5"));
 const UserPageAccess = lazy(() => import("./account_management/UserPageAccess"));
 const AdminAdmissionFormProcess = lazy(() => import("./admission/AdminAdmissionFormProcess"));
 const AdminDashboard1 = lazy(() => import("./admission/AdminDashboard1"));
@@ -662,6 +668,12 @@ function App() {
                       <Route path="/faculty_reset_password" element={<ProtectedRoute><FacultyResetPassword /></ProtectedRoute>} />
                       <Route path="/superadmin_applicant_reset_password" element={<ProtectedRoute><SuperAdminApplicantResetPassword /></ProtectedRoute>} />
                       <Route path="/superadmin_student_reset_password" element={<ProtectedRoute><SuperAdminStudentResetPassword /></ProtectedRoute>} />
+                      <Route path="/admin_student_edit_permissions1" element={<ProtectedRoute><StudentEditPermissions1 /></ProtectedRoute>} />
+                      <Route path="/admin_student_edit_permissions2" element={<ProtectedRoute><StudentEditPermissions2 /></ProtectedRoute>} />
+                      <Route path="/admin_student_edit_permissions3" element={<ProtectedRoute><StudentEditPermissions3 /></ProtectedRoute>} />
+                      <Route path="/admin_student_edit_permissions4" element={<ProtectedRoute><StudentEditPermissions4 /></ProtectedRoute>} />
+                      <Route path="/admin_student_edit_permissions5" element={<ProtectedRoute><StudentEditPermissions5 /></ProtectedRoute>} />
+
                       <Route path="/superadmin_faculty_reset_password" element={<ProtectedRoute><SuperAdminFacultyResetPassword /></ProtectedRoute>} />
                       <Route path="/superadmin_registrar_reset_password" element={<ProtectedRoute><SuperAdminRegistrarPassword /></ProtectedRoute>} />
                       <Route path="/superadmin_professor_education" element={<ProtectedRoute><SuperAdminProfessorEducation /></ProtectedRoute>} />

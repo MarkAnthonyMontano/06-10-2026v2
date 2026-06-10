@@ -785,7 +785,7 @@ const SideBar = ({
     { key: "registrarResetPasswords", label: "Reset Password", icon: Settings, items: [{ title: "Registrar Reset Password", link: "/registrar_reset_password", icon: Settings, page_id: 73 }] },
 
   ];
-  const accountMenuGroups = [ 
+  const accountMenuGroups = [
     {
       key: "accountCreation", label: "Account Creation", icon: PersonAdd,
       items: [
@@ -807,7 +807,7 @@ const SideBar = ({
         { title: "Applicant Information", link: "/super_admin_applicant_dashboard1", icon: Info, page_id: 75 },
         { title: "Applicant Online Requirements", link: "/applicant_requirements_uploader", icon: Assignment, page_id: 84 },
 
-         { title: "Archive", link: "/archived", icon: FolderCopy, page_id: 142 },
+        { title: "Archive", link: "/archived", icon: FolderCopy, page_id: 142 },
       ],
     },
     {
@@ -815,7 +815,12 @@ const SideBar = ({
       items: [
         { title: "Student Information", link: "/super_admin_student_dashboard1", icon: Info, page_id: 86 },
         { title: "Student Online Requirements", link: "/student_requirements_uploader", icon: Assignment, page_id: 150 },
-       
+     
+        { title: "Personal Information", link: "/admin_student_edit_permissions1", icon: FolderCopy, page_id: 155 },
+        { title: "Family Background", link: "/admin_student_edit_permissions2", icon: FolderCopy, page_id: 156 },
+        { title: "Educational Background", link: "/admin_student_edit_permissions3", icon: FolderCopy, page_id: 157 },
+        { title: "Health & Medical Records", link: "/admin_student_edit_permissions4", icon: FolderCopy, page_id: 158 },
+        { title: "Other Information", link: "/admin_student_edit_permissions5", icon: FolderCopy, page_id: 159 },
       ],
     },
     {

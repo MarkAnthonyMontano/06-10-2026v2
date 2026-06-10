@@ -16,6 +16,8 @@ import ZoomInIcon from "@mui/icons-material/ZoomIn";
 import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import CloseIcon from "@mui/icons-material/Close";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import "../styles/Container.css";
 import Logo from "../assets/Logo.png";
 import { SettingsContext } from "../App";
@@ -57,14 +59,69 @@ function clearLockout(email) {
   localStorage.removeItem(lockoutKey(email));
 }
 
+/* ─── Formats announcement text with bullets / line-breaks ─── */
+const FormattedContent = ({ text }) => {
+  if (!text) return null;
+  const lines = text.split("\n");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} style={{ height: "5px" }} />;
+
+        /* Sub-bullet: leading spaces then bullet char */
+        const subBullet = line.match(/^[\s\t]{2,}[•*\-–]\s+(.*)/);
+        if (subBullet) {
+          return (
+            <div key={i} style={{ display: "flex", gap: "6px", alignItems: "flex-start", paddingLeft: "14px" }}>
+              <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", marginTop: "3px", flexShrink: 0 }}>◦</span>
+              <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "12.5px", lineHeight: 1.55 }}>{subBullet[1]}</span>
+            </div>
+          );
+        }
+
+        /* Main bullet */
+        const bullet = trimmed.match(/^[•*\-–]\s+(.*)/);
+        if (bullet) {
+          return (
+            <div key={i} style={{ display: "flex", gap: "7px", alignItems: "flex-start" }}>
+              <span style={{ color: "#fff", fontSize: "13px", marginTop: "2px", flexShrink: 0 }}>•</span>
+              <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "13px", lineHeight: 1.55 }}>{bullet[1]}</span>
+            </div>
+          );
+        }
+
+        /* Hashtag lines */
+        if (trimmed.startsWith("#")) {
+          return (
+            <p key={i} style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.45)", fontSize: "11.5px", lineHeight: 1.5 }}>
+              {trimmed}
+            </p>
+          );
+        }
+
+        return (
+          <p key={i} style={{ margin: 0, color: "rgba(255,255,255,0.9)", fontSize: "13px", lineHeight: 1.6 }}>
+            {trimmed}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 /* ─── Fullscreen Announcement Viewer Modal ─── */
 const AnnouncementViewerModal = ({ slides, startIndex, onClose }) => {
   const [index, setIndex] = useState(startIndex || 0);
   const [scale, setScale] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
+  const [showContent, setShowContent] = useState(false);
+
   const current = slides[index];
-  const goNext = () => { setIndex((prev) => (prev + 1) % slides.length); setScale(1); };
-  const goPrev = () => { setIndex((prev) => (prev - 1 + slides.length) % slides.length); setScale(1); };
+
+  const goNext = () => { setIndex((prev) => (prev + 1) % slides.length); setScale(1); setShowContent(false); };
+  const goPrev = () => { setIndex((prev) => (prev - 1 + slides.length) % slides.length); setScale(1); setShowContent(false); };
+
   const handleDragEnd = (_, info) => {
     if (scale > 1) return;
     if (Math.abs(info.offset.x) < Math.abs(info.offset.y)) { setIsDragging(false); return; }
@@ -72,38 +129,152 @@ const AnnouncementViewerModal = ({ slides, startIndex, onClose }) => {
     else if (info.offset.x > 60) goPrev();
     setIsDragging(false);
   };
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
-  if (!current?.file_path) return null;
+
+  if (!current) return null;
+
+  const hasImage = !!current.file_path;
+  const hasContent = !!(current.content?.trim());
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.96)", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "rgba(0,0,0,0.7)", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <CampaignIcon sx={{ color: "#fff", fontSize: 20 }} />
-          <span style={{ color: "#fff", fontWeight: 600, fontSize: "14px", maxWidth: "60vw", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current.title}</span>
+    <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.97)", display: "flex", flexDirection: "column" }}>
+
+      {/* ── Top Bar ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(0,0,0,0.8)", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+          <CampaignIcon sx={{ color: "#fff", fontSize: 18, flexShrink: 0 }} />
+          <span style={{ color: "#fff", fontWeight: 600, fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {current.title}
+          </span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setScale((s) => Math.min(s + 0.5, 3))} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 36, height: 36, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ZoomInIcon sx={{ fontSize: 20 }} /></button>
-          <button onClick={() => setScale((s) => Math.max(s - 0.5, 1))} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 36, height: 36, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ZoomOutIcon sx={{ fontSize: 20 }} /></button>
-          <button onClick={onClose} style={{ background: "rgba(220,38,38,0.85)", border: "none", borderRadius: "50%", width: 36, height: 36, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon sx={{ fontSize: 20 }} /></button>
+        <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 }}>
+          {hasImage && (
+            <>
+              <button onClick={() => setScale((s) => Math.min(s + 0.5, 3))}
+                style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ZoomInIcon sx={{ fontSize: 18 }} />
+              </button>
+              <button onClick={() => setScale((s) => Math.max(s - 0.5, 1))}
+                style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ZoomOutIcon sx={{ fontSize: 18 }} />
+              </button>
+            </>
+          )}
+          <button onClick={onClose}
+            style={{ background: "rgba(220,38,38,0.85)", border: "none", borderRadius: "50%", width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </button>
         </div>
       </div>
-      <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {slides.length > 1 && (<button onClick={goPrev} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", zIndex: 10, background: "rgba(255,255,255,0.18)", border: "none", borderRadius: "50%", width: 40, height: 40, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowBackIosNewIcon sx={{ fontSize: 18 }} /></button>)}
-        {slides.length > 1 && (<button onClick={goNext} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 10, background: "rgba(255,255,255,0.18)", border: "none", borderRadius: "50%", width: 40, height: 40, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowForwardIosIcon sx={{ fontSize: 18 }} /></button>)}
-        <AnimatePresence mode="wait">
-          <motion.div key={current.id} drag={scale <= 1 ? "x" : false} dragDirectionLock dragConstraints={{ left: 0, right: 0 }} dragElastic={0.03} onDragStart={() => setIsDragging(true)} onDragEnd={handleDragEnd} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.25 }} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", touchAction: scale > 1 ? "pinch-zoom" : "pan-y" }}>
-            <img src={`${API_BASE_URL}/uploads/Announcement/${current.file_path}`} alt={current.title} draggable={false} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", transform: `scale(${scale})`, transformOrigin: "center center", transition: "transform 0.2s ease", userSelect: "none", borderRadius: scale > 1 ? 0 : "8px" }} />
-          </motion.div>
-        </AnimatePresence>
+
+      {/* ── Image Area ── */}
+      {hasImage && (
+        <div style={{
+          flex: showContent ? "0 0 45%" : "1 1 auto",
+          position: "relative", overflow: "hidden",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "flex 0.3s ease", minHeight: 0,
+        }}>
+          {slides.length > 1 && (
+            <button onClick={goPrev} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", zIndex: 10, background: "rgba(255,255,255,0.18)", border: "none", borderRadius: "50%", width: 38, height: 38, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ArrowBackIosNewIcon sx={{ fontSize: 17 }} />
+            </button>
+          )}
+          {slides.length > 1 && (
+            <button onClick={goNext} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", zIndex: 10, background: "rgba(255,255,255,0.18)", border: "none", borderRadius: "50%", width: 38, height: 38, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ArrowForwardIosIcon sx={{ fontSize: 17 }} />
+            </button>
+          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={current.id}
+              drag={scale <= 1 ? "x" : false}
+              dragDirectionLock
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.03}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={handleDragEnd}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", touchAction: scale > 1 ? "pinch-zoom" : "pan-y" }}
+            >
+              <img
+                src={`${API_BASE_URL}/uploads/Announcement/${current.file_path}`}
+                alt={current.title}
+                draggable={false}
+                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", transform: `scale(${scale})`, transformOrigin: "center center", transition: "transform 0.2s ease", userSelect: "none", borderRadius: scale > 1 ? 0 : "6px" }}
+              />
+            </motion.div>
+          </AnimatePresence>
+          {scale > 1 && (
+            <div style={{ position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: "11px", padding: "4px 10px", borderRadius: "20px", pointerEvents: "none" }}>
+              {Math.round(scale * 100)}% — tap − to zoom out
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Content Toggle Tab ── */}
+      {hasContent && (
+        <button
+          onClick={() => setShowContent((v) => !v)}
+          style={{
+            flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            padding: "9px 16px",
+            background: showContent ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
+            border: "none", borderTop: "1px solid rgba(255,255,255,0.12)",
+            color: "#fff", cursor: "pointer", fontSize: "12.5px", fontWeight: 600,
+            transition: "background 0.2s",
+          }}
+        >
+          {showContent ? <KeyboardArrowDownIcon sx={{ fontSize: 18 }} /> : <KeyboardArrowUpIcon sx={{ fontSize: 18 }} />}
+          {showContent ? "Hide announcement details" : "Show full announcement"}
+          {!showContent && (
+            <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: "10px", padding: "1px 7px", fontSize: "10.5px", marginLeft: 2 }}>
+              tap to read
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* ── Content Panel ── */}
+      {hasContent && showContent && (
+        <div style={{
+          flex: hasImage ? "0 0 auto" : "1 1 auto",
+          maxHeight: hasImage ? "48%" : "100%",
+          overflowY: "auto",
+          background: "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+          padding: "16px 18px 20px",
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(255,255,255,0.2) transparent",
+        }}>
+          <p style={{ margin: "0 0 10px", color: "#fff", fontWeight: 700, fontSize: "13.5px", lineHeight: 1.4 }}>
+            {current.title}
+          </p>
+          <div style={{ width: 28, height: 2, background: "rgba(255,255,255,0.3)", borderRadius: 2, marginBottom: 12 }} />
+          <FormattedContent text={current.content} />
+        </div>
+      )}
+
+      {/* ── Bottom Bar: dots + counter ── */}
+      <div style={{ padding: "10px 14px", background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, gap: 10 }}>
+        {slides.length > 1 && slides.map((_, i) => (
+          <div key={i} onClick={() => { setIndex(i); setScale(1); setShowContent(false); }}
+            style={{ width: i === index ? 18 : 7, height: 7, borderRadius: 4, background: i === index ? "#fff" : "rgba(255,255,255,0.35)", transition: "all 0.3s", cursor: "pointer" }} />
+        ))}
+        {slides.length > 1 && (
+          <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", marginLeft: 2 }}>
+            {index + 1} / {slides.length}
+          </span>
+        )}
       </div>
-      <div style={{ padding: "12px 16px", background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, gap: 12 }}>
-        {slides.length > 1 && slides.map((_, i) => (<div key={i} onClick={() => { setIndex(i); setScale(1); }} style={{ width: i === index ? 20 : 7, height: 7, borderRadius: 4, background: i === index ? "#fff" : "rgba(255,255,255,0.35)", transition: "all 0.3s", cursor: "pointer" }} />))}
-        {slides.length > 1 && (<span style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", marginLeft: 4 }}>{index + 1} / {slides.length}</span>)}
-      </div>
-      {scale > 1 && (<div style={{ position: "absolute", bottom: 70, left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: "11px", padding: "4px 10px", borderRadius: "20px", pointerEvents: "none" }}>{Math.round(scale * 100)}% — tap − to zoom out</div>)}
     </div>
   );
 };
@@ -115,46 +286,213 @@ const MobileAnnouncementBanner = ({ slides }) => {
   const [index, setIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
+  const [expandedContent, setExpandedContent] = useState(false);
+
   useEffect(() => {
     if (slides.length <= 1) return;
     const t = setTimeout(() => setIndex((prev) => (prev + 1) % slides.length), 4500);
     return () => clearTimeout(t);
   }, [index, slides.length]);
+
+  /* Reset expanded state when slide changes */
+  useEffect(() => { setExpandedContent(false); }, [index]);
+
   if (!slides.length) return null;
   const current = slides[index];
-  if (!current?.file_path) return null;
+  if (!current) return null;
+
+  const hasImage = !!current.file_path;
+  const hasContent = !!(current.content?.trim());
+
   const goNext = () => setIndex((prev) => (prev + 1) % slides.length);
   const goPrev = () => setIndex((prev) => (prev - 1 + slides.length) % slides.length);
+
   const handleDragEnd = (_, info) => {
     if (Math.abs(info.offset.x) < Math.abs(info.offset.y)) { setIsDragging(false); return; }
     if (info.offset.x < -60) goNext();
     else if (info.offset.x > 60) goPrev();
     setIsDragging(false);
   };
+
   const handleOpenViewer = () => { setViewerStartIndex(index); setOpenViewer(true); };
+
   return (
     <>
-      {openViewer && (<AnnouncementViewerModal slides={slides} startIndex={viewerStartIndex} onClose={() => setOpenViewer(false)} />)}
+      {openViewer && (
+        <AnnouncementViewerModal slides={slides} startIndex={viewerStartIndex} onClose={() => setOpenViewer(false)} />
+      )}
+
+      {/* Toggle button when hidden */}
       {!bannerVisible && (
-        <button onClick={() => setBannerVisible(true)} style={{ width: "100%", marginBottom: "14px", padding: "10px", background: "rgba(0,0,0,0.08)", border: "1.5px dashed rgba(0,0,0,0.25)", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "rgba(0,0,0,0.55)", fontSize: "13px", fontWeight: 500 }}>
-          <CampaignIcon sx={{ fontSize: 16 }} />Show Announcements
+        <button onClick={() => setBannerVisible(true)} style={{
+          width: "100%", marginBottom: "14px", padding: "10px",
+          background: "rgba(0,0,0,0.08)", border: "1.5px dashed rgba(0,0,0,0.25)",
+          borderRadius: "10px", cursor: "pointer", display: "flex",
+          alignItems: "center", justifyContent: "center", gap: 6,
+          color: "rgba(0,0,0,0.55)", fontSize: "13px", fontWeight: 500,
+        }}>
+          <CampaignIcon sx={{ fontSize: 16 }} />
+          Show Announcements
         </button>
       )}
+
       {bannerVisible && (
-        <div style={{ width: "100%", borderRadius: "14px", overflow: "hidden", position: "relative", background: "#000", aspectRatio: "16 / 9", marginBottom: "16px", boxShadow: "0 4px 18px rgba(0,0,0,0.25)" }}>
-          <button onClick={() => setBannerVisible(false)} style={{ position: "absolute", top: 8, right: 8, zIndex: 20, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon sx={{ fontSize: 14 }} /></button>
-          <button onClick={handleOpenViewer} style={{ position: "absolute", top: 8, left: 8, zIndex: 20, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "20px", padding: "4px 10px", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "11px", fontWeight: 600 }}><ZoomInIcon sx={{ fontSize: 14 }} />View</button>
-          <button onClick={goPrev} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", zIndex: 10, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%", width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowBackIosNewIcon sx={{ fontSize: 16 }} /></button>
-          <button onClick={goNext} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", zIndex: 10, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%", width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowForwardIosIcon sx={{ fontSize: 16 }} /></button>
-          <AnimatePresence mode="wait">
-            <motion.div key={current.id} drag="x" dragDirectionLock dragConstraints={{ left: 0, right: 0 }} dragElastic={0.03} onDragStart={() => setIsDragging(true)} onDragEnd={handleDragEnd} initial={{ x: 120, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -120, opacity: 0 }} transition={{ duration: 0.35 }} style={{ width: "100%", height: "100%", position: "relative", touchAction: "pan-y" }}>
-              <img src={`${API_BASE_URL}/uploads/Announcement/${current.file_path}`} alt={current.title} onClick={handleOpenViewer} style={{ width: "100%", height: "100%", objectFit: "cover", userSelect: "none", display: "block", cursor: "zoom-in" }} draggable={false} />
-              <div style={{ position: "absolute", bottom: 0, width: "100%", padding: "0.7rem 0.9rem", background: "linear-gradient(transparent, rgba(0,0,0,0.72))", color: "#fff" }}>
-                <p style={{ margin: 0, fontWeight: 600, fontSize: "0.82rem" }}>{current.title}</p>
+        <div style={{
+          width: "100%", borderRadius: "14px", overflow: "hidden",
+          marginBottom: "16px", boxShadow: "0 4px 18px rgba(0,0,0,0.25)",
+          background: "#000", border: "1.5px solid rgba(0,0,0,0.15)",
+        }}>
+          {/* ── Image section ── */}
+          {hasImage && (
+            <div style={{ position: "relative", aspectRatio: "16 / 9", background: "#000" }}>
+              {/* Close */}
+              <button onClick={() => setBannerVisible(false)} style={{
+                position: "absolute", top: 8, right: 8, zIndex: 20,
+                background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%",
+                width: 28, height: 28, color: "#fff", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <CloseIcon sx={{ fontSize: 14 }} />
+              </button>
+
+              {/* View fullscreen */}
+              <button onClick={handleOpenViewer} style={{
+                position: "absolute", top: 8, left: 8, zIndex: 20,
+                background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "20px",
+                padding: "4px 10px", color: "#fff", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 4, fontSize: "11px", fontWeight: 600,
+              }}>
+                <ZoomInIcon sx={{ fontSize: 14 }} />
+                View
+              </button>
+
+              {/* Prev */}
+              <button onClick={goPrev} style={{
+                position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)",
+                zIndex: 10, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%",
+                width: 34, height: 34, color: "#fff", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <ArrowBackIosNewIcon sx={{ fontSize: 16 }} />
+              </button>
+
+              {/* Next */}
+              <button onClick={goNext} style={{
+                position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                zIndex: 10, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: "50%",
+                width: 34, height: 34, color: "#fff", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <ArrowForwardIosIcon sx={{ fontSize: 16 }} />
+              </button>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={current.id}
+                  drag="x"
+                  dragDirectionLock
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.03}
+                  onDragStart={() => setIsDragging(true)}
+                  onDragEnd={handleDragEnd}
+                  initial={{ x: 120, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -120, opacity: 0 }}
+                  transition={{ duration: 0.35 }}
+                  style={{ width: "100%", height: "100%", position: "relative", touchAction: "pan-y" }}
+                >
+                  <img
+                    src={`${API_BASE_URL}/uploads/Announcement/${current.file_path}`}
+                    alt={current.title}
+                    onClick={handleOpenViewer}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", userSelect: "none", display: "block", cursor: "zoom-in" }}
+                    draggable={false}
+                  />
+                  {/* Title gradient overlay */}
+                  <div style={{
+                    position: "absolute", bottom: 0, width: "100%",
+                    padding: "1.8rem 0.9rem 0.6rem",
+                    background: "linear-gradient(transparent, rgba(0,0,0,0.78))",
+                    color: "#fff", pointerEvents: "none",
+                  }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: "0.82rem", lineHeight: 1.3 }}>
+                      {current.title}
+                    </p>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Dots */}
+              {slides.length > 1 && (
+                <div style={{ position: "absolute", bottom: 8, right: 10, display: "flex", gap: 5, zIndex: 10 }}>
+                  {slides.map((_, i) => (
+                    <div key={i} onClick={() => setIndex(i)} style={{
+                      width: i === index ? 16 : 6, height: 6, borderRadius: 3,
+                      background: i === index ? "#fff" : "rgba(255,255,255,0.45)",
+                      transition: "all 0.3s", cursor: "pointer",
+                    }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Content toggle button ── */}
+          {hasContent && (
+            <button
+              onClick={() => setExpandedContent((v) => !v)}
+              style={{
+                width: "100%", display: "flex", alignItems: "center",
+                justifyContent: "space-between", padding: "10px 14px",
+                background: expandedContent
+                  ? "linear-gradient(135deg, #1a1a2e, #16213e)"
+                  : "linear-gradient(135deg, #1a1a2e, #0f3460)",
+                border: "none", cursor: "pointer",
+                borderTop: hasImage ? "1px solid rgba(255,255,255,0.08)" : "none",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <CampaignIcon sx={{ color: "rgba(255,255,255,0.7)", fontSize: 15 }} />
+                <span style={{ color: "#fff", fontSize: "12.5px", fontWeight: 600 }}>
+                  {expandedContent ? "Hide details" : "Read full announcement"}
+                </span>
               </div>
-            </motion.div>
-          </AnimatePresence>
-          {slides.length > 1 && (<div style={{ position: "absolute", bottom: 6, right: 10, display: "flex", gap: 5, zIndex: 10 }}>{slides.map((_, i) => (<div key={i} onClick={() => setIndex(i)} style={{ width: i === index ? 16 : 6, height: 6, borderRadius: 3, background: i === index ? "#fff" : "rgba(255,255,255,0.45)", transition: "all 0.3s", cursor: "pointer" }} />))}</div>)}
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                {!expandedContent && (
+                  <span style={{ background: "rgba(255,255,255,0.18)", borderRadius: "10px", padding: "2px 8px", fontSize: "10.5px", color: "rgba(255,255,255,0.85)" }}>
+                    tap to read
+                  </span>
+                )}
+                {expandedContent
+                  ? <KeyboardArrowUpIcon sx={{ color: "#fff", fontSize: 18 }} />
+                  : <KeyboardArrowDownIcon sx={{ color: "#fff", fontSize: 18 }} />
+                }
+              </div>
+            </button>
+          )}
+
+          {/* ── Expanded content panel ── */}
+          {hasContent && expandedContent && (
+            <div style={{
+              background: "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+              padding: "14px 16px 18px",
+              maxHeight: "260px",
+              overflowY: "auto",
+              scrollbarWidth: "thin",
+              scrollbarColor: "rgba(255,255,255,0.2) transparent",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+            }}>
+              {!hasImage && (
+                <>
+                  <p style={{ margin: "0 0 8px", color: "#fff", fontWeight: 700, fontSize: "13.5px", lineHeight: 1.4 }}>
+                    {current.title}
+                  </p>
+                  <div style={{ width: 28, height: 2, background: "rgba(255,255,255,0.3)", borderRadius: 2, marginBottom: 12 }} />
+                </>
+              )}
+              <FormattedContent text={current.content} />
+            </div>
+          )}
         </div>
       )}
     </>
@@ -222,7 +560,7 @@ const Login = ({ setIsAuthenticated }) => {
       setLockTimer(remaining);
       setIsLocked(true);
     }
-  }, [email]); // intentionally only on email change
+  }, [email]);
 
   /* ── Countdown tick ── */
   useEffect(() => {
@@ -292,26 +630,21 @@ const Login = ({ setIsAuthenticated }) => {
         return;
       }
 
-      // ── Success ──
       clearLockout(email);
       setTempLoginData(res.data);
 
-      // ✅ force_password_change — inside success block where res.data is defined
       if (res.data.force_password_change) {
         localStorage.setItem("force_password_change", "true");
       } else {
         localStorage.removeItem("force_password_change");
       }
 
-      // ✅ check email-keyed pending flag from superadmin reset
       const pendingKey = `pending_force_password_change::${(res.data.email || email).toLowerCase()}`;
       if (localStorage.getItem(pendingKey) === "true") {
         localStorage.setItem("force_password_change", "true");
         localStorage.removeItem(pendingKey);
       }
 
-      // After setting force_password_change and checking pendingKey...
-      // Add this helper at the top of the success block:
       const shouldForceChange = localStorage.getItem("force_password_change") === "true";
 
       if (loginType === "applicant") {
@@ -325,7 +658,6 @@ const Login = ({ setIsAuthenticated }) => {
         localStorage.setItem("employee_id", "");
         localStorage.setItem("curriculum_id", "");
         setIsAuthenticated(true);
-        // ✅ redirect to change password if forced
         navigate(shouldForceChange ? "/applicant_reset_password" : "/applicant_dashboard");
         return;
       }
@@ -342,7 +674,6 @@ const Login = ({ setIsAuthenticated }) => {
         localStorage.setItem("curriculum_id", res.data.curriculum_id || "");
         setIsAuthenticated(true);
         if (shouldForceChange) {
-          // ✅ route based on role
           const roleVal = res.data.role?.toLowerCase();
           const changePwPath =
             roleVal === "faculty" ? "/faculty_reset_password"
@@ -365,20 +696,12 @@ const Login = ({ setIsAuthenticated }) => {
     } catch (error) {
       const data = error.response?.data;
       const message = data?.message || "Login failed";
-
       const attemptsLeft = data?.remaining;
-      const displayMsg =
-        attemptsLeft != null
-          ? `${message} (${attemptsLeft} attempt${attemptsLeft !== 1 ? "s" : ""} left)`
-          : message;
-
+      const displayMsg = attemptsLeft != null
+        ? `${message} (${attemptsLeft} attempt${attemptsLeft !== 1 ? "s" : ""} left)`
+        : message;
       setSnack({ open: true, message: displayMsg, severity: "error" });
-
-      if (
-        data?.remainingSeconds ||
-        message.toLowerCase().includes("too many") ||
-        message.toLowerCase().includes("locked")
-      ) {
+      if (data?.remainingSeconds || message.toLowerCase().includes("too many") || message.toLowerCase().includes("locked")) {
         const secs = data?.remainingSeconds ?? 180;
         startLockout(email, secs);
       }
@@ -392,10 +715,7 @@ const Login = ({ setIsAuthenticated }) => {
     setSnack((prev) => ({ ...prev, open: false }));
   };
 
-  // getUserDashboard helper (needed for requireOtp === false path)
-  function accessToSet(list = []) {
-    return new Set(list.map(Number));
-  }
+  function accessToSet(list = []) { return new Set(list.map(Number)); }
   function getRegistrarDashboard(accessSet) {
     if (accessSet.has(101)) return "/registrar_dashboard";
     if (accessSet.has(102)) return "/enrollment_officer_dashboard";
