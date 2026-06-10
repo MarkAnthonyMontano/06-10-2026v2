@@ -1144,19 +1144,50 @@ const CollegeScheduleChecker = () => {
             {!isDesignationMode && (
               <div className="flex mb-2">
                 <div className="p-2 w-[12rem]">Section:</div>
-                <select
-                  className="border border-gray-500 outline-none rounded w-full h-10 px-2"
-                  value={selectedSection}
-                  onChange={(e) => setSelectedSection(e.target.value)}
-                  required={!isDesignationMode}
-                >
-                  <option value="">Select Section</option>
-                  {sectionList.map((section) => (
-                    <option key={section.dep_section_id} value={section.dep_section_id}>
-                      {section.description} {section.program_code}
-                    </option>
-                  ))}
-                </select>
+                <Autocomplete
+                  options={sectionList}
+                  fullWidth
+                  getOptionLabel={(option) =>
+                    `${option.description || ""} ${option.program_code || ""}`.trim()
+                  }
+                  value={
+                    sectionList.find(
+                      (section) => String(section.dep_section_id) === String(selectedSection)
+                    ) || null
+                  }
+                  onChange={(event, newValue) => {
+                    setSelectedSection(newValue ? newValue.dep_section_id : "");
+                  }}
+                  isOptionEqualToValue={(option, value) =>
+                    String(option.dep_section_id) === String(value.dep_section_id)
+                  }
+                  filterOptions={(options, { inputValue }) => {
+                    const input = inputValue.trim().toLowerCase();
+                    if (!input) return options;
+
+                    // Exact/starts-with match first, then fallback to includes
+                    const exact = options.filter((o) =>
+                      `${o.description || ""} ${o.program_code || ""}`
+                        .toLowerCase()
+                        .startsWith(input)
+                    );
+                    if (exact.length > 0) return exact;
+
+                    return options.filter((o) =>
+                      `${o.description || ""} ${o.program_code || ""}`
+                        .toLowerCase()
+                        .includes(input)
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Section"
+                      size="small"
+                      required={!isDesignationMode}
+                    />
+                  )}
+                />
               </div>
             )}
 
@@ -1201,6 +1232,30 @@ const CollegeScheduleChecker = () => {
                   isOptionEqualToValue={(option, value) =>
                     String(option.course_id) === String(value.course_id)
                   }
+                  filterOptions={(options, { inputValue }) => {
+                    const input = inputValue.trim().toLowerCase();
+                    if (!input) return options;
+
+                    // Tier 1: exact match on course_code OR course_description
+                    const exact = options.filter((o) =>
+                      o.course_code?.toLowerCase() === input ||
+                      o.course_description?.toLowerCase() === input
+                    );
+                    if (exact.length > 0) return exact;
+
+                    // Tier 2: starts-with on the full label
+                    const startsWith = options.filter((o) =>
+                      o.course_code?.toLowerCase().startsWith(input) ||
+                      o.course_description?.toLowerCase().startsWith(input)
+                    );
+                    if (startsWith.length > 0) return startsWith;
+
+                    // Tier 3: includes anywhere (fallback)
+                    return options.filter((o) =>
+                      o.course_code?.toLowerCase().includes(input) ||
+                      o.course_description?.toLowerCase().includes(input)
+                    );
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}

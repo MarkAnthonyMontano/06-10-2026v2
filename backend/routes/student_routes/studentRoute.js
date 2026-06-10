@@ -306,7 +306,7 @@ router.get("/student_grade/:id", async (req, res) => {
 
     const [rows] = await db3.execute(
       `
-      SELECT
+      SELECT DISTINCT
 
         ct.course_description,
         ct.course_code,

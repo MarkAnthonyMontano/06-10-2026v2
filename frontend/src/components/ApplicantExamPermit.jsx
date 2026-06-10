@@ -293,6 +293,19 @@ const ApplicantExamPermit = ({ personId, steps, printRef }) => {
 
     const [isVerified, setIsVerified] = useState(false);
 
+    const renderStepStatus = (status) => {
+        if (!status) return null;
+
+        const label = String(status).toUpperCase();
+        const color = label === "FAILED" ? "red" : "green";
+
+        return (
+            <span style={{ color, fontWeight: "bold" }}>
+                {label}
+            </span>
+        );
+    };
+
 
 
     if (!person) return <div>Loading Exam Permit...</div>;
@@ -1264,11 +1277,7 @@ const ApplicantExamPermit = ({ personId, steps, printRef }) => {
                                         fontSize: "18px",
                                     }}
                                 >
-                                    {steps.step1 && (
-                                        <span style={{ color: "green", fontWeight: "bold" }}>
-                                            ✔ DONE
-                                        </span>
-                                    )}
+                                    {steps.step1 && renderStepStatus(steps.step1Status)}
                                 </td>
                                 <td
                                     colSpan={5}
@@ -1307,11 +1316,7 @@ const ApplicantExamPermit = ({ personId, steps, printRef }) => {
                                         fontSize: "18px",
                                     }}
                                 >
-                                    {steps.qualifyingDone && (
-                                        <span style={{ color: "green", fontWeight: "bold" }}>
-                                            ✔ DONE
-                                        </span>
-                                    )}
+                                    {steps.qualifyingDone && renderStepStatus(steps.qualifyingStatus)}
                                 </td>
                                 <td
                                     colSpan={5}
@@ -1322,11 +1327,7 @@ const ApplicantExamPermit = ({ personId, steps, printRef }) => {
                                         fontSize: "18px",
                                     }}
                                 >
-                                    {steps.interviewDone && (
-                                        <span style={{ color: "green", fontWeight: "bold" }}>
-                                            ✔ DONE
-                                        </span>
-                                    )}
+                                    {steps.interviewDone && renderStepStatus(steps.interviewStatus)}
                                 </td>
                                 <td
                                     colSpan={5}
@@ -2485,11 +2486,7 @@ const ApplicantExamPermit = ({ personId, steps, printRef }) => {
                                         fontSize: "18px",
                                     }}
                                 >
-                                    {steps.step1 && (
-                                        <span style={{ color: "green", fontWeight: "bold" }}>
-                                            ✔ DONE
-                                        </span>
-                                    )}
+                                    {steps.step1 && renderStepStatus(steps.step1Status)}
                                 </td>
                                 <td
                                     colSpan={5}
@@ -2528,11 +2525,7 @@ const ApplicantExamPermit = ({ personId, steps, printRef }) => {
                                         fontSize: "18px",
                                     }}
                                 >
-                                    {steps.qualifyingDone && (
-                                        <span style={{ color: "green", fontWeight: "bold" }}>
-                                            ✔ DONE
-                                        </span>
-                                    )}
+                                    {steps.qualifyingDone && renderStepStatus(steps.qualifyingStatus)}
                                 </td>
                                 <td
                                     colSpan={5}
@@ -2543,11 +2536,7 @@ const ApplicantExamPermit = ({ personId, steps, printRef }) => {
                                         fontSize: "18px",
                                     }}
                                 >
-                                    {steps.interviewDone && (
-                                        <span style={{ color: "green", fontWeight: "bold" }}>
-                                            ✔ DONE
-                                        </span>
-                                    )}
+                                    {steps.interviewDone && renderStepStatus(steps.interviewStatus)}
                                 </td>
                                 <td
                                     colSpan={5}

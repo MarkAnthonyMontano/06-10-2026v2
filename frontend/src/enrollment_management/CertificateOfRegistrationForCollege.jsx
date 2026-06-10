@@ -1506,7 +1506,7 @@ const CertificateOfRegistrationForCollege = forwardRef(
                         >
                           Academic Year/Term :{" "}
                           <span style={{ color: "red" }}>{activeSchoolYear[0]?.semester_description}{" "} AY {" "}
-                            {activeSchoolYear[0]?.year_description || " "}-{activeSchoolYear[0]?.year_description || " "}</span>
+                            {activeSchoolYear[0]?.year_description || " "}-{activeSchoolYear[0]?.year_description + 1 || " "}</span>
                         </b>
                       </td>
                     </tr>
@@ -1779,8 +1779,8 @@ const CertificateOfRegistrationForCollege = forwardRef(
                           readOnly
                           value={
                             major
-                              ? major.charAt(0).toUpperCase() +
-                              major.slice(1).toLowerCase()
+                              ? major?.charAt(0).toUpperCase() +
+                              major?.slice(1).toLowerCase()
                               : ""
                           }
                           style={{

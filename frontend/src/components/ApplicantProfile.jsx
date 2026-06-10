@@ -205,8 +205,11 @@ const ApplicantProfile = () => {
 
   const [steps, setSteps] = useState({
     step1: false,
+    step1Status: "",
     qualifyingDone: false,
+    qualifyingStatus: "",
     interviewDone: false,
+    interviewStatus: "",
     step3: false,
     step4: false,
     step5: false,
@@ -225,17 +228,19 @@ const ApplicantProfile = () => {
     return "";
   };
 
-  const isDoneStatus = (value) =>
-    value === true ||
-    value === 1 ||
-    String(value ?? "").trim() === "1" ||
-    String(value ?? "").trim().toUpperCase() === "DONE" ||
-    String(value ?? "").trim().toUpperCase() === "PASSED";
+  const normalizeResultStatus = (status) => {
+    if (status === null || status === undefined || String(status).trim() === "") {
+      return "";
+    }
 
-  const hasFinalizedScore = (value) =>
-    value !== null &&
-    value !== undefined &&
-    String(value).trim() !== "";
+    if (status === 0 || String(status).trim() === "0") return "PASSED";
+    if (status === 1 || String(status).trim() === "1") return "FAILED";
+
+    const normalized = String(status).trim().toUpperCase();
+    if (["PASSED", "PASS"].includes(normalized)) return "PASSED";
+    if (["FAILED", "FAIL"].includes(normalized)) return "FAILED";
+    return "";
+  };
 
   const isAcceptedStatus = (value) =>
     value === 1 ||
@@ -274,10 +279,8 @@ const ApplicantProfile = () => {
       }
 
       let entrance_exam_status = null;
-      let qualifying_result = null;
-      let interview_result = null;
-      let qualifying_status = 0;
-      let interview_status = 0;
+      let qualifying_status = null;
+      let interview_status = null;
 
       try {
         const scoreRes = await axios.get(
@@ -285,11 +288,8 @@ const ApplicantProfile = () => {
         );
 
         entrance_exam_status = normalizeExamStatus(scoreRes.data?.entrance_exam_status);
-        qualifying_result = scoreRes.data?.qualifying_result;
-        interview_result = scoreRes.data?.interview_result;
-
-        qualifying_status = scoreRes.data?.qualifying_status;
-        interview_status = scoreRes.data?.interview_status;
+        qualifying_status = normalizeResultStatus(scoreRes.data?.qualifying_status);
+        interview_status = normalizeResultStatus(scoreRes.data?.interview_status);
       } catch (err) {
         console.error("Score API failed:", err);
       }
@@ -342,14 +342,17 @@ const ApplicantProfile = () => {
         step1:
           entrance_exam_status === "PASSED" ||
           entrance_exam_status === "FAILED",
+        step1Status: entrance_exam_status,
 
         // separate step 2 states
         qualifyingDone:
-          isDoneStatus(qualifying_status) ||
-          hasFinalizedScore(qualifying_result),
+          qualifying_status === "PASSED" ||
+          qualifying_status === "FAILED",
+        qualifyingStatus: qualifying_status,
         interviewDone:
-          isDoneStatus(interview_status) ||
-          hasFinalizedScore(interview_result),
+          interview_status === "PASSED" ||
+          interview_status === "FAILED",
+        interviewStatus: interview_status,
 
         step3: isAccepted,
         step4: isRegistrarApproved,
@@ -375,8 +378,8 @@ const ApplicantProfile = () => {
 
       } else if (
         entrance_exam_status === "PASSED" &&
-        !qualifyingDone &&
-        !interviewDone
+        !newSteps.qualifyingDone &&
+        !newSteps.interviewDone
       ) {
         showSnackbar(
           "✅ The applicant has completed the Entrance Examination successfully and is now waiting to be contacted for the Qualifying Examination or Interview schedule.",
@@ -384,8 +387,8 @@ const ApplicantProfile = () => {
         );
 
       } else if (
-        qualifyingDone ||
-        interviewDone
+        newSteps.qualifyingDone ||
+        newSteps.interviewDone
       ) {
         showSnackbar(
           "🎤 The applicant has completed the Qualifying Examination and/or Interview process successfully.",

@@ -284,16 +284,17 @@ ${shortTerm} Information System
     });
 
     // Get person by applicant_number
+    // Get person by applicant_number
     app.get("/api/person-by-applicant/:applicant_number", async (req, res) => {
       const { applicant_number } = req.params;
 
       try {
         const [rows] = await db.execute(
-          `SELECT p.*, a.applicant_number, ae.final_rating
+          `SELECT p.*, a.applicant_number, er.final_rating
        FROM person_table p
        JOIN applicant_numbering_table a
          ON p.person_id = a.person_id
-       JOIN azzz ae ON p.person_id = ae.person_id
+       LEFT JOIN exam_results er ON p.person_id = er.person_id
        WHERE a.applicant_number = ? `,
           [applicant_number],
         );
@@ -5087,7 +5088,7 @@ WHERE proctor LIKE ?
   });
 
   app.get(
-    "/applicant-interview-schedule/:applicantNumber",
+    "/api/applicant-interview-schedule/:applicantNumber",
     async (req, res) => {
       const { applicantNumber } = req.params;
 

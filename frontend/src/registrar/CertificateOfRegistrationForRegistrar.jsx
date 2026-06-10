@@ -1496,9 +1496,9 @@ const CertificateOfRegistration = forwardRef(
                             color: "black",
                           }}
                         >
-                          Academic Year/Term :{" "}
+                             Academic Year/Term :{" "}
                           <span style={{ color: "red" }}>{activeSchoolYear[0]?.semester_description}{" "} AY {" "}
-                            {activeSchoolYear[0]?.year_description || " "}-{activeSchoolYear[0]?.year_description || " "}</span>
+                            {activeSchoolYear[0]?.year_description || " "}-{activeSchoolYear[0]?.year_description + 1 || " "}</span>
                         </b>
                       </td>
                     </tr>
