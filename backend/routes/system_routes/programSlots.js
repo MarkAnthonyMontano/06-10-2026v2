@@ -54,6 +54,91 @@ const getProgramSlotLabel = async (curriculumId) => {
   return `${program.program_code || "N/A"} - ${program.program_description || "Unknown Program"}${program.major ? ` (${program.major})` : ""}`;
 };
 
+const formatPersonName = (row = {}) => {
+  const name = [row.first_name, row.middle_name, row.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return name || row.email || "Unknown Employee";
+};
+
+const getActorAuditLabel = async (req) => {
+  const { actorId, actorRole } = getAuditActor(req);
+  const roleLabel = formatAuditActorRole(actorRole);
+
+  try {
+    const [rows] = await db3.query(
+      `SELECT ua.employee_id, ua.first_name, ua.middle_name, ua.last_name, ua.email,
+              at.access_description
+       FROM user_accounts ua
+       LEFT JOIN access_table at ON at.access_id = ua.access_level
+       WHERE ua.employee_id = ?
+          OR ua.person_id = ?
+          OR ua.email = ?
+       LIMIT 1`,
+      [actorId, actorId, actorId],
+    );
+
+    if (rows?.[0]) {
+      const accessLabel = String(rows[0].access_description || "").trim();
+      return `${accessLabel || roleLabel} ${formatPersonName(rows[0])} (${rows[0].employee_id || actorId})`;
+    }
+  } catch (err) {
+    console.error("Program slot actor audit lookup failed:", err);
+  }
+
+  return `${roleLabel} (${actorId})`;
+};
+
+const getSchoolTermLabel = async (activeSchoolYearId) => {
+  try {
+    const [rows] = await db3.query(
+      `SELECT yt.year_description, sem.semester_description
+       FROM active_school_year_table asy
+       LEFT JOIN year_table yt ON yt.year_id = asy.year_id
+       LEFT JOIN semester_table sem ON sem.semester_id = asy.semester_id
+       WHERE asy.id = ?
+       LIMIT 1`,
+      [activeSchoolYearId],
+    );
+
+    const term = rows?.[0];
+    if (!term) return `active school year ID ${activeSchoolYearId}`;
+
+    const schoolYear = term.year_description || `school year ID ${activeSchoolYearId}`;
+    const semester = term.semester_description
+      ? `, ${term.semester_description}`
+      : "";
+
+    return `${schoolYear}${semester}`;
+  } catch (err) {
+    console.error("Program slot school term audit lookup failed:", err);
+    return `active school year ID ${activeSchoolYearId}`;
+  }
+};
+
+const getDepartmentLabel = async (departmentId) => {
+  try {
+    const [rows] = await db3.query(
+      `SELECT dprtmnt_name, dprtmnt_code
+       FROM dprtmnt_table
+       WHERE dprtmnt_id = ?
+       LIMIT 1`,
+      [departmentId],
+    );
+
+    const department = rows?.[0];
+    if (!department) return `department ID ${departmentId}`;
+
+    return `${department.dprtmnt_name || "Unknown Department"}${department.dprtmnt_code ? ` (${department.dprtmnt_code})` : ""}`;
+  } catch (err) {
+    console.error("Program slot department audit lookup failed:", err);
+    return `department ID ${departmentId}`;
+  }
+};
+
 const memoryCache = {
   data: new Map(),
   set(key, value, ttlMs = 80000) {
@@ -312,9 +397,16 @@ router.post("/apply", async (req, res) => {
 
 router.post("/program-slots", async (req, res) => {
   const { curriculum_id, max_slots, year_id, semester_id } = req.body;
+  const slotValue = Number(max_slots);
 
-  if (!curriculum_id || !max_slots || !year_id || !semester_id) {
-    return res.status(400).json({ message: "Missing required fields" });
+  if (
+    !curriculum_id ||
+    !year_id ||
+    !semester_id ||
+    !Number.isInteger(slotValue) ||
+    slotValue < 1
+  ) {
+    return res.status(400).json({ message: "Missing or invalid required fields" });
   }
 
   try {
@@ -333,7 +425,7 @@ router.post("/program-slots", async (req, res) => {
     // check if already exists
     const [[existing]] = await db.query(
       `
-      SELECT slot_id
+      SELECT slot_id, max_slots
       FROM admission.program_slots
       WHERE curriculum_id = ? AND active_school_year_id = ?
     `,
@@ -341,27 +433,29 @@ router.post("/program-slots", async (req, res) => {
     );
 
     if (existing) {
-      // UPDATE
+      const previousTotalSlots = Number(existing.max_slots || 0);
+      const newTotalSlots = Number(existing.max_slots || 0) + slotValue;
+
       await db.query(
         `
         UPDATE admission.program_slots
-        SET max_slots = ?
+        SET max_slots = max_slots + ?
         WHERE curriculum_id = ? AND active_school_year_id = ?
       `,
-        [max_slots, curriculum_id, activeSchoolYearId],
+        [slotValue, curriculum_id, activeSchoolYearId],
       );
 
-      const { actorId, actorRole } = getAuditActor(req);
-      const roleLabel = formatAuditActorRole(actorRole);
+      const actorLabel = await getActorAuditLabel(req);
       const programLabel = await getProgramSlotLabel(curriculum_id);
+      const schoolTermLabel = await getSchoolTermLabel(activeSchoolYearId);
       await insertProgramSlotAuditLog({
         req,
-        action: "PROGRAM_SLOT_UPDATE",
-        message: `${roleLabel} (${actorId}) updated program slot limit for ${programLabel} to ${max_slots}.`,
+        action: "PROGRAM_SLOT_ADD",
+        message: `${actorLabel} added ${slotValue} slot(s) to ${programLabel} for ${schoolTermLabel}. Previous total slots: ${previousTotalSlots}. New total slots: ${newTotalSlots}.`,
       });
 
       memoryCache.clear();
-      return res.json({ message: "Program slots updated" });
+      return res.json({ message: "Program slots added" });
     }
 
     // INSERT
@@ -371,16 +465,16 @@ router.post("/program-slots", async (req, res) => {
       (curriculum_id, max_slots, active_school_year_id, created_at)
       VALUES (?, ?, ?, NOW())
     `,
-      [curriculum_id, max_slots, activeSchoolYearId],
+      [curriculum_id, slotValue, activeSchoolYearId],
     );
 
-    const { actorId, actorRole } = getAuditActor(req);
-    const roleLabel = formatAuditActorRole(actorRole);
+    const actorLabel = await getActorAuditLabel(req);
     const programLabel = await getProgramSlotLabel(curriculum_id);
+    const schoolTermLabel = await getSchoolTermLabel(activeSchoolYearId);
     await insertProgramSlotAuditLog({
       req,
       action: "PROGRAM_SLOT_CREATE",
-      message: `${roleLabel} (${actorId}) created program slot limit for ${programLabel}. Max slots: ${max_slots}.`,
+      message: `${actorLabel} created program slot limit for ${programLabel} for ${schoolTermLabel}. Total slots: ${slotValue}.`,
     });
 
     memoryCache.clear();
@@ -391,11 +485,109 @@ router.post("/program-slots", async (req, res) => {
   }
 });
 
+router.post("/program-slots/add", async (req, res) => {
+  const { curriculum_id, add_slots, year_id, semester_id } = req.body;
+  const slotsToAdd = Number(add_slots);
+
+  if (
+    !curriculum_id ||
+    !year_id ||
+    !semester_id ||
+    !Number.isInteger(slotsToAdd) ||
+    slotsToAdd < 1
+  ) {
+    return res.status(400).json({ message: "Missing or invalid required fields" });
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    const [activeRows] = await db3.query(
+      "SELECT id FROM active_school_year_table WHERE year_id = ? AND semester_id = ? LIMIT 1",
+      [year_id, semester_id],
+    );
+    const activeSchoolYearId = activeRows[0]?.id;
+
+    if (!activeSchoolYearId) {
+      return res
+        .status(400)
+        .json({ message: "Active school year not found for selection" });
+    }
+
+    await connection.beginTransaction();
+
+    const [[existing]] = await connection.query(
+      `
+      SELECT slot_id, max_slots
+      FROM admission.program_slots
+      WHERE curriculum_id = ? AND active_school_year_id = ?
+      FOR UPDATE
+    `,
+      [curriculum_id, activeSchoolYearId],
+    );
+
+    const previousTotalSlots = Number(existing?.max_slots || 0);
+    let newTotalSlots = slotsToAdd;
+
+    if (existing) {
+      newTotalSlots = Number(existing.max_slots || 0) + slotsToAdd;
+      await connection.query(
+        `
+        UPDATE admission.program_slots
+        SET max_slots = max_slots + ?
+        WHERE curriculum_id = ? AND active_school_year_id = ?
+      `,
+        [slotsToAdd, curriculum_id, activeSchoolYearId],
+      );
+    } else {
+      await connection.query(
+        `
+        INSERT INTO admission.program_slots
+        (curriculum_id, max_slots, active_school_year_id, created_at)
+        VALUES (?, ?, ?, NOW())
+      `,
+        [curriculum_id, slotsToAdd, activeSchoolYearId],
+      );
+    }
+
+    await connection.commit();
+
+    const actorLabel = await getActorAuditLabel(req);
+    const programLabel = await getProgramSlotLabel(curriculum_id);
+    const schoolTermLabel = await getSchoolTermLabel(activeSchoolYearId);
+    await insertProgramSlotAuditLog({
+      req,
+      action: "PROGRAM_SLOT_ADD",
+      message: `${actorLabel} added ${slotsToAdd} slot(s) to ${programLabel} for ${schoolTermLabel}. Previous total slots: ${previousTotalSlots}. New total slots: ${newTotalSlots}.`,
+    });
+
+    memoryCache.clear();
+    res.json({
+      message: "Program slots added",
+      added_slots: slotsToAdd,
+      max_slots: newTotalSlots,
+    });
+  } catch (err) {
+    await connection.rollback();
+    console.error("Error adding program slots:", err);
+    res.status(500).json({ message: "Failed to add program slots" });
+  } finally {
+    connection.release();
+  }
+});
+
 router.post("/program-slots/department", async (req, res) => {
   const { dprtmnt_id, max_slots, year_id, semester_id } = req.body;
+  const slotValue = Number(max_slots);
 
-  if (!dprtmnt_id || !max_slots || !year_id || !semester_id) {
-    return res.status(400).json({ message: "Missing required fields" });
+  if (
+    !dprtmnt_id ||
+    !year_id ||
+    !semester_id ||
+    !Number.isInteger(slotValue) ||
+    slotValue < 1
+  ) {
+    return res.status(400).json({ message: "Missing or invalid required fields" });
   }
 
   const connection = await db.getConnection();
@@ -443,16 +635,18 @@ router.post("/program-slots/department", async (req, res) => {
       [activeSchoolYearId, curriculumIds],
     );
     const existingSet = new Set(existingRows.map((row) => row.curriculum_id));
+    const updatedProgramCount = existingSet.size;
+    const createdProgramCount = curriculumIds.length - updatedProgramCount;
 
     for (const curriculumId of curriculumIds) {
       if (existingSet.has(curriculumId)) {
         await connection.query(
           `
           UPDATE admission.program_slots
-          SET max_slots = ?
+          SET max_slots = max_slots + ?
           WHERE curriculum_id = ? AND active_school_year_id = ?
         `,
-          [max_slots, curriculumId, activeSchoolYearId],
+          [slotValue, curriculumId, activeSchoolYearId],
         );
       } else {
         await connection.query(
@@ -461,18 +655,19 @@ router.post("/program-slots/department", async (req, res) => {
           (curriculum_id, max_slots, active_school_year_id, created_at)
           VALUES (?, ?, ?, NOW())
         `,
-          [curriculumId, max_slots, activeSchoolYearId],
+          [curriculumId, slotValue, activeSchoolYearId],
         );
       }
     }
 
     await connection.commit();
-    const { actorId, actorRole } = getAuditActor(req);
-    const roleLabel = formatAuditActorRole(actorRole);
+    const actorLabel = await getActorAuditLabel(req);
+    const departmentLabel = await getDepartmentLabel(dprtmnt_id);
+    const schoolTermLabel = await getSchoolTermLabel(activeSchoolYearId);
     await insertProgramSlotAuditLog({
       req,
-      action: "PROGRAM_SLOT_DEPARTMENT_UPDATE",
-      message: `${roleLabel} (${actorId}) set program slot limit to ${max_slots} for ${curriculumIds.length} program(s) in department ${dprtmnt_id}.`,
+      action: "PROGRAM_SLOT_DEPARTMENT_ADD",
+      message: `${actorLabel} added ${slotValue} slot(s) per program to ${departmentLabel} for ${schoolTermLabel}. Programs affected: ${curriculumIds.length}. Updated existing slot records: ${updatedProgramCount}. Created new slot records: ${createdProgramCount}.`,
     });
     memoryCache.clear();
     res.json({ message: "Program slots updated for department" });
@@ -489,9 +684,15 @@ router.post("/program-slots/department", async (req, res) => {
 
 router.post("/program-slots/all", async (req, res) => {
   const { max_slots, year_id, semester_id } = req.body;
+  const slotValue = Number(max_slots);
 
-  if (!max_slots || !year_id || !semester_id) {
-    return res.status(400).json({ message: "Missing required fields" });
+  if (
+    !year_id ||
+    !semester_id ||
+    !Number.isInteger(slotValue) ||
+    slotValue < 1
+  ) {
+    return res.status(400).json({ message: "Missing or invalid required fields" });
   }
 
   const connection = await db.getConnection();
@@ -533,16 +734,18 @@ router.post("/program-slots/all", async (req, res) => {
       [activeSchoolYearId, curriculumIds],
     );
     const existingSet = new Set(existingRows.map((row) => row.curriculum_id));
+    const updatedProgramCount = existingSet.size;
+    const createdProgramCount = curriculumIds.length - updatedProgramCount;
 
     for (const curriculumId of curriculumIds) {
       if (existingSet.has(curriculumId)) {
         await connection.query(
           `
           UPDATE admission.program_slots
-          SET max_slots = ?
+          SET max_slots = max_slots + ?
           WHERE curriculum_id = ? AND active_school_year_id = ?
         `,
-          [max_slots, curriculumId, activeSchoolYearId],
+          [slotValue, curriculumId, activeSchoolYearId],
         );
       } else {
         await connection.query(
@@ -551,18 +754,18 @@ router.post("/program-slots/all", async (req, res) => {
           (curriculum_id, max_slots, active_school_year_id, created_at)
           VALUES (?, ?, ?, NOW())
         `,
-          [curriculumId, max_slots, activeSchoolYearId],
+          [curriculumId, slotValue, activeSchoolYearId],
         );
       }
     }
 
     await connection.commit();
-    const { actorId, actorRole } = getAuditActor(req);
-    const roleLabel = formatAuditActorRole(actorRole);
+    const actorLabel = await getActorAuditLabel(req);
+    const schoolTermLabel = await getSchoolTermLabel(activeSchoolYearId);
     await insertProgramSlotAuditLog({
       req,
-      action: "PROGRAM_SLOT_ALL_UPDATE",
-      message: `${roleLabel} (${actorId}) set program slot limit to ${max_slots} for all ${curriculumIds.length} program(s).`,
+      action: "PROGRAM_SLOT_ALL_ADD",
+      message: `${actorLabel} added ${slotValue} slot(s) per program to all active programs for ${schoolTermLabel}. Programs affected: ${curriculumIds.length}. Updated existing slot records: ${updatedProgramCount}. Created new slot records: ${createdProgramCount}.`,
     });
     memoryCache.clear();
     res.json({ message: "Program slots updated for all programs" });
@@ -572,6 +775,89 @@ router.post("/program-slots/all", async (req, res) => {
     res.status(500).json({ message: "Failed to save program slots" });
   } finally {
     connection.release();
+  }
+});
+
+router.delete("/program-slots/reset", async (req, res) => {
+  const { curriculum_id, year_id, semester_id } = req.body;
+ 
+  if (!curriculum_id || !year_id || !semester_id) {
+    return res.status(400).json({ error: "curriculum_id, year_id, and semester_id are required" });
+  }
+ 
+  try {
+    const [result] = await db.query(
+      `DELETE FROM program_slots
+       WHERE curriculum_id = ?
+         AND active_school_year_id = (
+           SELECT id FROM enrollment.active_school_year_table
+           WHERE year_id = ? AND semester_id = ?
+           LIMIT 1
+         )`,
+      [curriculum_id, year_id, semester_id]
+    );
+ 
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "No slot record found for this program in the selected period" });
+    }
+ 
+    res.json({ success: true, deleted: result.affectedRows });
+  } catch (err) {
+    console.error("Failed to reset single program slot:", err);
+    res.status(500).json({ error: "Failed to reset slot" });
+  }
+});
+
+router.delete("/program-slots/reset/department", async (req, res) => {
+  const { dprtmnt_id, year_id, semester_id } = req.body;
+ 
+  if (!dprtmnt_id || !year_id || !semester_id) {
+    return res.status(400).json({ error: "dprtmnt_id, year_id, and semester_id are required" });
+  }
+ 
+  try {
+    const [result] = await db.query(
+      `DELETE ps FROM admission.program_slots ps
+       INNER JOIN enrollment.curriculum_table ct ON ps.curriculum_id = ct.curriculum_id
+       INNER JOIN enrollment.dprtmnt_curriculum_table dc ON ct.curriculum_id = dc.curriculum_id
+       WHERE dc.dprtmnt_id = ?
+         AND ps.active_school_year_id = (
+           SELECT id FROM enrollment.active_school_year_table
+           WHERE year_id = ? AND semester_id = ?
+           LIMIT 1
+         )`,
+      [dprtmnt_id, year_id, semester_id]
+    );
+ 
+    res.json({ success: true, deleted: result.affectedRows });
+  } catch (err) {
+    console.error("Failed to reset department slots:", err);
+    res.status(500).json({ error: "Failed to reset department slots" });
+  }
+});
+
+router.delete("/program-slots/reset/all", async (req, res) => {
+  const { year_id, semester_id } = req.body;
+ 
+  if (!year_id || !semester_id) {
+    return res.status(400).json({ error: "year_id and semester_id are required" });
+  }
+ 
+  try {
+    const [result] = await db.query(
+      `DELETE FROM admission.program_slots
+       WHERE active_school_year_id = (
+         SELECT id FROM enrollment.active_school_year_table
+         WHERE year_id = ? AND semester_id = ?
+         LIMIT 1
+       )`,
+      [year_id, semester_id]
+    );
+ 
+    res.json({ success: true, deleted: result.affectedRows });
+  } catch (err) {
+    console.error("Failed to reset all slots:", err);
+    res.status(500).json({ error: "Failed to reset all slots" });
   }
 });
 

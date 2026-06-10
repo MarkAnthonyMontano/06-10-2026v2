@@ -51,6 +51,65 @@ const getActorLabel = (req) => {
   };
 };
 
+const formatPersonName = (row = {}) => {
+  const name = [row.first_name, row.middle_name, row.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return name || row.email || "Unknown Employee";
+};
+
+const formatEmployeeLabel = (row = {}) =>
+  `${formatPersonName(row)} (${row.employee_id || "unknown"})`;
+
+const getActorAuditLabel = async (req) => {
+  const { actorId, roleLabel } = getActorLabel(req);
+
+  try {
+    const [rows] = await db3.query(
+      `SELECT ua.employee_id, ua.first_name, ua.middle_name, ua.last_name, ua.email,
+              at.access_description
+       FROM user_accounts ua
+       LEFT JOIN access_table at ON at.access_id = ua.access_level
+       WHERE ua.employee_id = ?
+          OR ua.person_id = ?
+          OR ua.email = ?
+       LIMIT 1`,
+      [actorId, actorId, actorId],
+    );
+
+    if (rows?.[0]) {
+      const accessLabel = String(rows[0].access_description || "").trim();
+      return `${accessLabel || roleLabel} ${formatEmployeeLabel(rows[0])}`;
+    }
+  } catch (err) {
+    console.error("Email template actor audit lookup failed:", err);
+  }
+
+  return `${roleLabel} (${actorId})`;
+};
+
+const getTaggedEmployeeLabels = async (employeeIds) => {
+  if (!employeeIds.length) return [];
+
+  const [rows] = await db3.query(
+    `SELECT employee_id, first_name, middle_name, last_name, email
+     FROM user_accounts
+     WHERE employee_id IN (?)`,
+    [employeeIds],
+  );
+
+  const lookup = new Map(
+    rows.map((row) => [String(row.employee_id), formatEmployeeLabel(row)]),
+  );
+
+  return employeeIds.map(
+    (employeeId) => lookup.get(String(employeeId)) || `Employee (${employeeId})`,
+  );
+};
+
 const getConfiguredSenderEmails = () =>
   [
     process.env.CCS_EMAIL_USER1,
@@ -69,10 +128,26 @@ const isConfiguredSenderEmail = (senderEmail) =>
 router.get("/email-templates", async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT et.*, dpr.dprtmnt_name AS department_name
+      SELECT
+        et.*,
+        dpr.dprtmnt_name AS department_name,
+        pt.program_code,
+        pt.program_description,
+        pt.major,
+        COALESCE(tagged.employee_count, 0) AS tagged_employee_count
       FROM email_templates et
       LEFT JOIN enrollment.dprtmnt_table dpr
       ON et.department_id = dpr.dprtmnt_id
+      LEFT JOIN enrollment.curriculum_table ct
+      ON et.program_id = ct.curriculum_id
+      LEFT JOIN enrollment.program_table pt
+      ON ct.program_id = pt.program_id
+      LEFT JOIN (
+        SELECT template_id, COUNT(*) AS employee_count
+        FROM email_template_employees
+        GROUP BY template_id
+      ) tagged
+      ON et.template_id = tagged.template_id
       ORDER BY et.updated_at DESC
     `);
     res.json(rows);
@@ -85,13 +160,13 @@ router.get("/email-templates", async (req, res) => {
 // CREATE template
 router.post("/email-templates", CanCreate, async (req, res) => {
   try {
-    const { sender_name, department_id, employee_id, is_active = 1 } = req.body;
+    const { sender_name, department_id, program_id, is_active = 1 } = req.body;
     const senderEmail = normalizeSenderEmail(sender_name);
 
-    if (!senderEmail || !department_id)
+    if (!senderEmail || !department_id || !program_id)
       return res
         .status(400)
-        .json({ error: "Gmail account and department are required" });
+        .json({ error: "Gmail account, department, and program are required" });
 
     if (!isConfiguredSenderEmail(senderEmail)) {
       return res.status(400).json({
@@ -100,15 +175,15 @@ router.post("/email-templates", CanCreate, async (req, res) => {
     }
 
     const [result] = await db.query(
-      "INSERT INTO email_templates (sender_name, department_id, employee_id, is_active) VALUES (?,  ?, ?, ?)",
-      [senderEmail, department_id, employee_id || null, is_active ? 1 : 0],
+      "INSERT INTO email_templates (sender_name, department_id, program_id, is_active) VALUES (?, ?, ?, ?)",
+      [senderEmail, department_id, program_id, is_active ? 1 : 0],
     );
 
-    const { actorId, roleLabel } = getActorLabel(req);
+    const actorLabel = await getActorAuditLabel(req);
     await insertEmailTemplateAuditLog({
       req,
       action: "EMAIL_TEMPLATE_CREATE",
-      message: `${roleLabel} (${actorId}) created email template for ${senderEmail}.`,
+      message: `${actorLabel} created email template for ${senderEmail}.`,
     });
 
     res.status(201).json({ template_id: result.insertId });
@@ -121,7 +196,7 @@ router.post("/email-templates", CanCreate, async (req, res) => {
 // UPDATE template
 router.put("/email-templates/:id", CanEdit, async (req, res) => {
   try {
-    const { sender_name, department_id, employee_id, is_active } = req.body;
+    const { sender_name, department_id, program_id, is_active } = req.body;
     const senderEmail =
       sender_name === undefined ? undefined : normalizeSenderEmail(sender_name);
 
@@ -139,21 +214,21 @@ router.put("/email-templates/:id", CanEdit, async (req, res) => {
       `UPDATE email_templates
        SET sender_name = COALESCE(?, sender_name),
            department_id = COALESCE(?, department_id),
-           employee_id = COALESCE(?, employee_id),
+           program_id = COALESCE(?, program_id),
            is_active = COALESCE(?, is_active)
        WHERE template_id = ?`,
-      [senderEmail, department_id, employee_id, is_active, req.params.id],
+      [senderEmail, department_id, program_id, is_active, req.params.id],
     );
 
     if (result.affectedRows === 0)
       return res.status(404).json({ error: "Not found" });
 
     const templateLabel = senderEmail || `template ID ${req.params.id}`;
-    const { actorId, roleLabel } = getActorLabel(req);
+    const actorLabel = await getActorAuditLabel(req);
     await insertEmailTemplateAuditLog({
       req,
       action: "EMAIL_TEMPLATE_UPDATE",
-      message: `${roleLabel} (${actorId}) updated email template ${templateLabel}.`,
+      message: `${actorLabel} updated email template ${templateLabel}.`,
     });
 
     res.json({ success: true });
@@ -171,6 +246,10 @@ router.delete("/email-templates/:id", CanDelete, async (req, res) => {
       [req.params.id],
     );
 
+    await db.query("DELETE FROM email_template_employees WHERE template_id = ?", [
+      req.params.id,
+    ]);
+
     const [result] = await db.query(
       "DELETE FROM email_templates WHERE template_id = ?",
       [req.params.id],
@@ -179,11 +258,11 @@ router.delete("/email-templates/:id", CanDelete, async (req, res) => {
       return res.status(404).json({ error: "Not found" });
 
     const templateLabel = template?.sender_name || `template ID ${req.params.id}`;
-    const { actorId, roleLabel } = getActorLabel(req);
+    const actorLabel = await getActorAuditLabel(req);
     await insertEmailTemplateAuditLog({
       req,
       action: "EMAIL_TEMPLATE_DELETE",
-      message: `${roleLabel} (${actorId}) deleted email template ${templateLabel}.`,
+      message: `${actorLabel} deleted email template ${templateLabel}.`,
     });
 
     res.json({ success: true });
@@ -193,14 +272,101 @@ router.delete("/email-templates/:id", CanDelete, async (req, res) => {
   }
 });
 
-router.get("/email-templates/active-senders", async (req, res) => {
-  const { department_id } = req.query;
-  console.log("Department ID: ", department_id);
-
+router.get("/email-templates/:id/employees", async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT template_id, sender_name FROM email_templates WHERE is_active = 1 AND department_id = ?",
-      [department_id],
+      `SELECT
+         ete.employee_id,
+         ua.first_name,
+         ua.middle_name,
+         ua.last_name,
+         ua.email,
+         ua.role AS position,
+         ua.dprtmnt_id
+       FROM email_template_employees ete
+       LEFT JOIN enrollment.user_accounts ua
+       ON ete.employee_id = ua.employee_id
+       WHERE ete.template_id = ?
+       ORDER BY ua.last_name, ua.first_name, ete.employee_id`,
+      [req.params.id],
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch tagged employees" });
+  }
+});
+
+router.put("/email-templates/:id/employees", CanEdit, async (req, res) => {
+  try {
+    const { employee_ids = [] } = req.body;
+    const uniqueEmployeeIds = [
+      ...new Set(
+        (Array.isArray(employee_ids) ? employee_ids : [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean),
+      ),
+    ];
+
+    if (uniqueEmployeeIds.length === 0) {
+      return res.status(400).json({ error: "Please select at least one employee" });
+    }
+
+    const [[template]] = await db.query(
+      "SELECT sender_name FROM email_templates WHERE template_id = ? LIMIT 1",
+      [req.params.id],
+    );
+
+    if (!template) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+
+    await db.query("DELETE FROM email_template_employees WHERE template_id = ?", [
+      req.params.id,
+    ]);
+
+    await db.query(
+      "INSERT INTO email_template_employees (template_id, employee_id) VALUES ?",
+      [uniqueEmployeeIds.map((employeeId) => [req.params.id, employeeId])],
+    );
+
+    const actorLabel = await getActorAuditLabel(req);
+    const taggedEmployeeLabels = await getTaggedEmployeeLabels(uniqueEmployeeIds);
+    await insertEmailTemplateAuditLog({
+      req,
+      action: "EMAIL_TEMPLATE_EMPLOYEE_TAG",
+      message: `${actorLabel} tagged ${taggedEmployeeLabels.join(", ")} to email ${template.sender_name}.`,
+    });
+
+    res.json({ success: true, employee_count: uniqueEmployeeIds.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save tagged employees" });
+  }
+});
+
+router.get("/email-templates/active-senders", async (req, res) => {
+  const { department_id, program_id, employee_id } = req.query;
+
+  try {
+    if (!department_id || !program_id || !employee_id) {
+      return res.status(400).json({
+        error: "Department, program, and employee are required",
+      });
+    }
+
+    const [rows] = await db.query(
+      `SELECT et.template_id, et.sender_name
+       FROM email_templates et
+       INNER JOIN email_template_employees ete
+       ON et.template_id = ete.template_id
+       WHERE et.is_active = 1
+         AND et.department_id = ?
+         AND et.program_id = ?
+         AND ete.employee_id = ?
+       ORDER BY et.updated_at DESC`,
+      [department_id, program_id, employee_id],
     );
 
     res.json(rows);

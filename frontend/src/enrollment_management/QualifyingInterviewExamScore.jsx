@@ -1818,27 +1818,30 @@ const QualifyingExamScore = () => {
   const [singleConfirmOpen, setSingleConfirmOpen] = useState(false);
   const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
   const [finalizeConfirmMode, setFinalizeConfirmMode] = useState("bulk");
-  const [emailSender, setEmailSender] = useState("");
   const [dprtmntName, setDepartmentName] = useState("");
 
-  useEffect(() => {
-    const fetchActiveSenders = async () => {
-      if (!adminData.dprtmnt_id) return;
+  const resolveSenderForApplicant = async (applicant) => {
+    const programId = applicant?.program;
+    const currentEmployeeId = employeeID || localStorage.getItem("employee_id");
 
-      try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/email-templates/active-senders?department_id=${adminData.dprtmnt_id}`,
-        );
-        if (res.data.length > 0) {
-          setEmailSender(res.data[0].sender_name);
-        }
-      } catch (err) {
-        console.error("Error fetching active senders:", err);
-      }
-    };
+    if (!adminData.dprtmnt_id || !programId || !currentEmployeeId) {
+      throw new Error("Department, program, and employee are required to find a sender email.");
+    }
 
-    fetchActiveSenders();
-  }, [user, adminData.dprtmnt_id]);
+    const res = await axios.get(`${API_BASE_URL}/api/email-templates/active-senders`, {
+      params: {
+        department_id: adminData.dprtmnt_id,
+        program_id: programId,
+        employee_id: currentEmployeeId,
+      },
+    });
+
+    if (!Array.isArray(res.data) || res.data.length === 0) {
+      throw new Error("No active email account is assigned to this program and employee.");
+    }
+
+    return res.data[0].sender_name;
+  };
 
   useEffect(() => {
     const fetchDepartment = async () => {
@@ -2186,15 +2189,6 @@ Thank you, best regards
     }
 
     const loggedInPersonId = localStorage.getItem("person_id");
-    if (!emailSender) {
-      setLoading2(false);
-      setSnack({
-        open: true,
-        message: "No active sender account is assigned for this department.",
-        severity: "warning",
-      });
-      return;
-    }
 
     let successCount = 0;
     const successfulApplicantNumbers = new Set();
@@ -2212,12 +2206,14 @@ Thank you, best regards
       }
 
       try {
+        const resolvedSender = await resolveSenderForApplicant(applicant);
+
         // Send email
         await axios.post(`${API_BASE_URL}/api/send-email`, {
           to: recipientEmail,
           subject: emailSubject,
           html: finalPreview.replace(/\n/g, "<br/>"),
-          senderName: emailSender,
+          senderName: resolvedSender,
           user_person_id: loggedInPersonId,
           applicant_number: applicant.applicant_number,
           update_interview_status: true,
@@ -2226,9 +2222,7 @@ Thank you, best regards
             applicant.first_name,
             applicant.middle_name,
             applicant.last_name,
-          ]
-            .filter(Boolean)
-            .join(" "),
+          ].filter(Boolean).join(" "),
           ...auditPayload(),
         });
 
@@ -2261,7 +2255,7 @@ Thank you, best regards
     setSelectedApplicant(null);
     setLoading2(false);
   };
-
+  
   const confirmSendEmails = async () => {
     setLoading2(true);
     const targets = selectedApplicant

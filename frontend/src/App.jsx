@@ -575,8 +575,8 @@ function App() {
                       <Toolbar sx={{ display: "flex", justifyContent: "space-between", minHeight: { xs: 56, sm: 64 } }}>
 
                         {/* LEFT SIDE */}
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          {/* Mobile hamburger — only shown when authenticated and on mobile */}
+                        <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, sm: 1 } }}>
+                          {/* Mobile hamburger, only shown when authenticated and on mobile */}
                           {isAuthenticated && isMobile && (
                             <IconButton
                               color="inherit"
@@ -594,11 +594,12 @@ function App() {
                               src={`${API_BASE_URL}${settings.logo_url}?t=${Date.now()}`}
                               alt="Logo"
                               style={{
-                                height: "45px",
-                                width: "45px",
+                                height: isMobile ? "42px" : "50px",
+                                width: isMobile ? "42px" : "50px",
                                 borderRadius: "50%",
                                 objectFit: "cover",
-                                marginRight: "8px",
+                                marginRight: isMobile ? "4px" : "3px",
+                                marginLeft: isMobile ? "0" : "-5px",
                                 cursor: "pointer",
                                 border: "2px solid white",
                               }}
@@ -606,33 +607,51 @@ function App() {
                             />
                           )}
 
-                          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                            <Box
-                              component="span"
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              transform: { xs: "none", sm: "scale(0.9)" },
+                              transformOrigin: "left center",
+                              minWidth: 0,
+                              marginLeft: "5px",
+                            }}
+                          >
+                            <Typography
                               sx={{
+                                fontWeight: "bold",
+                                mt: "0px",
                                 fontFamily: "Poppins, sans-serif",
-                                fontSize: { xs: "16px", sm: "22px", md: "28px" },
-                                display: { xs: "none", sm: "inline" },
+                                fontSize: { xs: "16px", sm: "22px", md: "24px" },
+                                lineHeight: 1.1,
+                                whiteSpace: { xs: "nowrap", sm: "normal" },
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth: { xs: "46vw", sm: "none" },
                               }}
                             >
-                              {settings?.short_term || "SCHOOL NAME"} -{" "}
-                            </Box>
-                            <Box
-                              component="span"
-                              sx={{
-                                fontFamily: "Poppins, sans-serif",
-                                fontSize: { xs: "14px", sm: "18px", md: "24px" },
-                              }}
-                            >
-                              {/* On mobile show short_term only, on larger show full name */}
                               <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
                                 {settings?.short_term || "SCHOOL"}
                               </Box>
                               <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
                                 {settings?.company_name || "SCHOOL NAME"}
                               </Box>
-                            </Box>
-                          </Typography>
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontWeight: "400",
+                                fontFamily: "Poppins, sans-serif",
+                                fontSize: { xs: "10px", sm: "12px" },
+                                mt: "-3px",
+                                letterSpacing: { xs: "1px", sm: "2.5px" },
+                                lineHeight: 1.2,
+                                marginTop: "6px",
+                                display: { xs: "none", sm: "block" },
+                              }}
+                            >
+                              {settings?.short_term || "SCHOOL NAME"} ACADEMIC INFORMATION SYSTEM
+                            </Typography>
+                          </Box>
                         </Box>
 
                         {/* RIGHT SIDE (TIME + DATE) */}

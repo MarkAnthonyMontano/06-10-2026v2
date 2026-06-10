@@ -423,7 +423,7 @@ const LoginEnrollment = ({ setIsAuthenticated }) => {
                     return acc;
                   }, [])}
                 </strong>
-                <p>Student Information System</p>
+                <p>Academic Information System</p>
               </div>
             </div>
 
@@ -522,7 +522,7 @@ const LoginEnrollment = ({ setIsAuthenticated }) => {
             <div className="Footer">
               <div className="FooterText">
                 &copy; {currentYear} {settings?.company_name || "EARIST"} <br />
-                Student Information System. <br />
+                Academic Information System. <br />
                 All rights reserved.
               </div>
             </div>

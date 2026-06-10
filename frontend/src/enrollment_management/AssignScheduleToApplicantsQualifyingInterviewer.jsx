@@ -53,7 +53,7 @@ import {
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import ScoreIcon from "@mui/icons-material/Score";
 import PersonIcon from "@mui/icons-material/Person";
-
+import EaristLogo from "../assets/EaristLogo.png";
 const AssignScheduleToApplicantsInterviewer = () => {
   const socket = useRef(null);
   const settings = useContext(SettingsContext);
@@ -223,24 +223,28 @@ const AssignScheduleToApplicantsInterviewer = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    const fetchActiveSenders = async () => {
-      if (!adminData.dprtmnt_id) return;
+  const resolveSenderForApplicant = async (applicant) => {
+    const programId = applicant?.program;
+    const currentEmployeeId = employeeID || localStorage.getItem("employee_id");
 
-      try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/email-templates/active-senders?department_id=${adminData.dprtmnt_id}`,
-        );
-        if (res.data.length > 0) {
-          setEmailSender(res.data[0].sender_name);
-        }
-      } catch (err) {
-        console.error("Error fetching active senders:", err);
-      }
-    };
+    if (!adminData.dprtmnt_id || !programId || !currentEmployeeId) {
+      throw new Error("Department, program, and employee are required to find a sender email.");
+    }
 
-    fetchActiveSenders();
-  }, [user, adminData.dprtmnt_id]);
+    const res = await axios.get(`${API_BASE_URL}/api/email-templates/active-senders`, {
+      params: {
+        department_id: adminData.dprtmnt_id,
+        program_id: programId,
+        employee_id: currentEmployeeId,
+      },
+    });
+
+    if (!Array.isArray(res.data) || res.data.length === 0) {
+      throw new Error("No active email account is assigned to this program and employee.");
+    }
+
+    return res.data[0].sender_name;
+  };
 
   const tabs = [
     {
@@ -1186,16 +1190,59 @@ ${requirementsSection}
     setConfirmOpen(true);
   };
 
-  const confirmSendEmails = () => {
+  const confirmSendEmails = async () => {
     setConfirmOpen(false);
     setLoading2(true);
     const assignedApplicants = Array.from(selectedApplicants);
+    const emailTargets = persons.filter((person) =>
+      assignedApplicants.some(
+        (applicantNumber) =>
+          String(applicantNumber) === String(person.applicant_number),
+      ),
+    );
+
+    if (emailTargets.length === 0) {
+      setLoading2(false);
+      setSnack({
+        open: true,
+        message: "No selected applicants found.",
+        severity: "warning",
+      });
+      return;
+    }
+
+    const uniquePrograms = [
+      ...new Set(emailTargets.map((person) => String(person.program || ""))),
+    ].filter(Boolean);
+
+    if (uniquePrograms.length !== 1) {
+      setLoading2(false);
+      setSnack({
+        open: true,
+        message: "Please send emails by one program at a time.",
+        severity: "warning",
+      });
+      return;
+    }
+
+    let resolvedSender = "";
+    try {
+      resolvedSender = await resolveSenderForApplicant(emailTargets[0]);
+    } catch (err) {
+      setLoading2(false);
+      setSnack({
+        open: true,
+        message: err.message || "No active sender account is assigned.",
+        severity: "warning",
+      });
+      return;
+    }
 
     socket.current.emit("send_interview_emails", {
       schedule_id: selectedSchedule,
       applicant_numbers: assignedApplicants,
       subject: emailSubject,
-      senderName: emailSender,
+      senderName: resolvedSender,
       message: finalPreview,
       user_person_id: loggedInPersonId,
       ...auditActor(),
