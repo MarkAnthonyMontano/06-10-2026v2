@@ -107,7 +107,7 @@ const ApplicantPersonalInformation = lazy(() => import("./applicant/ApplicantPer
 const ApplicantPersonalInformationMobile = lazy(() => import("./applicant/ApplicantPersonalInformationMobile"));
 const ApplicantFamilyBackground = lazy(() => import("./applicant/ApplicantFamilyBackground"));
 const ApplicantFamilyBackgroundMobile = lazy(() => import("./applicant/ApplicantFamilyBackgroundMobile"));
-const ApplicantApplicantEducationalAttainment = lazy(() => import("./applicant/ApplicantEducationalAttainment"));
+const ApplicantEducationalAttainment = lazy(() => import("./applicant/ApplicantEducationalAttainment"));
 const ApplicantEducationalAttainmentMobile = lazy(() => import("./applicant/ApplicantEducationalAttainmentMobile"));
 const ApplicantHealthMedicalRecords = lazy(() => import("./applicant/ApplicantHealthMedicalRecords"));
 const ApplicantHealthMedicalRecordsMobile = lazy(() => import("./applicant/ApplicantHealthMedicalRecordsMobile"));

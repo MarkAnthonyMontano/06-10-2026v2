@@ -1662,7 +1662,9 @@ WHERE proctor LIKE ?
           const failed = [];
 
           const [userEmail] = await db.query(
-            `SELECT sender_name FROM email_templates WHERE employee_id = ?`,
+            `SELECT sender_name FROM email_template_employees 
+            INNER JOIN email_templates ON email_template_employees.template_id = email_templates.template_id
+            WHERE employee_id = ?`,
             [actor?.employee_id || null],
           );
 

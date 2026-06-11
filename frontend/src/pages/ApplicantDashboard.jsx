@@ -939,7 +939,7 @@ const ApplicantDashboard = (props) => {
                                       localStorage.setItem("dashboardKeys", JSON.stringify(dashboardKeys));
                                     }
                                     const keys = JSON.parse(localStorage.getItem("dashboardKeys"));
-                                    window.location.href = `/dashboard/${keys.step1}`;
+                                    window.location.href = `/applicant_personal_information/${keys.step1}`;
                                   }}
                                 >
                                   Start Application
@@ -1271,7 +1271,7 @@ const ApplicantDashboard = (props) => {
                             localStorage.setItem("dashboardKeys", JSON.stringify(dashboardKeys));
                           }
                           const keys = JSON.parse(localStorage.getItem("dashboardKeys"));
-                          window.location.href = `/dashboard/${keys.step1}`;
+                          window.location.href = `/applicant_personal_information/${keys.step1}`;
                         }}
                       >
                         Start

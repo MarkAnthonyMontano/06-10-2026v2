@@ -706,7 +706,7 @@ const SideBar = ({
       { title: "Qualifying / Interview Scores", link: "/qualifying_interview_exam_scores", icon: Assessment, page_id: 37 },
       { title: "Student Numbering", link: "/student_numbering_per_college", icon: FormatListNumbered, page_id: 60 },
       { title: "Student List", link: "/student_list_for_enrollment", icon: ListAlt, page_id: 137 },
-      { title: "Student Profile", link: "/applicant_college_personal_information", icon: AccountCircle, page_id: 43 },
+      { title: "Student Profile", link: "/student_registrar_personal_information", icon: AccountCircle, page_id: 43 },
       { title: "Student Online Requirements", link: "/student_online_requirements_college", icon: FolderCopy, page_id: 124 },
       { title: "Course Tagging", link: "/course_tagging_for_college", icon: Class, page_id: 124 },
       { title: "Course Tagging For Summer", link: "/summer_tagging_for_college", icon: Class, page_id: 141 },
@@ -737,7 +737,7 @@ const SideBar = ({
       { title: "Course Tagging", link: "/course_tagging", icon: Class, page_id: 17 },
       { title: "Course Tagging For Summer", link: "/course_tagging_for_summer", icon: Class, page_id: 140 },
       { title: "Student List", link: "/student_list", icon: ListAltOutlined, page_id: 104 },
-      { title: "Student Profile", link: "/readmission_dashboard1", icon: AccountCircle, page_id: 38 },
+      { title: "Student Profile", link: "/student_college_personal_information", icon: AccountCircle, page_id: 38 },
       { title: "Student Online Requirements", link: "/student_online_requirements_registrar", icon: FolderCopy, page_id: 106 },
       { title: "Search COR", link: "/search_cor", icon: Search, page_id: 153 },
       { title: "Report of Grades", link: "/report_of_grades", icon: Assessment, page_id: 50 },
@@ -811,7 +811,7 @@ const SideBar = ({
     {
       key: "applicantManagement", label: "Applicant Management", icon: Badge,
       items: [
-        { title: "Applicant Information", link: "/super_admin_applicant_dashboard1", icon: Info, page_id: 75 },
+        { title: "Applicant Information", link: "/applicant_admin_personal_information", icon: Info, page_id: 75 },
         { title: "Applicant Online Requirements", link: "/applicant_online_requirements_admin", icon: Assignment, page_id: 84 },
         { title: "Archive", link: "/archived", icon: FolderCopy, page_id: 142 },
         { title: "Upload Applicants", link: "/upload_applicants", icon: FolderCopy, page_id: 166 },
@@ -1154,7 +1154,7 @@ const SideBar = ({
                   <NavItem to="/student_curriculum_subjects" icon={MenuBook} label="Curriculum" active={isActive("/student_curriculum_subjects")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <NavItem to="/student_faculty_evaluation" icon={AssignmentTurnedInIcon} label="Faculty Evaluation" active={isActive("/student_faculty_evaluation")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <NavItem to="/student_personal_information" icon={PersonIcon} label="Student Profile" active={/^\/student_dashboard[1-5]$/.test(loc)} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
-                  <NavItem to="/student_online_requirements" icon={FolderCopy} label="Official admission_online_requirements" active={isActive("/student_online_requirements")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
+                  <NavItem to="/student_online_requirements" icon={FolderCopy} label="Student Online Requirements" active={isActive("/student_online_requirements")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <NavItem to="/student_account_balance" icon={PaymentIcon} label="Student Account Balance" active={isActive("/student_account_balance")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />
                   <div className="sb-section-label">Setting</div>
                   <NavItem to="/student_reset_password" icon={Settings} label="Change Password" active={isActive("/student_reset_password")} collapsed={effectiveCollapsed} onNavClick={handleNavClick} />

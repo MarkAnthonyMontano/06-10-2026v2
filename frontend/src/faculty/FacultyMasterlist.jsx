@@ -1,7 +1,13 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { SettingsContext } from "../App";
 import "../styles/TempStyles.css";
-import { Link } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -24,6 +30,89 @@ import API_BASE_URL from "../apiConfig";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FcPrint } from "react-icons/fc";
 import SearchIcon from "@mui/icons-material/Search";
+
+const getStudentRegularStatus = (student) =>
+  Number(student.is_regular ?? student.status);
+const getStudentRegularLabel = (student) =>
+  getStudentRegularStatus(student) === 1 ? "Regular" : "Irregular";
+
+const StudentMasterlistRow = React.memo(function StudentMasterlistRow({
+  student,
+  rowNumber,
+  borderColor,
+  mainButtonColor,
+  onNameClick,
+}) {
+  const uniqueRooms = useMemo(
+    () => [
+      ...new Set(
+        (student.schedules || []).map((sch) => sch.room).filter(Boolean),
+      ),
+    ],
+    [student.schedules],
+  );
+
+  return (
+    <TableRow>
+      <TableCell
+        sx={{
+          textAlign: "center",
+          border: `1px solid ${borderColor}`,
+        }}
+      >
+        {rowNumber}
+      </TableCell>
+      <TableCell
+        sx={{
+          textAlign: "center",
+          border: `1px solid ${borderColor}`,
+        }}
+      >
+        {student.student_number}
+      </TableCell>
+      <TableCell
+        sx={{
+          border: `1px solid ${borderColor}`,
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+          "&:hover": {
+            color: mainButtonColor,
+            textDecoration: "underline",
+          },
+        }}
+        onClick={onNameClick}
+      >
+        {student.last_name}, {student.first_name} {student.middle_name}
+      </TableCell>
+      <TableCell
+        sx={{
+          textAlign: "center",
+          border: `1px solid ${borderColor}`,
+        }}
+      >
+        {student.program_code}-{student.section_description}
+      </TableCell>
+      <TableCell
+        sx={{
+          textAlign: "center",
+          border: `1px solid ${borderColor}`,
+        }}
+      >
+        {getStudentRegularLabel(student)}
+      </TableCell>
+      <TableCell
+        sx={{
+          textAlign: "center",
+          border: `1px solid ${borderColor}`,
+        }}
+      >
+        {uniqueRooms.map((room, i) => (
+          <div key={i}>{room}</div>
+        ))}
+      </TableCell>
+    </TableRow>
+  );
+});
 
 const FacultyMasterList = () => {
   const navigate = useNavigate();
@@ -94,14 +183,18 @@ const FacultyMasterList = () => {
   const [selectedSection, setSelectedSection] = useState("");
   const [masterlistBootstrapped, setMasterlistBootstrapped] = useState(false);
   const skipNextSectionFetchRef = useRef(false);
-  const skipNextClassDetailsFetchRef = useRef(false);
+  const skipNextActiveYearResolveRef = useRef(false);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("Regular");
   const [sortOrder, setSortOrder] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const itemsPerPage = 10;
-  const getStudentRegularStatus = (student) => Number(student.is_regular ?? student.status);
-  const getStudentRegularLabel = (student) =>
-    getStudentRegularStatus(student) === 1 ? "Regular" : "Irregular";
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("email");
@@ -181,7 +274,7 @@ const FacultyMasterList = () => {
           }
 
           skipNextSectionFetchRef.current = true;
-          skipNextClassDetailsFetchRef.current = true;
+          skipNextActiveYearResolveRef.current = true;
           setMasterlistBootstrapped(true);
         })
         .catch((err) => {
@@ -191,19 +284,23 @@ const FacultyMasterList = () => {
     }
   }, [profData.prof_id, course_id, initialDepartmentSectionId, school_year_id]);
 
-  const filteredCourses = courseAssignedTo.filter((course) => {
-    if (!selectedSchoolYear && !selectedSchoolSemester) return true;
+  const filteredCourses = useMemo(
+    () =>
+      courseAssignedTo.filter((course) => {
+        if (!selectedSchoolYear && !selectedSchoolSemester) return true;
 
-    const matchesYear =
-      !selectedSchoolYear ||
-      String(course.year_id) === String(selectedSchoolYear);
+        const matchesYear =
+          !selectedSchoolYear ||
+          String(course.year_id) === String(selectedSchoolYear);
 
-    const matchesSemester =
-      !selectedSchoolSemester ||
-      String(course.semester_id) === String(selectedSchoolSemester);
+        const matchesSemester =
+          !selectedSchoolSemester ||
+          String(course.semester_id) === String(selectedSchoolSemester);
 
-    return matchesYear && matchesSemester;
-  });
+        return matchesYear && matchesSemester;
+      }),
+    [courseAssignedTo, selectedSchoolYear, selectedSchoolSemester],
+  );
 
   useEffect(() => {
     if (course_id) setSelectedCourse(course_id);
@@ -241,66 +338,39 @@ const FacultyMasterList = () => {
   }, [masterlistBootstrapped, profData.prof_id, selectedCourse, selectedSchoolYear, selectedSchoolSemester]);
 
   useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/api/get_school_year`)
-      .then((res) => {
-        const currentYear = new Date().getFullYear();
-        const filteredYears = res.data.filter(
-          (yearObj) => Number(yearObj.current_year) <= currentYear,
+    const currentYear = new Date().getFullYear();
+    Promise.all([
+      axios.get(`${API_BASE_URL}/api/get_school_year`),
+      axios.get(`${API_BASE_URL}/api/get_school_semester/`),
+    ])
+      .then(([yearRes, semRes]) => {
+        setSchoolYears(
+          yearRes.data.filter(
+            (yearObj) => Number(yearObj.current_year) <= currentYear,
+          ),
         );
-
-        setSchoolYears(filteredYears);
+        setSchoolSemester(semRes.data);
       })
       .catch((err) => console.error(err));
   }, []);
 
   useEffect(() => {
+    if (!selectedSchoolYear || !selectedSchoolSemester) return;
+    if (skipNextActiveYearResolveRef.current) {
+      skipNextActiveYearResolveRef.current = false;
+      return;
+    }
     axios
-      .get(`${API_BASE_URL}/api/get_school_semester/`)
-      .then((res) => setSchoolSemester(res.data))
-      .catch((err) => console.error(err));
-  }, []);
-
-  useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/api/active_school_year`)
+      .get(
+        `${API_BASE_URL}/api/get_selecterd_year/${selectedSchoolYear}/${selectedSchoolSemester}`,
+      )
       .then((res) => {
         if (res.data.length > 0) {
-          setSelectedSchoolYear(res.data[0].year_id);
-          setSelectedSchoolSemester(res.data[0].semester_id);
+          setSelectedActiveSchoolYear(res.data[0].school_year_id);
         }
       })
       .catch((err) => console.error(err));
-  }, []);
-
-  useEffect(() => {
-    if (selectedSchoolYear && selectedSchoolSemester) {
-      axios
-        .get(
-          `${API_BASE_URL}/api/get_selecterd_year/${selectedSchoolYear}/${selectedSchoolSemester}`,
-        )
-        .then((res) => {
-          if (res.data.length > 0) {
-            setSelectedActiveSchoolYear(res.data[0].school_year_id);
-          }
-        })
-        .catch((err) => console.error(err));
-    }
   }, [selectedSchoolYear, selectedSchoolSemester]);
-
-  useEffect(() => {
-    if (!masterlistBootstrapped) return;
-    if (skipNextClassDetailsFetchRef.current) {
-      skipNextClassDetailsFetchRef.current = false;
-      return;
-    }
-    if (profData.prof_id) {
-      axios
-        .get(`${API_BASE_URL}/api/get_class_details/${profData.prof_id}`)
-        .then((res) => setClassListAndDetails(res.data))
-        .catch((err) => console.error(err));
-    }
-  }, [masterlistBootstrapped, profData.prof_id]);
 
   const handleSchoolYearChange = (event) => {
     setSelectedSchoolYear(event.target.value);
@@ -318,7 +388,6 @@ const FacultyMasterList = () => {
     setSelectedSection(event.target.value);
   };
 
-  const [searchQuery, setSearchQuery] = useState("");
   const findPastClass = async () => {
     try {
       if (!profData.prof_id || !selectedSchoolYear || !selectedSchoolSemester) {
@@ -395,107 +464,179 @@ const FacultyMasterList = () => {
     }
   };
 
-  const filteredStudents = classListAndDetails
-    .filter((s) => {
-      const q = searchQuery.toLowerCase();
+  const filteredStudents = useMemo(() => {
+    const q = debouncedSearch.toLowerCase();
 
-      // 🔍 SEARCH (name OR student number)
-      const matchesSearch =
-        q === "" ||
-        s.student_number?.toString().includes(q) ||
-        s.first_name?.toLowerCase().includes(q) ||
-        s.middle_name?.toLowerCase().includes(q) ||
-        s.last_name?.toLowerCase().includes(q) ||
-        `${s.first_name} ${s.last_name}`.toLowerCase().includes(q) ||
-        `${s.last_name} ${s.first_name}`.toLowerCase().includes(q);
+    return classListAndDetails
+      .filter((s) => {
+        const matchesSearch =
+          q === "" ||
+          s.student_number?.toString().includes(q) ||
+          s.first_name?.toLowerCase().includes(q) ||
+          s.middle_name?.toLowerCase().includes(q) ||
+          s.last_name?.toLowerCase().includes(q) ||
+          `${s.first_name} ${s.last_name}`.toLowerCase().includes(q) ||
+          `${s.last_name} ${s.first_name}`.toLowerCase().includes(q);
 
-      // 📌 OTHER FILTERS
-      const matchesYear =
-        selectedSchoolYear === "" ||
-        String(s.year_id) === String(selectedSchoolYear);
+        const matchesYear =
+          selectedSchoolYear === "" ||
+          String(s.year_id) === String(selectedSchoolYear);
 
-      const matchesSemester =
-        selectedSchoolSemester === "" ||
-        String(s.semester_id) === String(selectedSchoolSemester);
+        const matchesSemester =
+          selectedSchoolSemester === "" ||
+          String(s.semester_id) === String(selectedSchoolSemester);
 
-      const matchesCourse =
-        selectedCourse === "" || String(s.course_id) === String(selectedCourse);
+        const matchesCourse =
+          selectedCourse === "" ||
+          String(s.course_id) === String(selectedCourse);
 
-      const matchesSection =
-        selectedSection === "" ||
-        String(s.department_section_id) === String(selectedSection);
+        const matchesSection =
+          selectedSection === "" ||
+          String(s.department_section_id) === String(selectedSection);
 
-      const matchesStatus =
-        selectedStatusFilter === "" ||
-        (selectedStatusFilter === "Regular" && getStudentRegularStatus(s) === 1) ||
-        (selectedStatusFilter === "Irregular" && getStudentRegularStatus(s) !== 1);
+        const matchesStatus =
+          selectedStatusFilter === "" ||
+          (selectedStatusFilter === "Regular" &&
+            getStudentRegularStatus(s) === 1) ||
+          (selectedStatusFilter === "Irregular" &&
+            getStudentRegularStatus(s) !== 1);
 
-      return (
-        matchesSearch &&
-        matchesYear &&
-        matchesSemester &&
-        matchesCourse &&
-        matchesSection &&
-        matchesStatus
-      );
-    })
-    .sort((a, b) => {
-      const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
-      const nameB = `${b.last_name} ${b.first_name}`.toLowerCase();
+        return (
+          matchesSearch &&
+          matchesYear &&
+          matchesSemester &&
+          matchesCourse &&
+          matchesSection &&
+          matchesStatus
+        );
+      })
+      .sort((a, b) => {
+        const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
+        const nameB = `${b.last_name} ${b.first_name}`.toLowerCase();
 
-      return sortOrder === "asc"
-        ? nameA.localeCompare(nameB)
-        : nameB.localeCompare(nameA);
-    });
+        return sortOrder === "asc"
+          ? nameA.localeCompare(nameB)
+          : nameB.localeCompare(nameA);
+      });
+  }, [
+    classListAndDetails,
+    debouncedSearch,
+    selectedSchoolYear,
+    selectedSchoolSemester,
+    selectedCourse,
+    selectedSection,
+    selectedStatusFilter,
+    sortOrder,
+  ]);
 
-  const groupedStudents = filteredStudents.reduce((acc, student) => {
-    const key = student.student_number;
+  const groupedList = useMemo(() => {
+    const grouped = filteredStudents.reduce((acc, student) => {
+      const key = student.student_number;
 
-    if (!acc[key]) {
-      acc[key] = {
-        ...student,
-        schedules: [],
-      };
-    }
+      if (!acc[key]) {
+        acc[key] = {
+          ...student,
+          schedules: [],
+        };
+      }
 
-    acc[key].schedules.push({
-      day: student.day,
-      start: student.school_time_start,
-      end: student.school_time_end,
-      room: student.room_description,
-    });
+      acc[key].schedules.push({
+        day: student.day,
+        start: student.school_time_start,
+        end: student.school_time_end,
+        room: student.room_description,
+      });
 
-    return acc;
-  }, {});
+      return acc;
+    }, {});
 
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / itemsPerPage));
-  const groupedList = Object.values(groupedStudents);
-  const selectedSchoolYearValue = schoolYears.some(
-    (yearObj) => String(yearObj.year_id) === String(selectedSchoolYear),
-  )
-    ? selectedSchoolYear
-    : "";
-  const selectedSchoolSemesterValue = schoolSemester.some(
-    (sem) => String(sem.semester_id) === String(selectedSchoolSemester),
-  )
-    ? selectedSchoolSemester
-    : "";
-  const selectedCourseValue = filteredCourses.some(
-    (course) => String(course.course_id) === String(selectedCourse),
-  )
-    ? selectedCourse
-    : "";
-  const selectedSectionValue = sectionAssignedTo.some(
-    (section) =>
-      String(section.department_section_id) === String(selectedSection),
-  )
-    ? selectedSection
-    : "";
+    return Object.values(grouped);
+  }, [filteredStudents]);
 
-  const paginatedStudents = filteredStudents.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
+  const totalPages = Math.max(1, Math.ceil(groupedList.length / itemsPerPage));
+
+  const paginatedGroupedList = useMemo(
+    () =>
+      groupedList.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage,
+      ),
+    [groupedList, currentPage, itemsPerPage],
   );
+
+  const selectedSchoolYearValue = useMemo(
+    () =>
+      schoolYears.some(
+        (yearObj) => String(yearObj.year_id) === String(selectedSchoolYear),
+      )
+        ? selectedSchoolYear
+        : "",
+    [schoolYears, selectedSchoolYear],
+  );
+
+  const selectedSchoolSemesterValue = useMemo(
+    () =>
+      schoolSemester.some(
+        (sem) => String(sem.semester_id) === String(selectedSchoolSemester),
+      )
+        ? selectedSchoolSemester
+        : "",
+    [schoolSemester, selectedSchoolSemester],
+  );
+
+  const selectedCourseValue = useMemo(
+    () =>
+      filteredCourses.some(
+        (course) => String(course.course_id) === String(selectedCourse),
+      )
+        ? selectedCourse
+        : "",
+    [filteredCourses, selectedCourse],
+  );
+
+  const selectedSectionValue = useMemo(
+    () =>
+      sectionAssignedTo.some(
+        (section) =>
+          String(section.department_section_id) === String(selectedSection),
+      )
+        ? selectedSection
+        : "",
+    [sectionAssignedTo, selectedSection],
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    debouncedSearch,
+    selectedSchoolYear,
+    selectedSchoolSemester,
+    selectedCourse,
+    selectedSection,
+    selectedStatusFilter,
+    sortOrder,
+  ]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const handleNavigateToGradingSheet = useCallback(() => {
+    navigate("/grading_sheet", {
+      state: {
+        course_id: selectedCourse,
+        section_id: selectedSection,
+        school_year_id: selectedSchoolYear,
+        departmentSection: department_section_id,
+      },
+    });
+  }, [
+    navigate,
+    selectedCourse,
+    selectedSection,
+    selectedSchoolYear,
+    department_section_id,
+  ]);
 
   const divToPrintRef = useRef();
 
@@ -1217,78 +1358,16 @@ const FacultyMasterList = () => {
               },
             }}
           >
-            {groupedList.length > 0 ? (
-              groupedList.map((student, index) => (
-                <TableRow key={student.student_number}>
-                  <TableCell
-                    sx={{
-                      textAlign: "center",
-                      border: `1px solid ${borderColor}`,
-                    }}
-                  >
-                    {index + 1}
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      textAlign: "center",
-                      border: `1px solid ${borderColor}`,
-                    }}
-                  >
-                    {student.student_number}
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      border: `1px solid ${borderColor}`,
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        color: mainButtonColor,
-                        textDecoration: "underline",
-                      },
-                    }}
-                    onClick={() =>
-                      navigate("/grading_sheet", {
-                        state: {
-                          course_id: selectedCourse,
-                          section_id: selectedSection,
-                          school_year_id: selectedSchoolYear,
-                          departmentSection: department_section_id,
-                        },
-                      })
-                    }
-                  >
-                    {student.last_name}, {student.first_name}{" "}
-                    {student.middle_name}
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      textAlign: "center",
-                      border: `1px solid ${borderColor}`,
-                    }}
-                  >
-                    {student.program_code}-{student.section_description}
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      textAlign: "center",
-                      border: `1px solid ${borderColor}`,
-                    }}
-                  >
-                    {getStudentRegularLabel(student)}
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      textAlign: "center",
-                      border: `1px solid ${borderColor}`,
-                    }}
-                  >
-                    {[...new Set(student.schedules.map((sch) => sch.room))].map(
-                      (room, i) => (
-                        <div key={i}>{room}</div>
-                      ),
-                    )}
-                  </TableCell>
-                </TableRow>
+            {paginatedGroupedList.length > 0 ? (
+              paginatedGroupedList.map((student, index) => (
+                <StudentMasterlistRow
+                  key={student.student_number}
+                  student={student}
+                  rowNumber={(currentPage - 1) * itemsPerPage + index + 1}
+                  borderColor={borderColor}
+                  mainButtonColor={mainButtonColor}
+                  onNameClick={handleNavigateToGradingSheet}
+                />
               ))
             ) : (
               <TableRow>
