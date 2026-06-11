@@ -123,7 +123,7 @@ const StudentNumbering = () => {
         },
         {
             label: "Applicant Form",
-            to: "/registrar_dashboard1",
+            to: "/applicant_college_personal_information",
             icon: <PersonIcon fontSize="large" />,
         },
         {

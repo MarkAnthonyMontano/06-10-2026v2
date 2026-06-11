@@ -123,14 +123,14 @@ const StudentListForEnrollment = () => {
         sessionStorage.setItem("edit_student_number", person.student_number || "");
         navigate(
             person.person_id
-                ? `/official_student_dashboard1?person_id=${person.person_id}`
-                : `/official_student_dashboard1?student_number=${person.student_number}`
+                ? `/student_college_personal_information?person_id=${person.person_id}`
+                : `/student_college_personal_information?student_number=${person.student_number}`
         );
     };
 
     const tabs = [
         { label: "Student List", to: "/student_list_for_enrollment", icon: <SchoolIcon fontSize="large"/> },
-        { label: "Student Profile", to: "/official_student_dashboard1", icon: <PersonIcon fontSize="large" /> },
+        { label: "Student Profile", to: "/student_college_personal_information", icon: <PersonIcon fontSize="large" /> },
         { label: "Student Online Requirements", to: "/student_official_requirements", icon: <AssignmentIcon fontSize="large"/> },
         { label: "Course Tagging", to: "/course_tagging_for_college", icon: <UploadFileIcon fontSize="large"/> },
         { label: "Search COR", to: "/search_cor_for_college", icon: <MenuBookIcon fontSize="large"/> },

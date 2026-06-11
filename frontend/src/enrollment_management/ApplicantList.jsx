@@ -170,7 +170,7 @@ const ApplicantList = () => {
       sessionStorage.setItem("edit_applicant_number", String(searchValue));
     }
 
-    navigate(`/registrar_dashboard1?person_id=${personId}`);
+    navigate(`/applicant_college_personal_information?person_id=${personId}`);
   };
 
   const tabs = [
@@ -181,7 +181,7 @@ const ApplicantList = () => {
     },
     {
       label: "Applicant Profile",
-      to: "/registrar_dashboard1",
+      to: "/applicant_college_personal_information",
       icon: <PersonIcon fontSize="large" />,
     },
     {

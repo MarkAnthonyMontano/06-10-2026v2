@@ -148,7 +148,7 @@ const SuperAdminApplicantList = () => {
 
     sessionStorage.setItem("admin_edit_person_id", String(personId));
     sessionStorage.setItem("edit_person_id", String(personId));
-    sessionStorage.setItem("admin_edit_person_id_source", "applicant_list");
+    sessionStorage.setItem("admin_edit_person_id_source", "super_admin_applicant_list");
     sessionStorage.setItem("admin_edit_person_id_ts", String(Date.now()));
     sessionStorage.setItem("admin_edit_person_data", JSON.stringify(applicant));
     if (searchValue) {
@@ -171,7 +171,7 @@ const SuperAdminApplicantList = () => {
       ? `&student_number=${encodeURIComponent(applicant.student_number)}`
       : "";
 
-    navigate(`/readmission_dashboard1?person_id=${personId}${studentQuery}`);
+    navigate(`/student_registrar_personal_information?person_id=${personId}${studentQuery}`);
   };
 
   const navigate = useNavigate();

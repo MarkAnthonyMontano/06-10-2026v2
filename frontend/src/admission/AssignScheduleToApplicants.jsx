@@ -113,7 +113,7 @@ const AssignScheduleToApplicants = () => {
     },
     {
       label: "Applicant Profile",
-      to: "/admin_dashboard1",
+      to: "//admission_personal_information",
       icon: <PersonIcon fontSize="large" />,
     },
     {
@@ -930,7 +930,7 @@ This printed permit must be presented to your proctor on the exam day to verify 
       sessionStorage.setItem("edit_applicant_number", String(searchValue));
     }
 
-    navigate(`/admin_dashboard1?person_id=${personId}`);
+    navigate(`//admission_personal_information?person_id=${personId}`);
   };
 
   const [itemsPerPage, setItemsPerPage] = useState(100);

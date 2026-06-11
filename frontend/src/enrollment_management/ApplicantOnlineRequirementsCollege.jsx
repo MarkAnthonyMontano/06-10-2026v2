@@ -54,7 +54,7 @@ const tabs = [
   },
   {
     label: "Applicant Profile",
-    to: "/registrar_dashboard1",
+    to: "/applicant_college_personal_information",
     icon: <PersonIcon fontSize="large" />,
   },
   {

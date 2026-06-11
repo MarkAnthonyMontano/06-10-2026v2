@@ -1,0 +1,648 @@
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import axios from "axios";
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  List,
+  ListItem,
+  ListItemText,
+  MenuItem,
+  Paper,
+  Select,
+  Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { Delete, FileUpload, PersonAdd, Search } from "@mui/icons-material";
+import API_BASE_URL from "../apiConfig";
+import { SettingsContext } from "../App";
+import Unauthorized from "../components/Unauthorized";
+import LoadingOverlay from "../components/LoadingOverlay";
+
+const UploadApplicants = () => {
+  const settings = useContext(SettingsContext);
+  const [titleColor, setTitleColor] = useState("#000000");
+  const [subtitleColor, setSubtitleColor] = useState("#555555");
+  const [borderColor, setBorderColor] = useState("#000000");
+  const [mainButtonColor, setMainButtonColor] = useState("#1976d2");
+  const [subButtonColor, setSubButtonColor] = useState("#ffffff");
+  const [stepperColor, setStepperColor] = useState("#000000");
+
+  const [fetchedLogo, setFetchedLogo] = useState(null);
+  const [companyName, setCompanyName] = useState("");
+  const [shortTerm, setShortTerm] = useState("");
+  const [campusAddress, setCampusAddress] = useState("");
+
+  useEffect(() => {
+    if (!settings) return;
+
+    if (settings.title_color) setTitleColor(settings.title_color);
+    if (settings.subtitle_color) setSubtitleColor(settings.subtitle_color);
+    if (settings.border_color) setBorderColor(settings.border_color);
+    if (settings.main_button_color) setMainButtonColor(settings.main_button_color);
+    if (settings.sub_button_color) setSubButtonColor(settings.sub_button_color);
+    if (settings.stepper_color) setStepperColor(settings.stepper_color);
+
+    if (settings.logo_url) {
+      setFetchedLogo(`${API_BASE_URL}${settings.logo_url}`);
+    } else {
+      setFetchedLogo(EaristLogo);
+    }
+
+    if (settings.company_name) setCompanyName(settings.company_name);
+    if (settings.short_term) setShortTerm(settings.short_term);
+    if (settings.campus_address) setCampusAddress(settings.campus_address);
+  }, [settings]);
+
+  const [userID, setUserID] = useState("");
+  const [user, setUser] = useState("");
+  const [userRole, setUserRole] = useState("");
+
+  const [hasAccess, setHasAccess] = useState(null);
+  const [canCreate, setCanCreate] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+
+  const fileInputRef = useRef(null);
+
+  const pageId = 166;
+
+  const [employeeID, setEmployeeID] = useState("");
+
+  const getAuditHeaders = () => ({
+    headers: {
+      "x-employee-id": employeeID || localStorage.getItem("employee_id") || "",
+      "x-page-id": pageId,
+      "x-audit-change-section": "personal_information",
+      "x-audit-actor-id":
+        employeeID ||
+        localStorage.getItem("employee_id") ||
+        localStorage.getItem("person_id") ||
+        localStorage.getItem("email") ||
+        "unknown",
+      "x-audit-actor-role":
+        userRole || localStorage.getItem("role") || "registrar",
+      Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+    },
+  });
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("email");
+    const storedRole = localStorage.getItem("role");
+    const storedID = localStorage.getItem("person_id");
+    const storedEmployeeID = localStorage.getItem("employee_id");
+
+    if (storedUser && storedRole && storedID) {
+      setUser(storedUser);
+      setUserRole(storedRole);
+      setUserID(storedID);
+      setEmployeeID(storedEmployeeID);
+
+      if (storedRole === "registrar") {
+        checkAccess(storedEmployeeID);
+      } else {
+        window.location.href = "/login";
+      }
+    } else {
+      window.location.href = "/login";
+    }
+  }, []);
+
+  const checkAccess = async (employeeID) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/page_access/${employeeID}/${pageId}`,
+      );
+      if (response.data && response.data.page_privilege === 1) {
+        setHasAccess(true);
+      } else {
+        setHasAccess(false);
+      }
+    } catch (error) {
+      console.error("Error checking access:", error);
+      setHasAccess(false);
+      if (error.response && error.response.data.message) {
+        console.log(error.response.data.message);
+      } else {
+        console.log("An unexpected error occurred.");
+      }
+      setLoading(false);
+    }
+  };
+
+
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [applicants, setApplicants] = useState([]);
+  const [search, setSearch] = useState("");
+  const [sortOption, setSortOption] = useState("id_desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [importing, setImporting] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [assignTarget, setAssignTarget] = useState(null);
+  const [skippedDialogOpen, setSkippedDialogOpen] = useState(false);
+  const [skippedRows, setSkippedRows] = useState([]);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
+
+  useEffect(() => {
+    if (!settings) return;
+    if (settings.title_color) setTitleColor(settings.title_color);
+    if (settings.border_color) setBorderColor(settings.border_color);
+    if (settings.main_button_color) setMainButtonColor(settings.main_button_color);
+  }, [settings]);
+
+  useEffect(() => {
+    fetchApplicants();
+  }, []);
+
+  const filteredApplicants = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const rows = query
+      ? applicants.filter((row) =>
+        [
+          row.applicant_number,
+          row.last_name,
+          row.first_name,
+          row.middle_name,
+          row.program,
+          row.email_address,
+          row.contact_num,
+          row.address,
+          row.date_applied,
+          row.program_display,
+          row.student_number,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+      )
+      : applicants;
+
+    return [...rows].sort((a, b) => {
+      if (sortOption === "lname_asc") {
+        return String(a.last_name || "").localeCompare(String(b.last_name || ""), undefined, {
+          sensitivity: "base",
+        });
+      }
+      if (sortOption === "lname_desc") {
+        return String(b.last_name || "").localeCompare(String(a.last_name || ""), undefined, {
+          sensitivity: "base",
+        });
+      }
+      return Number(b.id || 0) - Number(a.id || 0);
+    });
+  }, [applicants, search, sortOption]);
+
+  const itemsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredApplicants.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedApplicants = filteredApplicants.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortOption, applicants.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const fetchApplicants = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/get_uploaded_applicants`);
+      const rows = Array.isArray(res.data) ? res.data : res.data?.data;
+      setApplicants(Array.isArray(rows) ? rows : []);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || "Failed to fetch uploaded applicants.",
+        severity: "error",
+      });
+    }
+  };
+
+  const handleDeleteApplicant = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      setActionLoadingId(deleteTarget.id);
+      await axios.delete(`${API_BASE_URL}/api/uploaded-applicants/${deleteTarget.id}`);
+      setApplicants((prev) => prev.filter((row) => row.id !== deleteTarget.id));
+      setSnackbar({
+        open: true,
+        message: "Uploaded applicant deleted successfully.",
+        severity: "success",
+      });
+      setDeleteTarget(null);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || "Failed to delete uploaded applicant.",
+        severity: "error",
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleAssignStudentNumber = async () => {
+    if (!assignTarget) return;
+
+    try {
+      setActionLoadingId(assignTarget.id);
+      const res = await axios.post(`${API_BASE_URL}/api/uploaded-applicants/assign-student-number`, {
+        uploaded_applicant_id: assignTarget.id,
+        audit_actor_id:
+          localStorage.getItem("employee_id") ||
+          localStorage.getItem("person_id") ||
+          localStorage.getItem("email") ||
+          "unknown",
+        audit_actor_role: localStorage.getItem("role") || "registrar",
+      });
+      const result = res.data?.assigned?.[0];
+
+      if (!res.data?.success && !res.data?.partial) {
+        throw new Error(res.data?.skipped?.[0]?.reason || res.data?.error || "Failed to assign student number.");
+      }
+
+      setSnackbar({
+        open: true,
+        message: result?.message || res.data?.message || "Student number assigned successfully.",
+        severity: result?.email_sent ? "success" : "warning",
+      });
+      setAssignTarget(null);
+      await fetchApplicants();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.message || "Failed to assign student number.",
+        severity: "error",
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!selectedFile) {
+      setSnackbar({
+        open: true,
+        message: "Please choose an Excel file first.",
+        severity: "warning",
+      });
+      return;
+    }
+
+    try {
+      setImporting(true);
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const res = await axios.post(`${API_BASE_URL}/api/import-xlsx-into-uploaded-applicants`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data?.success) {
+        const skippedCount = Number(res.data?.skippedCount || 0);
+        setSnackbar({
+          open: true,
+          message:
+            skippedCount > 0
+              ? `Import finished with ${skippedCount} skipped row(s).`
+              : res.data.message || "Uploaded applicants imported successfully.",
+          severity: skippedCount > 0 ? "warning" : "success",
+        });
+        setSkippedRows(Array.isArray(res.data?.skippedItems) ? res.data.skippedItems : []);
+        setSkippedDialogOpen(skippedCount > 0);
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        await fetchApplicants();
+      }
+    } catch (err) {
+      const skippedItems = err.response?.data?.skippedItems;
+      if (Array.isArray(skippedItems) && skippedItems.length > 0) {
+        setSkippedRows(skippedItems);
+        setSkippedDialogOpen(true);
+      }
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || "Import failed.",
+        severity: "error",
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  if (loading || hasAccess === null) {
+    return <LoadingOverlay open={loading} message="Loading..." />;
+  }
+
+  if (!hasAccess) {
+    return <Unauthorized />;
+  }
+
+
+  return (
+    <Box
+      sx={{
+        height: "calc(100vh - 150px)",
+        overflowY: "auto",
+        backgroundColor: "transparent",
+        mt: 1,
+        p: 2,
+      }}
+    >
+      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={2}>
+        <Typography variant="h4" fontWeight="bold" sx={{ color: titleColor }}>
+          UPLOAD APPLICANTS
+        </Typography>
+
+        <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+            style={{ display: "none" }}
+          />
+          <Button
+            variant="outlined"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            sx={{ height: 40, textTransform: "none", borderColor }}
+          >
+            {selectedFile ? selectedFile.name : "Choose File"}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<FileUpload />}
+            onClick={handleImport}
+            disabled={importing}
+            sx={{
+              height: 40,
+              textTransform: "none",
+              fontWeight: "bold",
+              backgroundColor: mainButtonColor,
+            }}
+          >
+            {importing ? "Importing..." : "Import Applicants"}
+          </Button>
+        </Box>
+      </Box>
+
+      <hr style={{ border: "1px solid #ccc", width: "100%" }} />
+
+      <Paper sx={{ p: 2, my: 2, border: `1px solid ${borderColor}` }}>
+        <Box display="grid" gridTemplateColumns={{ xs: "1fr", md: "1fr 220px" }} gap={2}>
+          <TextField
+            size="small"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search applicant number, name, program, email, contact, address"
+            InputProps={{ startAdornment: <Search sx={{ mr: 1, color: "text.secondary" }} /> }}
+          />
+          <FormControl size="small">
+            <Select value={sortOption} onChange={(event) => setSortOption(event.target.value)}>
+              <MenuItem value="id_desc">Upload Order (Newest)</MenuItem>
+              <MenuItem value="lname_asc">Last Name (A-Z)</MenuItem>
+              <MenuItem value="lname_desc">Last Name (Z-A)</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </Paper>
+
+      <TableContainer component={Paper} sx={{ border: `1px solid ${borderColor}` }}>
+        <Table size="small">
+          <TableHead sx={{ backgroundColor: settings?.header_color || "#1976d2" }}>
+            <TableRow>
+              {[
+                "No.",
+                "Applicant Number",
+                "Last Name",
+                "First Name",
+                "Middle Name",
+                "Program",
+                "Email Address",
+                "Contact Number",
+                "Address",
+                "Date Applied",
+                "Student Number",
+                "Action",
+              ].map((label) => (
+                <TableCell key={label} sx={{ color: "white", fontWeight: "bold", border: `1px solid ${borderColor}` }}>
+                  {label}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedApplicants.map((row, index) => (
+              <TableRow key={`${row.id}-${row.applicant_number}`}>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{startIndex + index + 1}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.applicant_number}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.last_name}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.first_name}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.middle_name}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.program_display || row.program}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.email_address}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.contact_num}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.address}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>{row.date_applied}</TableCell>
+                <TableCell sx={{ color: "black", fontWeight: "bold", border: `1px solid ${borderColor}` }}>
+                  {row.student_number ? (
+                    row.student_number
+                  ) : (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<PersonAdd />}
+                      disabled={actionLoadingId === row.id}
+                      onClick={() => setAssignTarget(row)}
+                      sx={{ textTransform: "none", backgroundColor: mainButtonColor }}
+                    >
+                      Assign
+                    </Button>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    startIcon={<Delete />}
+                    disabled={actionLoadingId === row.id}
+                    onClick={() => setDeleteTarget(row)}
+                    sx={{ textTransform: "none" }}
+                  >
+                    Delete
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {paginatedApplicants.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={12} align="center" sx={{ height: 120 }}>
+                  No uploaded applicants found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} mt={2}>
+        <Typography fontSize="14px" fontWeight="bold">
+          Total Applicants: {filteredApplicants.length}
+        </Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Button size="small" variant="outlined" disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>
+            First
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          >
+            Prev
+          </Button>
+          <Typography fontSize="13px">
+            Page {currentPage} of {totalPages}
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          >
+            Next
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(totalPages)}
+          >
+            Last
+          </Button>
+        </Box>
+      </Box>
+
+      <Dialog open={skippedDialogOpen} onClose={() => setSkippedDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Skipped Applicant Rows</DialogTitle>
+        <DialogContent dividers>
+          {skippedRows.length === 0 ? (
+            <Typography variant="body2">No skipped rows details provided.</Typography>
+          ) : (
+            <List dense>
+              {skippedRows.map((item, index) => (
+                <ListItem key={`${item.rowNumber || index}-${item.applicantNumber || "NA"}`} sx={{ px: 0 }}>
+                  <ListItemText
+                    primary={`${index + 1}. Row ${item.rowNumber || "?"} - ${item.applicantNumber || "Unknown applicant"}`}
+                    secondary={item.reason || "No reason provided"}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSkippedDialogOpen(false)} variant="contained">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(assignTarget)} onClose={() => setAssignTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Assign Student Number</DialogTitle>
+        <DialogContent dividers>
+          <Typography>
+            Assign a student number to{" "}
+            <strong>
+              {assignTarget?.first_name} {assignTarget?.middle_name} {assignTarget?.last_name}
+            </strong>
+            ?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This will create the student account and send the student number email using the existing student-numbering workflow.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssignTarget(null)} color="error" variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAssignStudentNumber}
+            variant="contained"
+            disabled={actionLoadingId === assignTarget?.id}
+            sx={{ backgroundColor: mainButtonColor }}
+          >
+            Assign
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Uploaded Applicant</DialogTitle>
+        <DialogContent dividers>
+          <Typography>
+            Delete{" "}
+            <strong>
+              {deleteTarget?.first_name} {deleteTarget?.last_name}
+            </strong>{" "}
+            from the uploaded applicants list?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} color="error" variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteApplicant}
+            color="error"
+            variant="contained"
+            disabled={actionLoadingId === deleteTarget?.id}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3500}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
+export default UploadApplicants;

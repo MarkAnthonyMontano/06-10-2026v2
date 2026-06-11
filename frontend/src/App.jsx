@@ -38,8 +38,11 @@ import CourseTaggingForSummerCollege from "./enrollment_management/CourseTagging
 import StudentListForEnrollment from "./enrollment_management/StudentListForEnrollment";
 import GradeConversionAdmin from "./system_management/GradeConversionAdmin";
 import HonorsReport from "./system_management/HonorsReport";
+
 export const SettingsContext = createContext(null);
 
+
+const UploadApplicants = lazy(() => import("./account_management/UploadApplicants"));
 const ApplicationSuperAdmin = lazy(() => import("./account_management/ApplicationProcessSuperAdmin"));
 const Archived = lazy(() => import("./account_management/ArchivedModule"));
 const MigrationDataPanel = lazy(() => import("./account_management/MigrationDataPanel"));
@@ -49,11 +52,11 @@ const RegisterRegistrar = lazy(() => import("./account_management/RegisterRegist
 const RegisterStudent = lazy(() => import("./account_management/RegisterStudent"));
 const RegistrarResetPassword = lazy(() => import("./account_management/RegistrarResetPassword"));
 const StudentGradeFile = lazy(() => import("./system_management/StudentGradeFile"));
-const SuperAdminApplicantDashboard1 = lazy(() => import("./account_management/SuperAdminApplicantDashboard1"));
-const SuperAdminApplicantDashboard2 = lazy(() => import("./account_management/SuperAdminApplicantDashboard2"));
-const SuperAdminApplicantDashboard3 = lazy(() => import("./account_management/SuperAdminApplicantDashboard3"));
-const SuperAdminApplicantDashboard4 = lazy(() => import("./account_management/SuperAdminApplicantDashboard4"));
-const SuperAdminApplicantDashboard5 = lazy(() => import("./account_management/SuperAdminApplicantDashboard5"));
+const ApplicantAdminPersonalInformation = lazy(() => import("./account_management/ApplicantAdminPersonalInformation"));
+const ApplicantAdminFamilyBackground = lazy(() => import("./account_management/ApplicantAdminFamilyBackground"));
+const ApplicantAdminEducationalAttainment = lazy(() => import("./account_management/ApplicantAdminEducationalAttainment"));
+const ApplicantAdminHealthMedicalRecords = lazy(() => import("./account_management/ApplicantAdminHealthMedicalRecords"));
+const ApplicantAdminOtherInformation = lazy(() => import("./account_management/ApplicantAdminOtherInformation"));
 const SuperAdminApplicantResetPassword = lazy(() => import("./account_management/SuperAdminApplicantResetPassword"));
 const SuperAdminStudentResetPassword = lazy(() => import("./account_management/SuperAdminStudentResetPassword"));
 
@@ -62,11 +65,11 @@ const SuperAdminProfessorEducation = lazy(() => import("./account_management/Sup
 const SuperAdminRegistrarPassword = lazy(() => import("./account_management/SuperAdminRegistrarResetPassword"));
 const ApplicantOnlineRequirementsAdmin = lazy(() => import("./account_management/ApplicantOnlineRequirementsAdmin"));
 const StudentOnlineRequirementsAdmin = lazy(() => import("./account_management/StudentOnlineRequirementsAdmin"));
-const SuperAdminStudentDashboard1 = lazy(() => import("./account_management/SuperAdminStudentDashboard1"));
-const SuperAdminStudentDashboard2 = lazy(() => import("./account_management/SuperAdminStudentDashboard2"));
-const SuperAdminStudentDashboard3 = lazy(() => import("./account_management/SuperAdminStudentDashboard3"));
-const SuperAdminStudentDashboard4 = lazy(() => import("./account_management/SuperAdminStudentDashboard4"));
-const SuperAdminStudentDashboard5 = lazy(() => import("./account_management/SuperAdminStudentDashboard5"));
+const StudentAdminPersonalInformation = lazy(() => import("./account_management/StudentAdminPersonalInformation"));
+const StudentAdminFamilyBackground = lazy(() => import("./account_management/StudentAdminFamilyBackground"));
+const StudentAdminEducationalAttainment = lazy(() => import("./account_management/StudentAdminEducationalAttainment"));
+const StudentAdminHealthMedicalRecords = lazy(() => import("./account_management/StudentAdminHealthMedicalRecords"));
+const StudentAdminOtherInformation = lazy(() => import("./account_management/StudentAdminOtherInformation"));
 const StudentEditPermissions1 = lazy(() => import("./account_management/StudentEditPermissions1"));
 const StudentEditPermissions2 = lazy(() => import("./account_management/StudentEditPermissions2"));
 const StudentEditPermissions3 = lazy(() => import("./account_management/StudentEditPermissions3"));
@@ -74,11 +77,11 @@ const StudentEditPermissions4 = lazy(() => import("./account_management/StudentE
 const StudentEditPermissions5 = lazy(() => import("./account_management/StudentEditPermissions5"));
 const UserPageAccess = lazy(() => import("./account_management/UserPageAccess"));
 const AdminAdmissionFormProcess = lazy(() => import("./admission/AdminAdmissionFormProcess"));
-const AdminDashboard1 = lazy(() => import("./admission/AdminDashboard1"));
-const AdminDashboard2 = lazy(() => import("./admission/AdminDashboard2"));
-const AdminDashboard3 = lazy(() => import("./admission/AdminDashboard3"));
-const AdminDashboard4 = lazy(() => import("./admission/AdminDashboard4"));
-const AdminDashboard5 = lazy(() => import("./admission/AdminDashboard5"));
+const AdmissionPersonalInformation = lazy(() => import("./admission/AdmissionPersonalInformation"));
+const AdmissionFamilyBackground = lazy(() => import("./admission/AdmissionFamilyBackground"));
+const AdmissionEducationalAttainment = lazy(() => import("./admission/AdmissionEducationalAttainment"));
+const AdmissionHealthMedicalRecords = lazy(() => import("./admission/AdmissionHealthMedicalRecords"));
+const AdmissionOtherInformation = lazy(() => import("./admission/AdmissionOtherInformation"));
 const AdminECATApplicationForm = lazy(() => import("./admission/AdminECATApplicationForm"));
 const AdminOfficeOfTheRegistrar = lazy(() => import("./admission/AdminOfficeOfTheRegistrar"));
 const AdminPersonalDataForm = lazy(() => import("./admission/AdminPersonalDataForm"));
@@ -100,16 +103,16 @@ const VerifyApplicantDocumentSchedule = lazy(() => import("./admission/VerifySch
 const AdmissionFormProcess = lazy(() => import("./applicant/AdmissionFormProcess"));
 const AdmissionServices = lazy(() => import("./applicant/AdmissionServices"));
 const ApplicantResetPassword = lazy(() => import("./applicant/ApplicantResetPassword"));
-const ApplicantDashboard1 = lazy(() => import("./applicant/ApplicantDashboard1"));
-const ApplicantDashboard1Mobile = lazy(() => import("./applicant/ApplicantDashboard1Mobile"));
-const ApplicantDashboard2 = lazy(() => import("./applicant/ApplicantDashboard2"));
-const ApplicantDashboard2Mobile = lazy(() => import("./applicant/ApplicantDashboard2Mobile"));
-const ApplicantDashboard3 = lazy(() => import("./applicant/ApplicantDashboard3"));
-const ApplicantDashboard3Mobile = lazy(() => import("./applicant/ApplicantDashboard3Mobile"));
-const ApplicantDashboard4 = lazy(() => import("./applicant/ApplicantDashboard4"));
-const ApplicantDashboard4Mobile = lazy(() => import("./applicant/ApplicantDashboard4Mobile"));
-const ApplicantDashboard5 = lazy(() => import("./applicant/ApplicantDashboard5"));
-const ApplicantDashboard5Mobile = lazy(() => import("./applicant/ApplicantDashboard5Mobile"));
+const ApplicantPersonalInformation = lazy(() => import("./applicant/ApplicantPersonalInformation"));
+const ApplicantPersonalInformationMobile = lazy(() => import("./applicant/ApplicantPersonalInformationMobile"));
+const ApplicantFamilyBackground = lazy(() => import("./applicant/ApplicantFamilyBackground"));
+const ApplicantFamilyBackgroundMobile = lazy(() => import("./applicant/ApplicantFamilyBackgroundMobile"));
+const ApplicantApplicantEducationalAttainment = lazy(() => import("./applicant/ApplicantEducationalAttainment"));
+const ApplicantEducationalAttainmentMobile = lazy(() => import("./applicant/ApplicantEducationalAttainmentMobile"));
+const ApplicantHealthMedicalRecords = lazy(() => import("./applicant/ApplicantHealthMedicalRecords"));
+const ApplicantHealthMedicalRecordsMobile = lazy(() => import("./applicant/ApplicantHealthMedicalRecordsMobile"));
+const ApplicantOtherInformation = lazy(() => import("./applicant/ApplicantOtherInformation"));
+const ApplicantOtherInformationMobile = lazy(() => import("./applicant/ApplicantOtherInformationMobile"));
 const ECATApplicationForm = lazy(() => import("./applicant/ECATApplicationForm"));
 const ExamPermit = lazy(() => import("./applicant/ExamPermit"));
 const OfficeOfTheRegistrar = lazy(() => import("./applicant/OfficeOfTheRegistrar"));
@@ -149,18 +152,18 @@ const ClassRosterForEnrollment = lazy(() => import("./enrollment_management/Clas
 const CourseTaggingForCollege = lazy(() => import("./enrollment_management/CourseTaggingForCollege"));
 const EnrollmentScheduleTile = lazy(() => import("./enrollment_management/EnrollmentScheduleTile"));
 const StudentOnlineRequirementsCollege = lazy(() => import("./enrollment_management/StudentOnlineRequirementsCollege"));
-const OfficialStudentDashboard1 = lazy(() => import("./enrollment_management/OfficialStudentDashboard1"));
-const OfficialStudentDashboard2 = lazy(() => import("./enrollment_management/OfficialStudentDashboard2"));
-const OfficialStudentDashboard3 = lazy(() => import("./enrollment_management/OfficialStudentDashboard3"));
-const OfficialStudentDashboard4 = lazy(() => import("./enrollment_management/OfficialStudentDashboard4"));
-const OfficialStudentDashboard5 = lazy(() => import("./enrollment_management/OfficialStudentDashboard5"));
+const StudentCollegePersonalInformation = lazy(() => import("./enrollment_management/StudentCollegePersonalInformation"));
+const StudentCollegeFamilyBackground = lazy(() => import("./enrollment_management/StudentCollegeFamilyBackground"));
+const StudentCollegeEducationalAttainment = lazy(() => import("./enrollment_management/StudentCollegeEducationalAttainment"));
+const StudentCollegeHealthMedicalRecords = lazy(() => import("./enrollment_management/StudentCollegeHealthMedicalRecords"));
+const StudentCollegeOtherInformation = lazy(() => import("./enrollment_management/StudentCollegeOtherInformation"));
 const QualifyingInterviewerApplicantList = lazy(() => import("./enrollment_management/QualifyingInterviewerApplicantList"));
 const QualifyingInterviewExamScore = lazy(() => import("./enrollment_management/QualifyingInterviewExamScore"));
-const RegistrarDashboard1 = lazy(() => import("./enrollment_management/RegistrarDashboard1"));
-const RegistrarDashboard2 = lazy(() => import("./enrollment_management/RegistrarDashboard2"));
-const RegistrarDashboard3 = lazy(() => import("./enrollment_management/RegistrarDashboard3"));
-const RegistrarDashboard4 = lazy(() => import("./enrollment_management/RegistrarDashboard4"));
-const RegistrarDashboard5 = lazy(() => import("./enrollment_management/RegistrarDashboard5"));
+const ApplicantCollegePersonalInformation = lazy(() => import("./enrollment_management/ApplicantCollegePersonalInformation"));
+const ApplicantCollegeFamilyBackground = lazy(() => import("./enrollment_management/ApplicantCollegeFamilyBackground"));
+const ApplicantCollegeEducationalAttainment = lazy(() => import("./enrollment_management/ApplicantEducationalAttainment"));
+const ApplicantCollegeHealthMedicalRecords = lazy(() => import("./enrollment_management/ApplicantHealthMedicalRecords"));
+const ApplicantCollegeOtherInformation = lazy(() => import("./enrollment_management/ApplicantCollegeOtherInformation"));
 const ApplicantOnlineRequirementsCollege = lazy(() => import("./enrollment_management/ApplicantOnlineRequirementsCollege"));
 const ApplicantOnlineRequirementsRegistrar = lazy(() => import("./registrar/ApplicantOnlineRequirementsRegistrar"));
 const SearchCorForCollege = lazy(() => import("./enrollment_management/SearchCorForCollege"));
@@ -174,11 +177,11 @@ const DentalAssessment = lazy(() => import("./medical_management/DentalAssessmen
 const HealthRecord = lazy(() => import("./medical_management/HealthRecord"));
 const MedicalApplicantList = lazy(() => import("./medical_management/MedicalApplicantList"));
 const MedicalCertificate = lazy(() => import("./medical_management/MedicalCertificate"));
-const MedicalDashboard1 = lazy(() => import("./medical_management/MedicalDashboard1"));
-const MedicalDashboard2 = lazy(() => import("./medical_management/MedicalDashboard2"));
-const MedicalDashboard3 = lazy(() => import("./medical_management/MedicalDashboard3"));
-const MedicalDashboard4 = lazy(() => import("./medical_management/MedicalDashboard4"));
-const MedicalDashboard5 = lazy(() => import("./medical_management/MedicalDashboard5"));
+const MedicalPersonalInformation = lazy(() => import("./medical_management/MedicalPersonalInformation"));
+const MedicalFamilyBackground = lazy(() => import("./medical_management/MedicalFamilyBackground"));
+const MedicalEducationalAttainment = lazy(() => import("./medical_management/MedicalEducationalAttainment"));
+const MedicalHealthMedicalRecords = lazy(() => import("./medical_management/MedicalHealthMedicalRecords"));
+const MedicalOtherInformation = lazy(() => import("./medical_management/MedicalOtherInformation"));
 const MedicalOnlineRequirements = lazy(() => import("./medical_management/MedicalOnlineRequirements"));
 const MedicalRequirementsForm = lazy(() => import("./medical_management/MedicalRequirementsForm"));
 const PhysicalNeuroExam = lazy(() => import("./medical_management/PhysicalNeuroExam"));
@@ -202,11 +205,16 @@ const CORExportRender = lazy(() => import("./registrar/CORExportRender"));
 const CourseTagging = lazy(() => import("./registrar/CourseTagging"));
 const CourseTaggingForSummer = lazy(() => import("./registrar/CourseTaggingForSummer"));
 const GradingEvaluationForRegistrar = lazy(() => import("./registrar/GradingEvaluationForRegistrar"));
-const ReadmissionDashboard1 = lazy(() => import("./registrar/ReadmissionDashboard1"));
-const ReadmissionDashboard2 = lazy(() => import("./registrar/ReadmissionDashboard2"));
-const ReadmissionDashboard3 = lazy(() => import("./registrar/ReadmissionDashboard3"));
-const ReadmissionDashboard4 = lazy(() => import("./registrar/ReadmissionDashboard4"));
-const ReadmissionDashboard5 = lazy(() => import("./registrar/ReadmissionDashboard5"));
+const ApplicantRegistrarPersonalInformation = lazy(() => import("./registrar/ApplicantRegistrarPersonalInformation"));
+const ApplicantRegistrarFamilyBackground = lazy(() => import("./registrar/ApplicantRegistrarFamilyBackground"));
+const ApplicantRegistrarEducationalAttainment = lazy(() => import("./registrar/ApplicantRegistrarEducationalAttainment"));
+const ApplicantRegistrarHealthMedicalRecords = lazy(() => import("./registrar/ApplicantRegistrarHealthMedicalRecords"));
+const ApplicantRegistrarOtherInformation = lazy(() => import("./registrar/ApplicantRegistrarOtherInformation"));
+const StudentRegistrarPersonalInformation = lazy(() => import("./registrar/StudentRegistrarPersonalInformation"));
+const StudentRegistrarFamilyBackground = lazy(() => import("./registrar/StudentRegistrarFamilyBackground"));
+const StudentRegistrarEducationalAttainment = lazy(() => import("./registrar/StudentRegistrarEducationalAttainment"));
+const StudentRegistrarHealthMedicalRecords = lazy(() => import("./registrar/StudentRegistrarHealthMedicalRecords"));
+const StudentRegistrarOtherInformation = lazy(() => import("./registrar/StudentRegistrarOtherInformation"));
 const ReportOfGrade = lazy(() => import("./registrar/ReportOfGrade"));
 const ScheduleChecker = lazy(() => import("./department_management/ScheduleChecker"));
 const SearchCertificateOfRegistration = lazy(() => import("./registrar/SearchCertificateOfRegistration"));
@@ -221,16 +229,16 @@ const StudentAdmissionFormProcess = lazy(() => import("./student/StudentAdmissio
 const StudentAdmissionServices = lazy(() => import("./student/StudentAdmissionServices"));
 const StudentBalanceInfo = lazy(() => import("./student/StudentBalanceInfo"));
 const StudentBalanceManagement = lazy(() => import("./student/StudentBalanceManagement"));
-const StudentDashboard1 = lazy(() => import("./student/StudentDashboard1"));
-const StudentDashboard1Mobile = lazy(() => import("./student/StudentDashboard1Mobile"));
-const StudentDashboard2 = lazy(() => import("./student/StudentDashboard2"));
-const StudentDashboard2Mobile = lazy(() => import("./student/StudentDashboard2Mobile"));
-const StudentDashboard3 = lazy(() => import("./student/StudentDashboard3"));
-const StudentDashboard3Mobile = lazy(() => import("./student/StudentDashboard3Mobile"));
-const StudentDashboard4 = lazy(() => import("./student/StudentDashboard4"));
-const StudentDashboard4Mobile = lazy(() => import("./student/StudentDashboard4Mobile"));
-const StudentDashboard5 = lazy(() => import("./student/StudentDashboard5"));
-const StudentDashboard5Mobile = lazy(() => import("./student/StudentDashboard5Mobile"));
+const StudentPersonalInformation = lazy(() => import("./student/StudentPersonalInformation"));
+const StudentPersonalInformationMobile = lazy(() => import("./student/StudentPersonalInformationMobile"));
+const StudentFamilyBackground = lazy(() => import("./student/StudentFamilyBackground"));
+const StudentFamilyBackgroundMobile = lazy(() => import("./student/StudentFamilyBackgroundMobile"));
+const StudentEducationalAttainment = lazy(() => import("./student/StudentEducationalAttainment"));
+const StudentEducationalAttainmentMobile = lazy(() => import("./student/StudentEducationalAttainmentMobile"));
+const StudentHealthMedicalRecords = lazy(() => import("./student/StudentHealthMedicalRecords"));
+const StudentHealthMedicalRecordsMobile = lazy(() => import("./student/StudentHealthMedicalRecordsMobile"));
+const StudentOtherInformation = lazy(() => import("./student/StudentOtherInformation"));
+const StudentOtherInformationMobile = lazy(() => import("./student/StudentOtherInformationMobile"));
 const StudentECATApplicationForm = lazy(() => import("./student/StudentECATApplicationForm"));
 const StudentFacultyEvaluation = lazy(() => import("./student/StudentFacultyEval"));
 const StudentGradingPage = lazy(() => import("./student/StudentGrade"));
@@ -300,57 +308,57 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const ApplicantDashboard1Responsive = () => {
+  const ApplicantPersonalInformationResponsive = () => {
     const isMobile = window.innerWidth < 768;
-    return isMobile ? <ApplicantDashboard1Mobile /> : <ApplicantDashboard1 />;
+    return isMobile ? <ApplicantPersonalInformationMobile /> : <ApplicantPersonalInformation />;
   };
 
-  const ApplicantDashboard2Responsive = () => {
+  const ApplicantFamilyBackgroundResponsive = () => {
     const isMobile = window.innerWidth < 768;
-    return isMobile ? <ApplicantDashboard2Mobile /> : <ApplicantDashboard2 />;
+    return isMobile ? <ApplicantFamilyBackgroundMobile /> : <ApplicantFamilyBackground />;
   };
 
-  const ApplicantDashboard3Responsive = () => {
+  const ApplicantEducationalAttainmentResponsive = () => {
     const isMobile = window.innerWidth < 768;
-    return isMobile ? <ApplicantDashboard3Mobile /> : <ApplicantDashboard3 />;
-  };
-
-
-  const ApplicantDashboard4Responsive = () => {
-    const isMobile = window.innerWidth < 768;
-    return isMobile ? <ApplicantDashboard4Mobile /> : <ApplicantDashboard4 />;
-  };
-
-  const ApplicantDashboard5Responsive = () => {
-    const isMobile = window.innerWidth < 768;
-    return isMobile ? <ApplicantDashboard5Mobile /> : <ApplicantDashboard5 />;
+    return isMobile ? <ApplicantEducationalAttainmentMobile /> : <ApplicantEducationalAttainment />;
   };
 
 
-  const StudentDashboard1Responsive = () => {
+  const ApplicantHealthMedicalRecordsResponsive = () => {
     const isMobile = window.innerWidth < 768;
-    return isMobile ? <StudentDashboard1Mobile /> : <StudentDashboard1 />;
+    return isMobile ? <ApplicantHealthMedicalRecordsMobile /> : <ApplicantHealthMedicalRecords />;
   };
 
-  const StudentDashboard2Responsive = () => {
+  const ApplicantOtherInformationResponsive = () => {
     const isMobile = window.innerWidth < 768;
-    return isMobile ? <StudentDashboard2Mobile /> : <StudentDashboard2 />;
+    return isMobile ? <ApplicantOtherInformationMobile /> : <ApplicantOtherInformation />;
   };
 
 
-  const StudentDashboard3Responsive = () => {
+  const StudentPersonalInformationResponsive = () => {
     const isMobile = window.innerWidth < 768;
-    return isMobile ? <StudentDashboard3Mobile /> : <StudentDashboard3 />;
+    return isMobile ? <StudentPersonalInformationMobile /> : <StudentPersonalInformation />;
   };
 
-  const StudentDashboard4Responsive = () => {
+  const StudentFamilyBackgroundResponsive = () => {
     const isMobile = window.innerWidth < 768;
-    return isMobile ? <StudentDashboard4Mobile /> : <StudentDashboard4 />;
+    return isMobile ? <StudentFamilyBackgroundMobile /> : <StudentFamilyBackground />;
   };
 
-  const StudentDashboard5Responsive = () => {
+
+  const StudentEducationalAttainmentResponsive = () => {
     const isMobile = window.innerWidth < 768;
-    return isMobile ? <StudentDashboard5Mobile /> : <StudentDashboard5 />;
+    return isMobile ? <StudentEducationalAttainmentMobile /> : <StudentEducationalAttainment />;
+  };
+
+  const StudentHealthMedicalRecordsResponsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <StudentHealthMedicalRecordsMobile /> : <StudentHealthMedicalRecords />;
+  };
+
+  const StudentOtherInformationResponsive = () => {
+    const isMobile = window.innerWidth < 768;
+    return isMobile ? <StudentOtherInformationMobile /> : <StudentOtherInformation />;
   };
 
 
@@ -784,64 +792,71 @@ function App() {
                       <Route path="/evaluation_crud" element={<ProtectedRoute><EvaluationCRUD /></ProtectedRoute>} />
                       <Route path="/qualifying_interview_exam_scores" element={<ProtectedRoute><QualifyingInterviewExamScore /></ProtectedRoute>} />
                       <Route path="/settings" element={<ProtectedRoute><Settings onUpdate={fetchSettings} /></ProtectedRoute>} />
-                      <Route path="/admin_dashboard1" element={<ProtectedRoute><AdminDashboard1 /></ProtectedRoute>} />
-                      <Route path="/admin_dashboard2" element={<ProtectedRoute><AdminDashboard2 /></ProtectedRoute>} />
-                      <Route path="/admin_dashboard3" element={<ProtectedRoute><AdminDashboard3 /></ProtectedRoute>} />
-                      <Route path="/admin_dashboard4" element={<ProtectedRoute><AdminDashboard4 /></ProtectedRoute>} />
-                      <Route path="/admin_dashboard5" element={<ProtectedRoute><AdminDashboard5 /></ProtectedRoute>} />
-                      <Route path="/student_dashboard1" element={<ProtectedRoute><StudentDashboard1Responsive allowedRoles={"student"} /></ProtectedRoute>} />
-                      <Route path="/student_dashboard2" element={<ProtectedRoute><StudentDashboard2Responsive allowedRoles={"student"} /></ProtectedRoute>} />
-                      <Route path="/student_dashboard3" element={<ProtectedRoute><StudentDashboard3Responsive allowedRoles={"student"} /></ProtectedRoute>} />
-                      <Route path="/student_dashboard4" element={<ProtectedRoute><StudentDashboard4Responsive allowedRoles={"student"} /></ProtectedRoute>} />
-                      <Route path="/student_dashboard5" element={<ProtectedRoute><StudentDashboard5Responsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/admission_personal_information" element={<ProtectedRoute><AdmissionPersonalInformation /></ProtectedRoute>} />
+                      <Route path="/admission_family_background" element={<ProtectedRoute><AdmissionFamilyBackground /></ProtectedRoute>} />
+                      <Route path="/admission_educational_attainment" element={<ProtectedRoute><AdmissionEducationalAttainment /></ProtectedRoute>} />
+                      <Route path="/admission_health_medical_records" element={<ProtectedRoute><AdmissionHealthMedicalRecords /></ProtectedRoute>} />
+                      <Route path="/admission_other_information" element={<ProtectedRoute><AdmissionOtherInformation /></ProtectedRoute>} />
+                      <Route path="/student_personal_information" element={<ProtectedRoute><StudentPersonalInformationResponsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_family_background" element={<ProtectedRoute><StudentFamilyBackgroundResponsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_educational_attainment" element={<ProtectedRoute><StudentEducationalAttainmentResponsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_health_medical_records" element={<ProtectedRoute><StudentHealthMedicalRecordsResponsive allowedRoles={"student"} /></ProtectedRoute>} />
+                      <Route path="/student_other_information" element={<ProtectedRoute><StudentOtherInformationResponsive allowedRoles={"student"} /></ProtectedRoute>} />
                       <Route path="/student_online_requirements" element={<ProtectedRoute><StudentOnlineRequirements allowedRoles={"student"} /></ProtectedRoute>} />
-                      <Route path="/registrar_dashboard1" element={<ProtectedRoute><RegistrarDashboard1 /></ProtectedRoute>} />
-                      <Route path="/registrar_dashboard2" element={<ProtectedRoute><RegistrarDashboard2 /></ProtectedRoute>} />
-                      <Route path="/registrar_dashboard3" element={<ProtectedRoute><RegistrarDashboard3 /></ProtectedRoute>} />
-                      <Route path="/registrar_dashboard4" element={<ProtectedRoute><RegistrarDashboard4 /></ProtectedRoute>} />
-                      <Route path="/registrar_dashboard5" element={<ProtectedRoute><RegistrarDashboard5 /></ProtectedRoute>} />
-                      <Route path="/medical_dashboard1" element={<ProtectedRoute><MedicalDashboard1 /></ProtectedRoute>} />
-                      <Route path="/medical_dashboard2" element={<ProtectedRoute><MedicalDashboard2 /></ProtectedRoute>} />
-                      <Route path="/medical_dashboard3" element={<ProtectedRoute><MedicalDashboard3 /></ProtectedRoute>} />
-                      <Route path="/medical_dashboard4" element={<ProtectedRoute><MedicalDashboard4 /></ProtectedRoute>} />
-                      <Route path="/medical_dashboard5" element={<ProtectedRoute><MedicalDashboard5 /></ProtectedRoute>} />
+                      <Route path="/applicant_college_personal_information" element={<ProtectedRoute><ApplicantCollegePersonalInformation /></ProtectedRoute>} />
+                      <Route path="/applicant_college_family_background" element={<ProtectedRoute><ApplicantCollegeFamilyBackground /></ProtectedRoute>} />
+                      <Route path="/applicant_college_educational_attainment" element={<ProtectedRoute><ApplicantCollegeEducationalAttainment /></ProtectedRoute>} />
+                      <Route path="/applicant_college_health_medical_records" element={<ProtectedRoute><ApplicantCollegeHealthMedicalRecords /></ProtectedRoute>} />
+                      <Route path="/applicant_college_other_information" element={<ProtectedRoute><ApplicantCollegeOtherInformation /></ProtectedRoute>} />
+                      <Route path="/medical_personal_information" element={<ProtectedRoute><MedicalPersonalInformation /></ProtectedRoute>} />
+                      <Route path="/medical_family_background" element={<ProtectedRoute><MedicalFamilyBackground /></ProtectedRoute>} />
+                      <Route path="/medical_educational_attainment" element={<ProtectedRoute><MedicalEducationalAttainment /></ProtectedRoute>} />
+                      <Route path="/medical_health_medical_records" element={<ProtectedRoute><MedicalHealthMedicalRecords /></ProtectedRoute>} />
+                      <Route path="/medical_other_information" element={<ProtectedRoute><MedicalOtherInformation /></ProtectedRoute>} />
                       <Route path="/medical_online_requirements" element={<ProtectedRoute><MedicalOnlineRequirements /></ProtectedRoute>} />
                       <Route path="/medical_certificate" element={<ProtectedRoute><MedicalCertificate /></ProtectedRoute>} />
                       <Route path="/health_record" element={<ProtectedRoute><HealthRecord /></ProtectedRoute>} />
                       <Route path="/medical_requirements_form" element={<ProtectedRoute><MedicalRequirementsForm /></ProtectedRoute>} />
                       <Route path="/dental_assessment" element={<ProtectedRoute><DentalAssessment /></ProtectedRoute>} />
                       <Route path="/physical_neuro_exam" element={<ProtectedRoute><PhysicalNeuroExam /></ProtectedRoute>} />
-                      <Route path="/readmission_dashboard1" element={<ProtectedRoute><ReadmissionDashboard1 /></ProtectedRoute>} />
-                      <Route path="/readmission_dashboard2" element={<ProtectedRoute><ReadmissionDashboard2 /></ProtectedRoute>} />
-                      <Route path="/readmission_dashboard3" element={<ProtectedRoute><ReadmissionDashboard3 /></ProtectedRoute>} />
-                      <Route path="/readmission_dashboard4" element={<ProtectedRoute><ReadmissionDashboard4 /></ProtectedRoute>} />
-                      <Route path="/readmission_dashboard5" element={<ProtectedRoute><ReadmissionDashboard5 /></ProtectedRoute>} />
-                      <Route path="/super_admin_applicant_dashboard1" element={<ProtectedRoute><SuperAdminApplicantDashboard1 /></ProtectedRoute>} />
-                      <Route path="/super_admin_applicant_dashboard2" element={<ProtectedRoute><SuperAdminApplicantDashboard2 /></ProtectedRoute>} />
-                      <Route path="/super_admin_applicant_dashboard3" element={<ProtectedRoute><SuperAdminApplicantDashboard3 /></ProtectedRoute>} />
-                      <Route path="/super_admin_applicant_dashboard4" element={<ProtectedRoute><SuperAdminApplicantDashboard4 /></ProtectedRoute>} />
-                      <Route path="/super_admin_applicant_dashboard5" element={<ProtectedRoute><SuperAdminApplicantDashboard5 /></ProtectedRoute>} />
+                      <Route path="/applicant_registrar_personal_information" element={<ProtectedRoute><ApplicantRegistrarPersonalInformation /></ProtectedRoute>} />
+                      <Route path="/applicant_registrar_family_background" element={<ProtectedRoute><ApplicantRegistrarFamilyBackground /></ProtectedRoute>} />
+                      <Route path="/applicant_registrar_educational_attainment" element={<ProtectedRoute><ApplicantRegistrarEducationalAttainment /></ProtectedRoute>} />
+                      <Route path="/applicant_registrar_health_medical_records" element={<ProtectedRoute><ApplicantRegistrarHealthMedicalRecords /></ProtectedRoute>} />
+                      <Route path="/applicant_registrar_other_information" element={<ProtectedRoute><ApplicantRegistrarOtherInformation /></ProtectedRoute>} />
+                      <Route path="/student_registrar_personal_information" element={<ProtectedRoute><StudentRegistrarPersonalInformation /></ProtectedRoute>} />
+                      <Route path="/student_registrar_family_background" element={<ProtectedRoute><StudentRegistrarFamilyBackground /></ProtectedRoute>} />
+                      <Route path="/student_registrar_educational_attainment" element={<ProtectedRoute><StudentRegistrarEducationalAttainment /></ProtectedRoute>} />
+                      <Route path="/student_registrar_health_medical_records" element={<ProtectedRoute><StudentRegistrarHealthMedicalRecords /></ProtectedRoute>} />
+                      <Route path="/student_registrar_other_information" element={<ProtectedRoute><StudentRegistrarOtherInformation /></ProtectedRoute>} />
+                      <Route path="/applicant_admin_personal_information" element={<ProtectedRoute><ApplicantAdminPersonalInformation /></ProtectedRoute>} />
+                      <Route path="/applicant_admin_family_background" element={<ProtectedRoute><ApplicantAdminFamilyBackground /></ProtectedRoute>} />
+                      <Route path="/applicant_admin_educational_attainment" element={<ProtectedRoute><ApplicantAdminEducationalAttainment /></ProtectedRoute>} />
+                      <Route path="/applicant_admin_health_medical_records" element={<ProtectedRoute><ApplicantAdminHealthMedicalRecords /></ProtectedRoute>} />
+                      <Route path="/applicant_admin_other_information" element={<ProtectedRoute><ApplicantAdminOtherInformation /></ProtectedRoute>} />
                       <Route path="/applicant_online_requirements_admin" element={<ProtectedRoute><ApplicantOnlineRequirementsAdmin /></ProtectedRoute>} />
                       <Route path="/student_online_requirements_admin" element={<ProtectedRoute><StudentOnlineRequirementsAdmin /></ProtectedRoute>} />
-                      <Route path="/super_admin_student_dashboard1" element={<ProtectedRoute><SuperAdminStudentDashboard1 /></ProtectedRoute>} />
-                      <Route path="/super_admin_student_dashboard2" element={<ProtectedRoute><SuperAdminStudentDashboard2 /></ProtectedRoute>} />
-                      <Route path="/super_admin_student_dashboard3" element={<ProtectedRoute><SuperAdminStudentDashboard3 /></ProtectedRoute>} />
-                      <Route path="/super_admin_student_dashboard4" element={<ProtectedRoute><SuperAdminStudentDashboard4 /></ProtectedRoute>} />
-                      <Route path="/super_admin_student_dashboard5" element={<ProtectedRoute><SuperAdminStudentDashboard5 /></ProtectedRoute>} />
+                      <Route path="/student_admin_personal_information" element={<ProtectedRoute><StudentAdminPersonalInformation /></ProtectedRoute>} />
+                      <Route path="/student_admin_family_background" element={<ProtectedRoute><StudentAdminFamilyBackground /></ProtectedRoute>} />
+                      <Route path="/student_admin_educational_attainment" element={<ProtectedRoute><StudentAdminEducationalAttainment /></ProtectedRoute>} />
+                      <Route path="/student_admin_health_medical_records" element={<ProtectedRoute><StudentAdminHealthMedicalRecords /></ProtectedRoute>} />
+                      <Route path="/student_admin_other_information" element={<ProtectedRoute><StudentAdminOtherInformation /></ProtectedRoute>} />
                       <Route path="/student_accounts" element={<ProtectedRoute><StudentAccounts /></ProtectedRoute>} />
                       <Route path="/migration_data_panel" element={<ProtectedRoute><MigrationDataPanel /></ProtectedRoute>} />
+                      <Route path="/upload_applicants" element={<ProtectedRoute><UploadApplicants /></ProtectedRoute>} />
+
                       <Route path="/payment_exporting_module" element={<ProtectedRoute><PaymentExportingModule /></ProtectedRoute>} />
                       <Route path="/cor_exporting_module" element={<ProtectedRoute><CORExportingModule /></ProtectedRoute>} />
                       <Route path="/cor_export_render" element={<CORExportRender />} />
-                      {keys.step1 && <Route path={`/dashboard/${keys.step1}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard1Responsive /></ProtectedRoute>} />}
-                      {keys.step2 && <Route path={`/dashboard/${keys.step2}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard2Responsive /></ProtectedRoute>} />}
-                      {keys.step3 && <Route path={`/dashboard/${keys.step3}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard3Responsive /></ProtectedRoute>} />}
-                      {keys.step4 && <Route path={`/dashboard/${keys.step4}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard4Responsive /></ProtectedRoute>} />}
-                      {keys.step5 && <Route path={`/dashboard/${keys.step5}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantDashboard5Responsive /></ProtectedRoute>} />}
+                      {keys.step1 && <Route path={`/applicant_personal_information/${keys.step1}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantPersonalInformationResponsive /></ProtectedRoute>} />}
+                      {keys.step2 && <Route path={`/applicant_family_background/${keys.step2}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantFamilyBackgroundResponsive /></ProtectedRoute>} />}
+                      {keys.step3 && <Route path={`/applicant_educational_attainment/${keys.step3}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantEducationalAttainmentResponsive /></ProtectedRoute>} />}
+                      {keys.step4 && <Route path={`/applicant_health_medical_records/${keys.step4}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantHealthMedicalRecordsResponsive /></ProtectedRoute>} />}
+                      {keys.step5 && <Route path={`/applicant_other_information/${keys.step5}`} element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantOtherInformationResponsive /></ProtectedRoute>} />}
                       <Route path="/applicant_online_requirements" element={<ProtectedRoute allowedRoles={["applicant"]}><ApplicantOnlineRequirements /></ProtectedRoute>} />
                       <Route path="/admission_online_requirements" element={<ProtectedRoute><AdmissionOnlineRequirements /></ProtectedRoute>} />
                       <Route path="/applicant_online_requirements_college" element={<ProtectedRoute><ApplicantOnlineRequirementsCollege /></ProtectedRoute>} />
-                       <Route path="/applicant_online_requirements_registrar" element={<ProtectedRoute><ApplicantOnlineRequirementsRegistrar /></ProtectedRoute>} />
+                      <Route path="/applicant_online_requirements_registrar" element={<ProtectedRoute><ApplicantOnlineRequirementsRegistrar /></ProtectedRoute>} />
                       <Route path="/admin_ecat_application_form" element={<ProtectedRoute allowedRoles={["registrar"]}><AdminECATApplicationForm /></ProtectedRoute>} />
                       <Route path="/admin_personal_data_form" element={<ProtectedRoute allowedRoles={["registrar"]}><AdminPersonalDataForm /></ProtectedRoute>} />
                       <Route path="/admin_admission_form_process" element={<ProtectedRoute allowedRoles={["registrar"]}><AdminAdmissionFormProcess /></ProtectedRoute>} />
@@ -886,11 +901,11 @@ function App() {
                       <Route path="/user_page_access" element={<ProtectedRoute><UserPageAccess /></ProtectedRoute>} />
                       <Route path="/student_scholarship_list" element={<ProtectedRoute><StudentScholarshipList /></ProtectedRoute>} />
                       <Route path="/section_slot_monitoring" element={<ProtectedRoute><SectionSlotMonitoring /></ProtectedRoute>} />
-                      <Route path="/official_student_dashboard1" element={<ProtectedRoute><OfficialStudentDashboard1 /></ProtectedRoute>} />
-                      <Route path="/official_student_dashboard2" element={<ProtectedRoute><OfficialStudentDashboard2 /></ProtectedRoute>} />
-                      <Route path="/official_student_dashboard3" element={<ProtectedRoute><OfficialStudentDashboard3 /></ProtectedRoute>} />
-                      <Route path="/official_student_dashboard4" element={<ProtectedRoute><OfficialStudentDashboard4 /></ProtectedRoute>} />
-                      <Route path="/official_student_dashboard5" element={<ProtectedRoute><OfficialStudentDashboard5 /></ProtectedRoute>} />
+                      <Route path="/student_college_personal_information" element={<ProtectedRoute><StudentCollegePersonalInformation /></ProtectedRoute>} />
+                      <Route path="/student_college_family_background" element={<ProtectedRoute><StudentCollegeFamilyBackground /></ProtectedRoute>} />
+                      <Route path="/student_college_educational_attainment" element={<ProtectedRoute><StudentCollegeEducationalAttainment /></ProtectedRoute>} />
+                      <Route path="/student_college_health_medical_records" element={<ProtectedRoute><StudentCollegeHealthMedicalRecords /></ProtectedRoute>} />
+                      <Route path="/student_college_other_information" element={<ProtectedRoute><StudentCollegeOtherInformation /></ProtectedRoute>} />
                       <Route path="/student_online_requirements_college" element={<ProtectedRoute><StudentOnlineRequirementsCollege /></ProtectedRoute>} />
                       <Route path="/admin_branches" element={<ProtectedRoute><AdminBranches /></ProtectedRoute>} />
                     </Routes>

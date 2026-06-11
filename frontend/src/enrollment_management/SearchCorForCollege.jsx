@@ -174,7 +174,7 @@ const SearchCorForCollege = () => {
 
     const tabs = [
            { label: "Student List", to: "/student_list_for_enrollment", icon: <SchoolIcon fontSize="large"/> },
-             { label: "Applicant Profile", to: "/official_student_dashboard1", icon: <PersonIcon fontSize="large" /> },
+             { label: "Applicant Profile", to: "/student_college_personal_information", icon: <PersonIcon fontSize="large" /> },
              { label: "Student Online Requirements", to: "student_online_requirements_college", icon: <AssignmentIcon fontSize="large"/> },
              { label: "Course Tagging", to: "/course_tagging_for_college", icon: <UploadFileIcon fontSize="large"/> },
              { label: "Search COR", to: "/search_cor_for_college", icon: <MenuBookIcon fontSize="large"/> },

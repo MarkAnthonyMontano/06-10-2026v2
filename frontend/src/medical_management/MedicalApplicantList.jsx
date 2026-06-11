@@ -132,8 +132,8 @@ const MedicalStudentList = () => {
 
     navigate(
       person.person_id
-        ? `/medical_dashboard1?person_id=${person.person_id}`
-        : `/medical_dashboard1?student_number=${person.student_number}`,
+        ? `/medical_personal_information?person_id=${person.person_id}`
+        : `/medical_personal_information?student_number=${person.student_number}`,
     );
   };
 
@@ -236,7 +236,7 @@ const MedicalStudentList = () => {
     },
     {
       label: "Applicant Form",
-      to: "/medical_dashboard1",
+      to: "/medical_personal_information",
       icon: <PersonIcon fontSize="large" />,
     },
     {

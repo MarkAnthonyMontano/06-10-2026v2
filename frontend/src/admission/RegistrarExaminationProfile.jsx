@@ -70,7 +70,7 @@ const ExaminationProfile = () => {
     },
     {
       label: "Applicant Profile",
-      to: "/admin_dashboard1",
+      to: "//admission_personal_information",
       icon: <PersonIcon fontSize="large" />,
     },
     {

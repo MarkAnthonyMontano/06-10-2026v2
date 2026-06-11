@@ -37,7 +37,7 @@ const allowedOrigins = [
   "http://136.239.248.62:5173",
   "http://192.168.1.12:5173",
   "http://192.168.1.9:5173",
-  "http://192.168.0.180:5173",
+  "http://192.168.50.56:5173",
 ];
 
 app.use(
@@ -148,7 +148,9 @@ const departmentSectionTagging = require("./routes/system_routes/departmentSecti
 const auditLogsRoute = require("./routes/system_routes/auditLogsRoute");
 const applicantAdminRequirements = require("./routes/admission_routes/applicantAdminRequirements");
 const studentAdminRequirements = require("./routes/admission_routes/studentAdminRequirements");
+const uploadApplicants = require("./routes/admission_routes/uploadApplicants");
 
+app.use("/api", uploadApplicants);
 app.use("/api", applicantAdminRequirements);
 app.use("/api", studentAdminRequirements);
 app.use("/api", evaluation);

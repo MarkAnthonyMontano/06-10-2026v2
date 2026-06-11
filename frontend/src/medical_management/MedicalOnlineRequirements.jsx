@@ -43,7 +43,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 
 const tabs = [
   { label: "Student List", to: "/medical_student_list", icon: <SchoolIcon fontSize="large" /> },
-  { label: "Student Profile", to: "/medical_dashboard1", icon: <PersonIcon fontSize="large" /> },
+  { label: "Student Profile", to: "/medical_personal_information", icon: <PersonIcon fontSize="large" /> },
   { label: "Student Online Requirements", to: "/medical_online_requirements", icon: <AssignmentIcon fontSize="large" /> }, // updated icon
   { label: "Medical History", to: "/medical_requirements_form", icon: <HealthAndSafetyIcon fontSize="large" /> },
   { label: "Dental Assessment", to: "/dental_assessment", icon: <DescriptionIcon fontSize="large" /> },

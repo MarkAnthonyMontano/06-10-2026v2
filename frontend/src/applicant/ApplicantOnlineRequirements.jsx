@@ -38,7 +38,7 @@ import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import SendIcon from "@mui/icons-material/Send";
 
-const RequirementUploader = () => {
+const ApplicantOnlineRequirements = () => {
   const settings = useContext(SettingsContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -605,4 +605,4 @@ const RequirementUploader = () => {
   );
 };
 
-export default RequirementUploader;
+export default ApplicantOnlineRequirements;

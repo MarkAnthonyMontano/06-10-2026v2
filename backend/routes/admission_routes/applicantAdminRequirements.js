@@ -13,6 +13,40 @@ const applicantDocsDir = path.join(
 );
 
 
+const getRequirementUploadAuditInfo = async (uploadId) => {
+  const [rows] = await db.query(
+    `
+    SELECT
+      ru.upload_id,
+      ru.person_id,
+      ru.status,
+      ru.document_status,
+      rt.description,
+      ant.applicant_number,
+      pt.first_name,
+      pt.middle_name,
+      pt.last_name,
+      pt.emailAddress
+    FROM requirement_uploads ru
+    LEFT JOIN requirements_table rt ON rt.id = ru.requirements_id
+    LEFT JOIN person_table pt ON pt.person_id = ru.person_id
+    LEFT JOIN applicant_numbering_table ant ON ant.person_id = ru.person_id
+    WHERE ru.upload_id = ?
+    LIMIT 1
+    `,
+    [uploadId],
+  );
+
+  return rows?.[0] || null;
+};
+
+const requirementStatusLabel = (status) => {
+  if (Number(status) === 1) return "Verified";
+  if (Number(status) === 2) return "Rejected";
+  return "Pending";
+};
+
+
 // Ito
 const upload = multer({
   storage: multer.memoryStorage(),

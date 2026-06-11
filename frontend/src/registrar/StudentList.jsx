@@ -135,8 +135,8 @@ const StudentList = () => {
 
         navigate(
             person.person_id
-                ? `/readmission_dashboard1?person_id=${person.person_id}`
-                : `/readmission_dashboard1?student_number=${person.student_number}`
+                ? `/student_registrar_personal_information?person_id=${person.person_id}`
+                : `/student_registrar_personal_information?student_number=${person.student_number}`
         );
     };
 
@@ -145,7 +145,7 @@ const StudentList = () => {
 
     const tabs1 = [
         { label: "Student List", to: "/student_list", icon: <SchoolIcon fontSize="large"/> },
-        { label: "Applicant Form", to: "/readmission_dashboard1", icon: <PersonIcon fontSize="large"/> },
+        { label: "Applicant Form", to: "/student_registrar_personal_information", icon: <PersonIcon fontSize="large"/> },
         { label: "Student Online Requirements Registrar", to: "student_online_requirements_college", icon: <AssignmentIcon fontSize="large"/> },
         { label: "Search Certificate of Registration", to: "/search_cor", icon: <ListAltIcon fontSize="large"/> },
         { label: "Report of Grades", to: "/report_of_grades", icon: <GradeIcon fontSize="large"/> },

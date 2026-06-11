@@ -11,9 +11,11 @@ const {
   CanCreate,
   CanDelete,
   CanEdit,
+  CanManageUserPagePermissions,
 } = require("../../middleware/pagePermissions");
 
 const router = express.Router();
+const PROTECTED_PAGE_ID = 69;
 
 router.use(async (req, res, next) => {
   try {
@@ -287,7 +289,7 @@ router.post("/access-level/bulk-permission-audit", async (req, res) => {
   }
 });
 
-router.put("/page_access/:userId/bulk-permission", CanEdit, async (req, res) => {
+router.put("/page_access/:userId/bulk-permission", CanManageUserPagePermissions, async (req, res) => {
   const { userId } = req.params;
   const { permission, enabled } = req.body;
   const allowedPermissions = ["can_create", "can_edit", "can_delete"];
@@ -335,8 +337,8 @@ router.put("/page_access/:userId/bulk-permission", CanEdit, async (req, res) => 
       }
     } else {
       await conn.query(
-        `UPDATE page_access SET ${permission} = 0 WHERE user_id = ?`,
-        [userId],
+        `UPDATE page_access SET ${permission} = 0 WHERE user_id = ? AND page_id != ?`,
+        [userId, PROTECTED_PAGE_ID],
       );
     }
 
@@ -364,7 +366,7 @@ router.put("/page_access/:userId/bulk-permission", CanEdit, async (req, res) => 
   }
 });
 
-router.put("/page_access/:userId/:pageId", CanEdit, async (req, res) => {
+router.put("/page_access/:userId/:pageId", CanManageUserPagePermissions, async (req, res) => {
   const { userId, pageId } = req.params;
   const {
     page_privilege = 0,
@@ -547,7 +549,10 @@ router.post("/page_access/revoke-all", CanDelete, async (req, res) => {
   const { userId } = req.body;
 
   try {
-    await db3.query("DELETE FROM page_access WHERE user_id = ?", [userId]);
+    await db3.query(
+      "DELETE FROM page_access WHERE user_id = ? AND page_id != ?",
+      [userId, PROTECTED_PAGE_ID],
+    );
 
     const { actorId, actorRole } = getAuditActor(req);
     const roleLabel = formatAuditActorRole(actorRole);

@@ -39,6 +39,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import LockIcon from "@mui/icons-material/Lock";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+
+const PROTECTED_PAGE_ID = 69;
 
 const UserPageAccess = () => {
   const settings = useContext(SettingsContext);
@@ -48,7 +51,7 @@ const UserPageAccess = () => {
   const [borderColor, setBorderColor] = useState("#000000");
 
   // Access control
-  const pageId = 91;
+  const pageId = 69;
   const [hasAccess, setHasAccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [canCreate, setCanCreate] = useState(false);
@@ -76,6 +79,12 @@ const UserPageAccess = () => {
   const [editPages, setEditPages] = useState([]);
   const [createAccessSearch, setCreateAccessSearch] = useState("");
   const [editAccessSearch, setEditAccessSearch] = useState("");
+  const [accessConfirmDialog, setAccessConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
 
   const [snack, setSnack] = useState({
     open: false,
@@ -229,9 +238,63 @@ const UserPageAccess = () => {
     can_delete: "Delete",
   };
 
+  const canManageUserPermissions = (permissionKey) => {
+    if (canEdit) return true;
+    if (permissionKey === "can_create" && canCreate) return true;
+    if (permissionKey === "can_delete" && canDelete) return true;
+    return false;
+  };
+
+  const formatEmployeeName = (user) =>
+    user
+      ? `${user.last_name}, ${user.first_name} ${user.middle_name || "."}`.trim()
+      : "this user";
+
+  const getPageLabel = (targetPageId) => {
+    const page = pages.find((p) => Number(p.id) === Number(targetPageId));
+    return page?.page_description || `Page ${targetPageId}`;
+  };
+
+  const isProtectedPage = (targetPageId) =>
+    Number(targetPageId) === PROTECTED_PAGE_ID;
+
+  const closeAccessConfirm = () => {
+    setAccessConfirmDialog({
+      open: false,
+      title: "",
+      message: "",
+      onConfirm: null,
+    });
+  };
+
+  const confirmAccessChange = ({ requiresConfirm, title, message, onConfirm }) => {
+    if (!requiresConfirm) {
+      onConfirm();
+      return;
+    }
+
+    setAccessConfirmDialog({
+      open: true,
+      title,
+      message,
+      onConfirm: () => {
+        closeAccessConfirm();
+        onConfirm();
+      },
+    });
+  };
+
+  const permissionActionLabels = {
+    can_create: "create",
+    can_edit: "edit",
+    can_delete: "delete",
+  };
+
   const setBulkPermissionState = (pagesList, currentAccess, permissionKey, enabled) => {
     const nextAccess = { ...currentAccess };
     pagesList.forEach((page) => {
+      if (!enabled && isProtectedPage(page.id)) return;
+
       const current = nextAccess[page.id] || createEmptyPermission(false);
       nextAccess[page.id] = {
         ...current,
@@ -241,6 +304,8 @@ const UserPageAccess = () => {
     });
     return nextAccess;
   };
+
+  const getProtectedPageLabel = () => getPageLabel(PROTECTED_PAGE_ID);
 
   const buildAccessLevelPermissionState = (pagesList) => {
     const defaults = {};
@@ -354,7 +419,7 @@ const UserPageAccess = () => {
   }, [searchQuery]);
 
   // Update access privilege
-  const handleToggleChange = async (pageId, hasAccessNow) => {
+  const executeToggleChange = async (targetPageId, hasAccessNow) => {
     if (!selectedUser) return;
     if (hasAccessNow && !canDelete) {
       setSnack({
@@ -374,17 +439,16 @@ const UserPageAccess = () => {
     }
 
     const newState = !hasAccessNow;
-    const previousState = pageAccess[pageId] || {
+    const previousState = pageAccess[targetPageId] || {
       access: false,
       can_create: false,
       can_edit: false,
       can_delete: false,
     };
 
-    // Optimistic update
     setPageAccess((prev) => ({
       ...prev,
-      [pageId]: {
+      [targetPageId]: {
         ...previousState,
         access: newState,
         can_create: false,
@@ -396,13 +460,13 @@ const UserPageAccess = () => {
     try {
       if (newState) {
         await axios.post(
-          `${API_BASE_URL}/api/page_access/${selectedUser.employee_id}/${pageId}`,
+          `${API_BASE_URL}/api/page_access/${selectedUser.employee_id}/${targetPageId}`,
           {},
           auditConfig,
         );
       } else {
         await axios.delete(
-          `${API_BASE_URL}/api/page_access/${selectedUser.employee_id}/${pageId}`,
+          `${API_BASE_URL}/api/page_access/${selectedUser.employee_id}/${targetPageId}`,
           auditConfig,
         );
       }
@@ -413,8 +477,7 @@ const UserPageAccess = () => {
         message: newState ? "Access granted" : "Access revoked",
       });
     } catch {
-      // rollback
-      setPageAccess((prev) => ({ ...prev, [pageId]: previousState }));
+      setPageAccess((prev) => ({ ...prev, [targetPageId]: previousState }));
       setSnack({
         open: true,
         severity: "error",
@@ -423,18 +486,51 @@ const UserPageAccess = () => {
     }
   };
 
-  const handlePermissionToggle = async (pageId, permissionKey) => {
+  const requestToggleChange = (targetPageId, hasAccessNow) => {
     if (!selectedUser) return;
-    if (!canEdit) {
+    if (hasAccessNow && !canDelete) {
       setSnack({
         open: true,
         severity: "error",
-        message: "You do not have permission to edit page permissions",
+        message: "You do not have permission to revoke page access",
+      });
+      return;
+    }
+    if (!hasAccessNow && !canCreate) {
+      setSnack({
+        open: true,
+        severity: "error",
+        message: "You do not have permission to grant page access",
       });
       return;
     }
 
-    const currentState = pageAccess[pageId] || {
+    const isRevoke = hasAccessNow;
+    const employeeName = formatEmployeeName(selectedUser);
+    const pageLabel = getPageLabel(targetPageId);
+
+    confirmAccessChange({
+      requiresConfirm: isProtectedPage(targetPageId),
+      title: isRevoke ? "Revoke Page Access" : "Modify Page Access",
+      message: isRevoke
+        ? `Are you sure you want to revoke ${employeeName}'s access to ${pageLabel}?`
+        : `Are you sure you want to grant ${employeeName} access to ${pageLabel}?`,
+      onConfirm: () => executeToggleChange(targetPageId, hasAccessNow),
+    });
+  };
+
+  const executePermissionToggle = async (targetPageId, permissionKey) => {
+    if (!selectedUser) return;
+    if (!canManageUserPermissions(permissionKey)) {
+      setSnack({
+        open: true,
+        severity: "error",
+        message: `You do not have permission to manage ${permissionLabels[permissionKey]} access`,
+      });
+      return;
+    }
+
+    const currentState = pageAccess[targetPageId] || {
       access: false,
       can_create: false,
       can_edit: false,
@@ -449,12 +545,12 @@ const UserPageAccess = () => {
 
     setPageAccess((prev) => ({
       ...prev,
-      [pageId]: nextState,
+      [targetPageId]: nextState,
     }));
 
     try {
       await axios.put(
-        `${API_BASE_URL}/api/page_access/${selectedUser.employee_id}/${pageId}`,
+        `${API_BASE_URL}/api/page_access/${selectedUser.employee_id}/${targetPageId}`,
         {
           page_privilege: nextState.access ? 1 : 0,
           can_create: nextState.can_create ? 1 : 0,
@@ -473,7 +569,7 @@ const UserPageAccess = () => {
       console.error(err);
       setPageAccess((prev) => ({
         ...prev,
-        [pageId]: currentState,
+        [targetPageId]: currentState,
       }));
       setSnack({
         open: true,
@@ -481,6 +577,33 @@ const UserPageAccess = () => {
         message: "Failed to update page permissions",
       });
     }
+  };
+
+  const requestPermissionToggle = (targetPageId, permissionKey) => {
+    if (!selectedUser) return;
+    if (!canManageUserPermissions(permissionKey)) {
+      setSnack({
+        open: true,
+        severity: "error",
+        message: `You do not have permission to manage ${permissionLabels[permissionKey]} access`,
+      });
+      return;
+    }
+
+    const currentState = pageAccess[targetPageId] || createEmptyPermission(false);
+    const isRevoke = Boolean(currentState[permissionKey]);
+    const employeeName = formatEmployeeName(selectedUser);
+    const pageLabel = getPageLabel(targetPageId);
+    const actionLabel = permissionActionLabels[permissionKey];
+
+    confirmAccessChange({
+      requiresConfirm: isProtectedPage(targetPageId),
+      title: isRevoke ? `Remove ${permissionLabels[permissionKey]} Access` : `Grant ${permissionLabels[permissionKey]} Access`,
+      message: isRevoke
+        ? `Are you sure you want to remove the capability of ${employeeName} to ${actionLabel} action on ${pageLabel}?`
+        : `Are you sure you want to grant ${employeeName} the capability to ${actionLabel} action on ${pageLabel}?`,
+      onConfirm: () => executePermissionToggle(targetPageId, permissionKey),
+    });
   };
 
   const openCreateAccessModal = async () => {
@@ -843,6 +966,11 @@ const UserPageAccess = () => {
       });
     } catch (err) {
       console.error(err);
+      setSnack({
+        open: true,
+        severity: "error",
+        message: "Failed to grant all access",
+      });
     }
   };
 
@@ -864,12 +992,12 @@ const UserPageAccess = () => {
 
       const newAccess = {};
       pages.forEach((p) => {
-        newAccess[p.id] = {
-          access: false,
-          can_create: false,
-          can_edit: false,
-          can_delete: false,
-        };
+        if (isProtectedPage(p.id)) {
+          newAccess[p.id] = pageAccess[p.id] || createEmptyPermission(false);
+          return;
+        }
+
+        newAccess[p.id] = createEmptyPermission(false);
       });
 
       setPageAccess(newAccess);
@@ -877,20 +1005,25 @@ const UserPageAccess = () => {
       setSnack({
         open: true,
         severity: "success",
-        message: "All access removed",
+        message: `All access removed except ${getProtectedPageLabel()}`,
       });
     } catch (err) {
       console.error(err);
+      setSnack({
+        open: true,
+        severity: "error",
+        message: "Failed to remove all access",
+      });
     }
   };
 
   const handleUserBulkPermission = async (permissionKey, enabled) => {
     if (!selectedUser) return;
-    if (!canEdit) {
+    if (!canManageUserPermissions(permissionKey)) {
       setSnack({
         open: true,
         severity: "error",
-        message: "You do not have permission to edit page permissions",
+        message: `You do not have permission to manage ${permissionLabels[permissionKey]} access`,
       });
       return;
     }
@@ -915,10 +1048,13 @@ const UserPageAccess = () => {
         auditConfig,
       );
 
+      const protectedLabel = getProtectedPageLabel();
       setSnack({
         open: true,
         severity: "success",
-        message: `${enabled ? "Granted" : "Closed"} all ${permissionLabels[permissionKey]} permissions`,
+        message: enabled
+          ? `Granted all ${permissionLabels[permissionKey]} permissions`
+          : `Closed all ${permissionLabels[permissionKey]} permissions except ${protectedLabel}`,
       });
     } catch (err) {
       console.error(err);
@@ -1676,7 +1812,7 @@ const UserPageAccess = () => {
                     size="small"
                     color="success"
                     onClick={() => handleUserBulkPermission(permissionKey, true)}
-                    disabled={!canEdit}
+                    disabled={!canManageUserPermissions(permissionKey)}
                     sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
                   >
                     Grant All {label}
@@ -1686,7 +1822,7 @@ const UserPageAccess = () => {
                     size="small"
                     color="error"
                     onClick={() => handleUserBulkPermission(permissionKey, false)}
-                    disabled={!canEdit}
+                    disabled={!canManageUserPermissions(permissionKey)}
                     sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
                   >
                     Close All {label}
@@ -1695,6 +1831,11 @@ const UserPageAccess = () => {
               ))}
             </Box>
           </Box>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+            Bulk close and remove actions skip {getProtectedPageLabel()} (Page {PROTECTED_PAGE_ID}).
+            Change that page using its row switches only.
+          </Typography>
 
           <Paper sx={{ border: `1px solid ${borderColor}` }}>
             <TableContainer>
@@ -1723,12 +1864,19 @@ const UserPageAccess = () => {
                       sx={{ "&:hover": { backgroundColor: "#f5f5f5" }, transition: "background-color 0.2s" }}
                     >
                       <TableCell sx={{ textAlign: "center", border: `1px solid ${borderColor}` }}>{i + 1}</TableCell>
-                      <TableCell sx={{ textAlign: "center", border: `1px solid ${borderColor}` }}>{p.page_description}</TableCell>
+                      <TableCell sx={{ textAlign: "center", border: `1px solid ${borderColor}` }}>
+                        <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                          {Number(p.id) === PROTECTED_PAGE_ID && (
+                            <LockIcon fontSize="small" color="warning" titleAccess="Protected page (ID 69)" />
+                          )}
+                          {p.page_description}
+                        </Box>
+                      </TableCell>
                       <TableCell sx={{ textAlign: "center", border: `1px solid ${borderColor}` }}>{p.page_group}</TableCell>
                       <TableCell sx={{ textAlign: "center", border: `1px solid ${borderColor}` }}>
                         <Switch
                           checked={pageAccess[p.id]?.access || false}
-                          onChange={() => handleToggleChange(p.id, pageAccess[p.id]?.access || false)}
+                          onChange={() => requestToggleChange(p.id, pageAccess[p.id]?.access || false)}
                           disabled={
                             pageAccess[p.id]?.access ? !canDelete : !canCreate
                           }
@@ -1737,22 +1885,22 @@ const UserPageAccess = () => {
                       <TableCell sx={{ textAlign: "center", border: `1px solid ${borderColor}` }}>
                         <Switch
                           checked={pageAccess[p.id]?.can_create || false}
-                          onChange={() => handlePermissionToggle(p.id, "can_create")}
-                          disabled={!pageAccess[p.id]?.access || !canEdit}
+                          onChange={() => requestPermissionToggle(p.id, "can_create")}
+                          disabled={!canManageUserPermissions("can_create")}
                         />
                       </TableCell>
                       <TableCell sx={{ textAlign: "center", border: `1px solid ${borderColor}` }}>
                         <Switch
                           checked={pageAccess[p.id]?.can_edit || false}
-                          onChange={() => handlePermissionToggle(p.id, "can_edit")}
-                          disabled={!pageAccess[p.id]?.access || !canEdit}
+                          onChange={() => requestPermissionToggle(p.id, "can_edit")}
+                          disabled={!canManageUserPermissions("can_edit")}
                         />
                       </TableCell>
                       <TableCell sx={{ textAlign: "center", border: `1px solid ${borderColor}` }}>
                         <Switch
                           checked={pageAccess[p.id]?.can_delete || false}
-                          onChange={() => handlePermissionToggle(p.id, "can_delete")}
-                          disabled={!pageAccess[p.id]?.access || !canEdit}
+                          onChange={() => requestPermissionToggle(p.id, "can_delete")}
+                          disabled={!canManageUserPermissions("can_delete")}
                         />
                       </TableCell>
                     </TableRow>
@@ -1767,9 +1915,9 @@ const UserPageAccess = () => {
           <Button
             color="error"
             variant="outlined"
-          
+
             onClick={() => setOpenModal(false)}
-     
+
           >
             Cancel
           </Button>
@@ -1934,9 +2082,9 @@ const UserPageAccess = () => {
           <Button
             color="error"
             variant="outlined"
-  
+
             onClick={() => { setOpenCreateModal(false); setCreateAccessSearch(""); }}
-      
+
           >
             Cancel
           </Button>
@@ -2152,9 +2300,9 @@ const UserPageAccess = () => {
           <Button
             color="error"
             variant="outlined"
-          
+
             onClick={() => { setOpenEditAccessModal(false); setEditAccessSearch(""); }}
-         
+
           >
             Cancel
           </Button>
@@ -2165,6 +2313,35 @@ const UserPageAccess = () => {
             sx={{ px: 4, fontWeight: 600, textTransform: "none", borderRadius: 2 }}
           >
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={accessConfirmDialog.open}
+        onClose={closeAccessConfirm}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberIcon color="warning" />
+          {accessConfirmDialog.title}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>{accessConfirmDialog.message}</Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button color="error"
+            variant="outlined"
+            onClick={closeAccessConfirm}>
+            Cancel
+          </Button>
+          <Button
+            color="warning"
+            variant="contained"
+            onClick={() => accessConfirmDialog.onConfirm?.()}
+          >
+            Confirm
           </Button>
         </DialogActions>
       </Dialog>

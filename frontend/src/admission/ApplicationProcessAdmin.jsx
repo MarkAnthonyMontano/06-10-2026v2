@@ -158,7 +158,7 @@ const ApplicationProcessAdmin = () => {
     }
 
     // ✅ Always pass person_id in the URL
-    navigate(`/admin_dashboard1?person_id=${personId}`);
+    navigate(`//admission_personal_information?person_id=${personId}`);
   };
 
   const navigate = useNavigate();

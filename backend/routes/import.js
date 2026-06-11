@@ -92,6 +92,199 @@ const pickValue = (row, candidates) => {
   return "";
 };
 
+
+const normalizeHeaderKey = (value) =>
+  normalizeText(value)
+    .toLowerCase()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const findUploadedApplicantsHeaderIndex = (rows) =>
+  rows.findIndex((row) => {
+    const keys = new Set((row || []).map(normalizeHeaderKey));
+    return (
+      keys.has("applicant_no") &&
+      keys.has("last_name") &&
+      keys.has("first_name") &&
+      keys.has("program")
+    );
+  });
+
+const getCellByHeader = (row, headerMap, candidates) => {
+  for (const candidate of candidates) {
+    const index = headerMap.get(candidate);
+    if (index !== undefined) return normalizeText(row[index]);
+  }
+  return "";
+};
+
+const parseUploadedApplicantRows = (sheet) => {
+  const rows = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: "",
+    raw: false,
+  });
+
+  const headerIndex = findUploadedApplicantsHeaderIndex(rows);
+  if (headerIndex === -1) {
+    const error = new Error(
+      "Could not find applicant headers. Expected columns include Applicant No, Last Name, First Name, and Program.",
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  const headerMap = new Map();
+  rows[headerIndex].forEach((header, index) => {
+    const key = normalizeHeaderKey(header);
+    if (key) headerMap.set(key, index);
+  });
+
+  const parsedRows = [];
+  const skippedItems = [];
+  const seenApplicantNumbers = new Set();
+
+  for (let i = headerIndex + 1; i < rows.length; i++) {
+    const row = rows[i] || [];
+    const applicantNumber = getCellByHeader(row, headerMap, [
+      "applicant_no",
+      "applicant_number",
+      "applicant_id",
+    ]);
+    const lastName = getCellByHeader(row, headerMap, ["last_name"]);
+    const firstName = getCellByHeader(row, headerMap, ["first_name"]);
+    const middleName = getCellByHeader(row, headerMap, ["middle_name"]);
+    const program = getCellByHeader(row, headerMap, ["program"]);
+    const emailAddress = getCellByHeader(row, headerMap, [
+      "email_address",
+      "email",
+    ]);
+    const contactNum = getCellByHeader(row, headerMap, [
+      "contact_number",
+      "contact_num",
+      "contact",
+    ]);
+    const address = getCellByHeader(row, headerMap, ["address"]);
+    const dateApplied = getCellByHeader(row, headerMap, ["date_applied"]);
+
+    if (
+      !applicantNumber &&
+      !lastName &&
+      !firstName &&
+      !program &&
+      !emailAddress
+    ) {
+      continue;
+    }
+
+    if (!applicantNumber || !lastName || !firstName || !program) {
+      skippedItems.push({
+        rowNumber: i + 1,
+        applicantNumber: applicantNumber || "N/A",
+        reason: "Missing required applicant number, last name, first name, or program.",
+      });
+      continue;
+    }
+
+    if (seenApplicantNumbers.has(applicantNumber)) {
+      skippedItems.push({
+        rowNumber: i + 1,
+        applicantNumber,
+        reason: "Duplicate applicant number inside the uploaded file.",
+      });
+      continue;
+    }
+
+    seenApplicantNumbers.add(applicantNumber);
+    parsedRows.push([
+      applicantNumber,
+      lastName,
+      firstName,
+      middleName,
+      program,
+      emailAddress,
+      contactNum,
+      address,
+      dateApplied,
+    ]);
+  }
+
+  return { parsedRows, skippedItems };
+};
+
+const resolveUploadedApplicantCurriculumRows = async (
+  connection,
+  parsedRows,
+  skippedItems,
+) => {
+  const programCache = new Map();
+  const curriculumCache = new Map();
+  const resolvedRows = [];
+
+  for (const row of parsedRows) {
+    const [
+      applicantNumber,
+      lastName,
+      firstName,
+      middleName,
+      program,
+      emailAddress,
+      contactNum,
+      address,
+      dateApplied,
+    ] = row;
+
+    if (!programCache.has(program)) {
+      const [programRows] = await connection.query(
+        "SELECT program_id FROM program_table WHERE program_code = ?",
+        [program],
+      );
+      programCache.set(program, programRows?.[0]?.program_id || null);
+    }
+
+    const programId = programCache.get(program);
+    if (!programId) {
+      skippedItems.push({
+        applicantNumber,
+        reason: `Program code not found: ${program}`,
+      });
+      continue;
+    }
+
+    if (!curriculumCache.has(programId)) {
+      const [curriculumRows] = await connection.query(
+        "SELECT curriculum_id FROM curriculum_table WHERE program_id = ? AND lock_status = 1",
+        [programId],
+      );
+      curriculumCache.set(programId, curriculumRows?.[0]?.curriculum_id || null);
+    }
+
+    const curriculumId = curriculumCache.get(programId);
+    if (!curriculumId) {
+      skippedItems.push({
+        applicantNumber,
+        reason: `No locked curriculum found for program code: ${program}`,
+      });
+      continue;
+    }
+
+    resolvedRows.push([
+      applicantNumber,
+      lastName,
+      firstName,
+      middleName,
+      curriculumId,
+      emailAddress,
+      contactNum,
+      address,
+      dateApplied,
+    ]);
+  }
+
+  return resolvedRows;
+};
+
 const parseStudentName = (fullName) => {
   const text = normalizeText(fullName);
   if (!text) {
@@ -127,6 +320,30 @@ const parseProgramDescription = (programDescription) => {
   }
 
   return { programCode: text, yearDescription: "" };
+};
+
+const uploadedApplicantsImportProgress = new Map();
+
+const setUploadedApplicantsProgress = (importId, patch) => {
+  if (!importId) return;
+
+  const previous = uploadedApplicantsImportProgress.get(importId) || {};
+  uploadedApplicantsImportProgress.set(importId, {
+    ...previous,
+    ...patch,
+    updatedAt: Date.now(),
+  });
+};
+
+const cleanupUploadedApplicantsProgress = () => {
+  const maxAgeMs = 30 * 60 * 1000;
+  const now = Date.now();
+
+  for (const [importId, job] of uploadedApplicantsImportProgress.entries()) {
+    if (now - (job.updatedAt || 0) > maxAgeMs) {
+      uploadedApplicantsImportProgress.delete(importId);
+    }
+  }
 };
 
 const parseAcademicYear = (academicYearText) => {
@@ -444,6 +661,325 @@ function parseStudentNameLegacy(fullName) {
     middleName,
   };
 }
+
+router.post(
+  "/import-xlsx-into-uploaded-applicants",
+  upload.single("file"),
+  async (req, res) => {
+    cleanupUploadedApplicantsProgress();
+
+    const importId = normalizeText(req.body.import_id);
+
+    try {
+      const fileValidation = validateSpreadsheetUpload(req.file);
+      if (!fileValidation.valid) {
+        return res
+          .status(fileValidation.status)
+          .json({ success: false, error: fileValidation.error });
+      }
+
+      setUploadedApplicantsProgress(importId, {
+        status: "parsing",
+        importedCount: 0,
+        totalRows: 0,
+        progress: 0,
+      });
+
+      const workbook = readWorkbookSafely(req.file);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!sheet) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Spreadsheet has no worksheet" });
+      }
+      if (hasFormulaCell(sheet)) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Formulas are not allowed in uploads" });
+      }
+
+      const { parsedRows, skippedItems } = parseUploadedApplicantRows(sheet);
+      if (!parsedRows.length) {
+        setUploadedApplicantsProgress(importId, {
+          status: "failed",
+          importedCount: 0,
+          totalRows: 0,
+          progress: 0,
+        });
+        return res.status(400).json({
+          success: false,
+          error: "No valid applicant rows found.",
+          skippedItems: skippedItems.slice(0, 100),
+        });
+      }
+
+      setUploadedApplicantsProgress(importId, {
+        status: "importing",
+        importedCount: 0,
+        totalRows: parsedRows.length,
+        progress: 0,
+      });
+
+      const batchSize = Math.max(100, Number(process.env.UPLOADED_APPLICANTS_BATCH_SIZE || 1000));
+      let importedCount = 0;
+      let importTotalRows = parsedRows.length;
+
+      await withTransaction(db3, async (connection) => {
+        const resolvedRows = await resolveUploadedApplicantCurriculumRows(
+          connection,
+          parsedRows,
+          skippedItems,
+        );
+
+        if (!resolvedRows.length) {
+          const error = new Error(
+            "No rows have a matching program with a locked curriculum.",
+          );
+          error.status = 400;
+          throw error;
+        }
+
+        importTotalRows = resolvedRows.length;
+        setUploadedApplicantsProgress(importId, {
+          status: "importing",
+          importedCount: 0,
+          totalRows: importTotalRows,
+          progress: 0,
+        });
+
+        const [idRows] = await connection.query(
+          "SELECT id FROM uploaded_applicants_table ORDER BY id DESC LIMIT 1 FOR UPDATE",
+        );
+        let nextId = Number(idRows?.[0]?.id || 0) + 1;
+
+        for (let i = 0; i < resolvedRows.length; i += batchSize) {
+          const batch = resolvedRows.slice(i, i + batchSize).map((row) => [
+            nextId++,
+            ...row,
+          ]);
+
+          await connection.query(
+            `INSERT INTO uploaded_applicants_table
+             (id, applicant_number, last_name, first_name, middle_name, program,
+              email_address, contact_num, address, date_applied)
+             VALUES ?`,
+            [batch],
+          );
+
+          importedCount += batch.length;
+          setUploadedApplicantsProgress(importId, {
+            status: "importing",
+            importedCount,
+            totalRows: importTotalRows,
+            progress: Math.floor((importedCount / importTotalRows) * 100),
+          });
+        }
+      });
+
+      setUploadedApplicantsProgress(importId, {
+        status: "complete",
+        importedCount,
+        totalRows: importTotalRows,
+        progress: 100,
+      });
+
+      res.json({
+        success: true,
+        message: `Imported ${importedCount} uploaded applicant record(s).`,
+        importedCount,
+        totalRows: importTotalRows,
+        progress: 100,
+        skippedCount: skippedItems.length,
+        skippedItems: skippedItems.slice(0, 100),
+      });
+    } catch (err) {
+      console.error("Uploaded applicants import error:", err);
+      setUploadedApplicantsProgress(importId, {
+        status: "failed",
+        error: err.message,
+      });
+
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message || "Failed to import uploaded applicants.",
+      });
+    }
+  },
+);
+
+router.get("/uploaded-applicants-import-progress/:importId", (req, res) => {
+  cleanupUploadedApplicantsProgress();
+  const importId = normalizeText(req.params.importId);
+  const job = uploadedApplicantsImportProgress.get(importId);
+
+  if (!job) {
+    return res.json({
+      status: "idle",
+      importedCount: 0,
+      totalRows: 0,
+      progress: 0,
+    });
+  }
+
+  res.json(job);
+});
+
+router.get("/get_uploaded_applicants", async (req, res) => {
+  try {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(
+      500,
+      Math.max(10, Number.parseInt(req.query.limit, 10) || 100),
+    );
+    const offset = (page - 1) * limit;
+    const search = normalizeText(req.query.search);
+    const sort = normalizeText(req.query.sort) || "lname_asc";
+
+    const sortMap = {
+      id_desc: "uat.id DESC",
+      id_asc: "uat.id ASC",
+      lname_asc: "uat.last_name ASC, uat.first_name ASC, uat.id DESC",
+      lname_desc: "uat.last_name DESC, uat.first_name DESC, uat.id DESC",
+      applicant_number_asc: "uat.applicant_number ASC, uat.id DESC",
+      date_applied_desc:
+        "COALESCE(STR_TO_DATE(uat.date_applied, '%Y-%m-%d'), STR_TO_DATE(uat.date_applied, '%m/%d/%Y')) DESC, uat.id DESC",
+    };
+    const orderBy = sortMap[sort] || sortMap.lname_asc;
+
+    const where = [];
+    const params = [];
+    if (search) {
+      where.push(`(
+        uat.applicant_number LIKE ? OR
+        uat.last_name LIKE ? OR
+        uat.first_name LIKE ? OR
+        uat.middle_name LIKE ? OR
+        uat.program LIKE ? OR
+        uat.email_address LIKE ? OR
+        uat.contact_num LIKE ? OR
+        uat.address LIKE ? OR
+        uat.date_applied LIKE ? OR
+        yt.year_description LIKE ? OR
+        pt.program_code LIKE ?
+      )`);
+      const like = `%${search}%`;
+      params.push(like, like, like, like, like, like, like, like, like, like, like);
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const [countRows] = await db3.query(
+      `SELECT COUNT(*) AS total
+       FROM uploaded_applicants_table uat
+       LEFT JOIN curriculum_table ct ON ct.curriculum_id = uat.program
+       LEFT JOIN year_table yt ON yt.year_id = ct.year_id
+       LEFT JOIN program_table pt ON pt.program_id = ct.program_id
+       ${whereSql}`,
+      params,
+    );
+    const total = Number(countRows?.[0]?.total || 0);
+
+    const [rows] = await db3.query(
+      `SELECT
+         uat.id,
+         uat.applicant_number,
+         uat.last_name,
+         uat.first_name,
+         uat.middle_name,
+         uat.program,
+         COALESCE(yt.year_description, 'N/A') AS program_year_description,
+         COALESCE(pt.program_code, 'N/A') AS program_code,
+         CONCAT('[ ', COALESCE(yt.year_description, 'N/A'), ' ] ', COALESCE(pt.program_code, 'N/A')) AS program_display,
+         uat.email_address,
+         uat.contact_num,
+         uat.address,
+         uat.date_applied,
+         uat.uploaded_at
+       FROM uploaded_applicants_table uat
+       LEFT JOIN curriculum_table ct ON ct.curriculum_id = uat.program
+       LEFT JOIN year_table yt ON yt.year_id = ct.year_id
+       LEFT JOIN program_table pt ON pt.program_id = ct.program_id
+       ${whereSql}
+       ORDER BY ${orderBy}
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
+
+    const uploadedEmails = rows
+      .map((row) => normalizeText(row.email_address).toLowerCase())
+      .filter(Boolean);
+
+    const assignedStudentMap = new Map();
+    if (uploadedEmails.length) {
+      const [studentRows] = await db3.query(
+        `SELECT LOWER(TRIM(pt.emailAddress)) AS email_address, snt.student_number
+         FROM person_table pt
+         INNER JOIN student_numbering_table snt ON snt.person_id = pt.person_id
+         WHERE LOWER(TRIM(pt.emailAddress)) IN (?)`,
+        [uploadedEmails],
+      );
+
+      studentRows.forEach((row) => {
+        assignedStudentMap.set(normalizeText(row.email_address).toLowerCase(), row.student_number);
+      });
+    }
+
+    const enrichedRows = rows.map((row) => ({
+      ...row,
+      student_number:
+        assignedStudentMap.get(normalizeText(row.email_address).toLowerCase()) || null,
+    }));
+
+    res.json({
+      success: true,
+      data: enrichedRows,
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
+  } catch (err) {
+    console.error("Fetch uploaded applicants error:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch uploaded applicants.",
+    });
+  }
+});
+
+router.delete("/uploaded-applicants/:id", async (req, res) => {
+  try {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid uploaded applicant id.",
+      });
+    }
+
+    const [result] = await db3.query(
+      "DELETE FROM uploaded_applicants_table WHERE id = ?",
+      [id],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Uploaded applicant not found.",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Uploaded applicant deleted successfully.",
+    });
+  } catch (err) {
+    console.error("Delete uploaded applicant error:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete uploaded applicant.",
+    });
+  }
+});
 
 // -------------------------------------------- FOR FILE UPLOAD IN ENROLLED SUBJECT --------------------------------- //
 router.post(

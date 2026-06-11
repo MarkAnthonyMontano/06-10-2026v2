@@ -131,7 +131,7 @@ const ApplicantScoring = () => {
         }
 
         // ✅ Always pass person_id in the URL
-        navigate(`/admin_dashboard1?person_id=${personId}`);
+        navigate(`//admission_personal_information?person_id=${personId}`);
     };
 
     const tabs = [
@@ -142,7 +142,7 @@ const ApplicantScoring = () => {
         },
         {
             label: "Applicant Profile",
-            to: "/admin_dashboard1",
+            to: "//admission_personal_information",
             icon: <PersonIcon fontSize="large" />,
         },
         {
